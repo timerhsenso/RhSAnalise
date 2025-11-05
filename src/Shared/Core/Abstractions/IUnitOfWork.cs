@@ -1,13 +1,13 @@
-// Copyright (c) RhSenso. Todos os direitos reservados.
-
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace RhSensoERP.Shared.Core.Abstractions;
 
-/// <summary>Unidade de trabalho para persistência transacional.</summary>
+/// <summary>
+/// Unit of Work pattern.
+/// </summary>
 public interface IUnitOfWork
 {
-    /// <summary>Salva mudanças pendentes.</summary>
+    /// <summary>
+    /// Salva as alterações no banco de dados.
+    /// </summary>
+    /// <returns>Número de registros afetados.</returns>
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

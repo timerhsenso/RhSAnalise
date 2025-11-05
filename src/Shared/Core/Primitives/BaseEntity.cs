@@ -1,27 +1,40 @@
-// Copyright (c) RhSenso. Todos os direitos reservados.
-
-using System;
-
 namespace RhSensoERP.Shared.Core.Primitives;
 
-/// <summary>Entidade base com Id e metadados comuns.</summary>
+/// <summary>
+/// Entidade base com campos comuns.
+/// </summary>
 public abstract class BaseEntity
 {
-    /// <summary>Identificador único.</summary>
-    public Guid Id { get; protected set; }
+    /// <summary>
+    /// Gets or sets o ID da entidade.
+    /// </summary>
+    public int Id { get; set; }
 
-    /// <summary>Data/hora de criação (UTC).</summary>
-    public DateTime CreatedAtUtc { get; protected set; }
+    /// <summary>
+    /// Gets or sets a data de criação.
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
 
-    /// <summary>Usuário que criou.</summary>
-    public string? CreatedBy { get; protected set; }
+    /// <summary>
+    /// Gets or sets o usuário que criou.
+    /// </summary>
+    public string? CreatedBy { get; set; }
 
-    /// <summary>Data/hora da última atualização (UTC).</summary>
-    public DateTime? UpdatedAtUtc { get; protected set; }
+    /// <summary>
+    /// Gets or sets a data de atualização.
+    /// </summary>
+    public DateTime? UpdatedAt { get; set; }
 
-    /// <summary>Usuário que atualizou.</summary>
-    public string? UpdatedBy { get; protected set; }
+    /// <summary>
+    /// Gets or sets o usuário que atualizou.
+    /// </summary>
+    public string? UpdatedBy { get; set; }
 
-    /// <summary>Construtor padrão inicializa o Id.</summary>
-    protected BaseEntity() => Id = Guid.NewGuid();
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BaseEntity"/> class.
+    /// </summary>
+    protected BaseEntity()
+    {
+        CreatedAt = DateTime.UtcNow;
+    }
 }

@@ -1,20 +1,39 @@
-// Copyright (c) RhSenso. Todos os direitos reservados.
-
-using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace RhSensoERP.Shared.Core.Abstractions;
 
-/// <summary>Repositório genérico mínimo.</summary>
-public interface IRepository<TEntity> where TEntity : class
+/// <summary>
+/// Interface base para repositórios.
+/// </summary>
+/// <typeparam name="TEntity">Tipo da entidade.</typeparam>
+public interface IRepository<TEntity>
+    where TEntity : class
 {
-    Task<TEntity?> GetByIdAsync(object id, CancellationToken ct = default);
+    /// <summary>
+    /// Obtém uma entidade por ID.
+    /// </summary>
+    Task<TEntity?> GetByIdAsync(int id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Obtém todas as entidades.
+    /// </summary>
+    Task<IEnumerable<TEntity>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Adiciona uma nova entidade.
+    /// </summary>
     Task AddAsync(TEntity entity, CancellationToken ct = default);
-    Task AddRangeAsync(IEnumerable<TEntity> entities, CancellationToken ct = default);
+
+    /// <summary>
+    /// Atualiza uma entidade existente.
+    /// </summary>
+    void Update(TEntity entity);
+
+    /// <summary>
+    /// Remove uma entidade.
+    /// </summary>
     void Remove(TEntity entity);
-    void RemoveRange(IEnumerable<TEntity> entities);
-    Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default);
+
+    /// <summary>
+    /// Salva as alterações.
+    /// </summary>
+    Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

@@ -1,12 +1,12 @@
-// Copyright (c) RhSenso. Todos os direitos reservados.
-
-using System;
-
 namespace RhSensoERP.Shared.Core.Abstractions;
 
-/// <summary>Fornece data/hora atual (testável).</summary>
+/// <summary>
+/// Provedor de data e hora.
+/// </summary>
 public interface IDateTimeProvider
 {
-    /// <summary>UTC now.</summary>
+    /// <summary>
+    /// Gets a data e hora atual UTC.
+    /// </summary>
     DateTime UtcNow { get; }
 }

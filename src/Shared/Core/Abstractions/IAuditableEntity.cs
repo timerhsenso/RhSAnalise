@@ -1,14 +1,27 @@
-// Copyright (c) RhSenso. Todos os direitos reservados.
-
-using System;
-
 namespace RhSensoERP.Shared.Core.Abstractions;
 
-/// <summary>Metadados de auditoria.</summary>
+/// <summary>
+/// Interface para entidades auditáveis.
+/// </summary>
 public interface IAuditableEntity
 {
-    DateTime CreatedAtUtc { get; }
-    string? CreatedBy { get; }
-    DateTime? UpdatedAtUtc { get; }
-    string? UpdatedBy { get; }
+    /// <summary>
+    /// Data de criação.
+    /// </summary>
+    DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Usuário que criou.
+    /// </summary>
+    string? CreatedBy { get; set; }
+
+    /// <summary>
+    /// Data de atualização.
+    /// </summary>
+    DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Usuário que atualizou.
+    /// </summary>
+    string? UpdatedBy { get; set; }
 }
