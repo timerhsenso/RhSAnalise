@@ -1,0 +1,27 @@
+# =====================
+# RhSensoERP .editorconfig
+# =====================
+root = true
+
+[*.cs]
+
+# Você quer using FORA do namespace (C# 10+)
+csharp_using_directive_placement = outside_namespace:error
+
+# Não obrigar 'this.'
+dotnet_diagnostic.SA1101.severity = none
+
+# Documentação XML não obrigatória (pode reativar mais tarde)
+dotnet_diagnostic.SA1600.severity = none
+
+# Arquivo header opcional
+dotnet_diagnostic.SA1633.severity = none
+
+# SA1200 (usings dentro do namespace) conflita com sua preferência
+dotnet_diagnostic.SA1200.severity = none
+
+# Ordem de overloads Sonar só como sugestão
+dotnet_diagnostic.S4136.severity = suggestion
+
+# 'Shared' em namespace (CA1716) desabilitado
+dotnet_diagnostic.CA1716.severity = none
