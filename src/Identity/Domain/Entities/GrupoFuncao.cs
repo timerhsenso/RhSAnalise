@@ -1,6 +1,7 @@
 ﻿using RhSensoERP.Shared.Core.Primitives;
 
 namespace RhSensoERP.Identity.Domain.Entities;
+
 /// <summary>
 /// Entidade que representa permissões de grupos nas funções (tabela hbrh1)
 /// Define quais ações cada grupo pode executar em cada função

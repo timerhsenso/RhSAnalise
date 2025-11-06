@@ -1,3 +1,10 @@
+using Microsoft.EntityFrameworkCore;
+using AutoMapper;
+using RhSensoERP.Identity.Infrastructure.Persistence;
+using RhSensoERP.Identity.Application.Mapping;
+using RhSensoERP.Identity.Application.Services;
+using RhSensoERP.Identity.Infrastructure.Repositories;
+
 namespace RhSensoERP.API;
 
 /// <summary>
@@ -12,14 +19,48 @@ public static class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container
+        // ===============================================
+        // Infra: DbContext (Identity)
+        // Requer "ConnectionStrings:DefaultConnection" no appsettings*.json
+        // ===============================================
+        builder.Services.AddDbContext<IdentityDbContext>(options =>
+            options.UseSqlServer(
+                builder.Configuration.GetConnectionString("DefaultConnection"),
+                sql =>
+                {
+                    sql.EnableRetryOnFailure();
+                    sql.CommandTimeout(60);
+                }));
+
+        // ===============================================
+        // AutoMapper (Profiles do módulo Identity)
+        // ===============================================
+        builder.Services.AddAutoMapper(cfg =>
+        {
+            cfg.AddProfile<UsuarioProfile>();
+            cfg.AddProfile<PermissaoProfile>();
+        });
+
+        // ===============================================
+        // DI: Repositórios e Serviços (Identity)
+        // ===============================================
+        builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+        builder.Services.AddScoped<IPermissaoRepository, PermissaoRepository>();
+        builder.Services.AddScoped<IPermissaoService, PermissaoService>();
+
+        // ===============================================
+        // MVC + Swagger
+        // ===============================================
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
         var app = builder.Build();
 
-        // Configure the HTTP request pipeline
+        // ===============================================
+        // Pipeline HTTP
+        // ===============================================
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
@@ -27,7 +68,11 @@ public static class Program
         }
 
         app.UseHttpsRedirection();
+
+        // (Adicionar autenticação/autorizar quando implementar Identity/JWT)
+        // app.UseAuthentication();
         app.UseAuthorization();
+
         app.MapControllers();
 
         await app.RunAsync().ConfigureAwait(false);
