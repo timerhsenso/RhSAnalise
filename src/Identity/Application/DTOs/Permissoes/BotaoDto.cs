@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace RhSensoERP.Identity.Application.DTOs.Permissoes;
 
-namespace RhSensoERP.Identity.Application.DTOs.Usuario
+public sealed class BotaoDto
 {
-    internal class BotaoDto
-    {
-    }
+    public string CdBotao { get; init; } = string.Empty;
+    public string DcBotao { get; init; } = string.Empty;
+    public string? Icone { get; init; }
+    public string? Acao { get; init; }
+    public int Ordem { get; init; }
 }
