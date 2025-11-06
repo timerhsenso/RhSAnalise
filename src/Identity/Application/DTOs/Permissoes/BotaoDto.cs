@@ -2,9 +2,7 @@
 
 public sealed class BotaoDto
 {
-    public string CdBotao { get; init; } = string.Empty;
-    public string DcBotao { get; init; } = string.Empty;
-    public string? Icone { get; init; }
-    public string? Acao { get; init; }
-    public int Ordem { get; init; }
+    public string NmBotao { get; init; } = string.Empty;
+    public string? DcBotao { get; init; }
+    public string CdAcao { get; init; } = string.Empty;
 }

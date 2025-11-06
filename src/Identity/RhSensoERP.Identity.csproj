@@ -1,14 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <Compile Remove="Application\DTOs\Permissoes\FuncaoPermissaoDto.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Application\DTOs\Permissoes\FuncaoPermissaoDto.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Shared\Core\RhSensoERP.Shared.Core.csproj" />
     <ProjectReference Include="..\Shared\Infrastructure\RhSensoERP.Shared.Infrastructure.csproj" />
   </ItemGroup>

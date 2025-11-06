@@ -18,7 +18,8 @@ public sealed class PermissaoRepository : IPermissaoRepository
     public async Task<List<FuncaoPermissaoDto>> GetPermissoesDoUsuarioAsync(string cdUsuario, string? cdSistema, CancellationToken ct)
     {
         // Grupos do usuário (por sistema)
-        var grupos = _db.UserGroups.AsNoTracking()
+        // IdentityDbContext não expõe um DbSet chamado UserGroups; usamos Set<UserGroup>()
+        var grupos = _db.Set<UserGroup>().AsNoTracking()
             .Where(ug => ug.CdUsuario == cdUsuario);
 
         if (!string.IsNullOrWhiteSpace(cdSistema))
@@ -28,7 +29,7 @@ public sealed class PermissaoRepository : IPermissaoRepository
         var query =
             from ug in grupos
             join gf in _db.Set<GrupoFuncao>().AsNoTracking()
-                on new { ug.CdSistema, ug.CdGrUser } equals new { gf.CdSistema!, gf.CdGrUser }
+                on new { ug.CdSistema, ug.CdGrUser } equals new { CdSistema = gf.CdSistema!, gf.CdGrUser }
             join f in _db.Funcoes.AsNoTracking()
                 on new { gf.CdSistema, gf.CdFuncao } equals new { f.CdSistema, f.CdFuncao }
             select new
@@ -58,15 +59,15 @@ public sealed class PermissaoRepository : IPermissaoRepository
             .Select(g => new FuncaoPermissaoDto
             {
                 CdSistema = g.Key.CdSistema!,
-                CdFuncao  = g.Key.CdFuncao,
-                DcFuncao  = g.Key.DcFuncao,
-                DcModulo  = g.Key.DcModulo,
+                CdFuncao = g.Key.CdFuncao,
+                DcFuncao = g.Key.DcFuncao,
+                DcModulo = g.Key.DcModulo,
                 // Mesclar CdAcoes de múltiplos grupos (distinct + ordenado)
                 Acoes = string.Concat(g.Select(z => z.CdAcoes).Where(s => !string.IsNullOrWhiteSpace(s))
                                        .SelectMany(s => s!).Distinct().OrderBy(c => c)),
                 Botoes = botoes
                     .Where(b => b.CdSistema == g.Key.CdSistema && b.CdFuncao == g.Key.CdFuncao)
-                    .Select(b => new BotaoDto { NmBotao = b.NmBotao, DcBotao = b.DcBotao, CdAcao = b.CdAcao })
+                    .Select(b => new BotaoDto { NmBotao = b.NmBotao, DcBotao = b.DcBotao, CdAcao = b.CdAcao.ToString() })
                     .OrderBy(b => b.NmBotao)
                     .ToList()
             })

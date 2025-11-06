@@ -125,16 +125,16 @@ public class Usuario : BaseEntity
 
     // ========= Auditoria / rede =========
     /// <summary>Criado em (datetime2) — coluna: CreatedAt (NOT NULL, default getutcdate()).</summary>
-    public DateTime CreatedAt { get; set; }
+    public new DateTime CreatedAt { get; set; }
 
     /// <summary>Atualizado em (datetime2) — coluna: UpdatedAt (NOT NULL, default getutcdate()).</summary>
-    public DateTime UpdatedAt { get; set; }
+    public new DateTime UpdatedAt { get; set; }
 
     /// <summary>Criado por (varchar(30)) — coluna: CreatedBy (NULL).</summary>
-    public string? CreatedBy { get; set; }
+    public new string? CreatedBy { get; set; }
 
     /// <summary>Atualizado por (varchar(30)) — coluna: UpdatedBy (NULL).</summary>
-    public string? UpdatedBy { get; set; }
+    public new string? UpdatedBy { get; set; }
 
     /// <summary>Último User-Agent (varchar(500)) — coluna: LastUserAgent (NULL).</summary>
     public string? LastUserAgent { get; set; }
