@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\API\RhSensoERP.API.csproj" />
+    <ProjectReference Include="..\..\src\Identity\RhSensoERP.Identity.csproj" />
   </ItemGroup>
 
 </Project>

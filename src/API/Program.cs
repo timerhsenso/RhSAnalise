@@ -24,13 +24,22 @@ public static class Program
         // Requer "ConnectionStrings:DefaultConnection" no appsettings*.json
         // ===============================================
         builder.Services.AddDbContext<IdentityDbContext>(options =>
+        {
             options.UseSqlServer(
                 builder.Configuration.GetConnectionString("DefaultConnection"),
                 sql =>
                 {
                     sql.EnableRetryOnFailure();
                     sql.CommandTimeout(60);
-                }));
+                });
+
+            // 🔥 Habilita logs detalhados das consultas EF Core
+            options.EnableSensitiveDataLogging();      // Mostra valores dos parâmetros
+            options.EnableDetailedErrors();            // Mostra mensagens completas
+            options.LogTo(Console.WriteLine,           // Escreve no console
+                LogLevel.Information);                 // Nível de log (pode usar Debug, Warning, etc.)
+        });
+
 
         // ===============================================
         // AutoMapper (Profiles do módulo Identity)

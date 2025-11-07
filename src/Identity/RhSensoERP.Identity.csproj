@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\Shared\Contracts\RhSensoERP.Shared.Contracts.csproj" />
     <ProjectReference Include="..\Shared\Core\RhSensoERP.Shared.Core.csproj" />
     <ProjectReference Include="..\Shared\Infrastructure\RhSensoERP.Shared.Infrastructure.csproj" />
   </ItemGroup>
