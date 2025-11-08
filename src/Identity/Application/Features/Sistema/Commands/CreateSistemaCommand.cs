@@ -3,9 +3,15 @@ using FluentValidation;
 using MediatR;
 using RhSensoERP.Identity.Application.Requests.Sistema;
 using RhSensoERP.Identity.Core.Interfaces.Repositories;
-using RhSensoERP.Identity.Domain.Entities;
-using RhSensoERP.Identity.Infrastructure.Repositories;
 using RhSensoERP.Shared.Core.Common;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+// Observação: removi o using RhSensoERP.Identity.Domain.Entities; aqui intencionalmente
+// para forçar o uso de nome totalmente qualificado abaixo e evitar ambiguidade.
+// Se a sua classe `Sistema` realmente estiver em `RhSensoERP.Identity.Domain.Entities`
+// e não houver namespace chamado `Sistema`, você pode restaurar o using.
 
 namespace RhSensoERP.Identity.Application.Features.Sistema.Commands;
 
@@ -32,7 +38,11 @@ public sealed class CreateSistemaCommandHandler : IRequestHandler<CreateSistemaC
         var exists = await _repo.ExistsAsync(request.Payload.CdSistema, ct);
         if (exists) return Result<string>.Failure("SISTEMA_ALREADY_EXISTS", "Já existe um sistema com esse código.");
 
-        var entity = _mapper.Map<Sistema>(request.Payload);
+        // Uso do nome totalmente qualificado para evitar ambiguidade "Sistema (namespace vs tipo)".
+        // Substitua o namespace abaixo pelo namespace real onde a classe Sistema está definida,
+        // por exemplo: RhSensoERP.Identity.Domain.Models.Sistema ou RhSensoERP.Identity.Domain.Entities.Sistema
+        var entity = _mapper.Map<RhSensoERP.Identity.Domain.Entities.Sistema>(request.Payload);
+
         await _repo.AddAsync(entity, ct);
         await _repo.UnitOfWork.SaveChangesAsync(ct);
 
