@@ -2,12 +2,12 @@ using AutoMapper;
 using MediatR;
 using RhSensoERP.Identity.Application.DTOs.Sistema;
 using RhSensoERP.Identity.Core.Interfaces.Repositories;
-using RhSensoERP.Identity.Infrastructure.Repositories;
 using RhSensoERP.Shared.Contracts.Common;
 using RhSensoERP.Shared.Core.Common;
 
 namespace RhSensoERP.Identity.Application.Features.Sistema.Queries;
 
+/// <summary>Query paginada de Sistemas (com busca).</summary>
 public sealed record GetSistemasPagedQuery(PagedRequest Request) : IRequest<Result<PagedResult<SistemaDto>>>;
 
 public sealed class GetSistemasPagedQueryHandler
@@ -24,10 +24,14 @@ public sealed class GetSistemasPagedQueryHandler
 
     public async Task<Result<PagedResult<SistemaDto>>> Handle(GetSistemasPagedQuery request, CancellationToken ct)
     {
-        var (items, total) = await _repo.ListPagedAsync(
+        var result = await _repo.ListPagedAsync(
             request.Request.Page, request.Request.PageSize, request.Request.Search, ct);
 
+        var items = result.Items;
+        var total = result.TotalCount;
+
         var data = items.Select(_mapper.Map<SistemaDto>).ToList();
-        return Result<PagedResult<SistemaDto>>.Success(new PagedResult<SistemaDto>(data, total, request.Request.Page, request.Request.PageSize));
+        var paged = new PagedResult<SistemaDto>(data, total, request.Request.Page, request.Request.PageSize);
+        return Result<PagedResult<SistemaDto>>.Success(paged);
     }
 }

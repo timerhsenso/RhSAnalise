@@ -1,12 +1,16 @@
-namespace RhSensoERP.Shared.Contracts.Common;
+﻿namespace RhSensoERP.Shared.Contracts.Common;
 
+/// <summary>
+/// Parâmetros genéricos de paginação, ordenação e busca.
+/// </summary>
 public sealed class PagedRequest
 {
-    public int Page { get; init; } = 1;
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
 
-    public int PageSize { get; init; } = 10;
+    public string? SortBy { get; set; }
+    public bool Desc { get; set; }
 
-    public string? SortBy { get; init; }
-
-    public bool Desc { get; init; }
+    /// <summary>Termo de busca opcional.</summary>
+    public string? Search { get; set; }
 }

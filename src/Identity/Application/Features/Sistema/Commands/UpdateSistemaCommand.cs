@@ -3,11 +3,11 @@ using FluentValidation;
 using MediatR;
 using RhSensoERP.Identity.Application.Requests.Sistema;
 using RhSensoERP.Identity.Core.Interfaces.Repositories;
-using RhSensoERP.Identity.Infrastructure.Repositories;
 using RhSensoERP.Shared.Core.Common;
 
 namespace RhSensoERP.Identity.Application.Features.Sistema.Commands;
 
+/// <summary>Command para atualizar um Sistema.</summary>
 public sealed record UpdateSistemaCommand(string CdSistema, UpdateSistemaRequest Payload) : IRequest<Result<bool>>;
 
 public sealed class UpdateSistemaCommandHandler : IRequestHandler<UpdateSistemaCommand, Result<bool>>
@@ -26,10 +26,12 @@ public sealed class UpdateSistemaCommandHandler : IRequestHandler<UpdateSistemaC
     public async Task<Result<bool>> Handle(UpdateSistemaCommand request, CancellationToken ct)
     {
         var vr = await _validator.ValidateAsync(request.Payload, ct);
-        if (!vr.IsValid) return Result<bool>.Failure("VALIDATION_ERROR", string.Join("; ", vr.Errors.Select(e => e.ErrorMessage)));
+        if (!vr.IsValid)
+            return Result<bool>.Failure("VALIDATION_ERROR", string.Join("; ", vr.Errors.Select(e => e.ErrorMessage)));
 
         var entity = await _repo.GetByIdAsync(request.CdSistema, ct);
-        if (entity is null) return Result<bool>.Failure("SISTEMA_NOT_FOUND", "Sistema não encontrado.");
+        if (entity is null)
+            return Result<bool>.Failure("SISTEMA_NOT_FOUND", "Sistema não encontrado.");
 
         _mapper.Map(request.Payload, entity);
         _repo.Update(entity);

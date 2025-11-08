@@ -1,22 +1,19 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RhSensoERP.Identity.Domain.Entities;
+using RhSensoERP.Shared.Core.Abstractions;
 
 namespace RhSensoERP.Identity.Infrastructure.Persistence;
 
 /// <summary>
 /// DbContext do módulo de identidade/segurança.
-/// Contém os DbSets e aplica os mapeamentos Fluent via ApplyConfigurationsFromAssembly.
 /// </summary>
-public sealed class IdentityDbContext : DbContext
+public sealed class IdentityDbContext : DbContext, IUnitOfWork
 {
     public IdentityDbContext(DbContextOptions<IdentityDbContext> options)
         : base(options)
     {
     }
 
-    // =======================
-    // DbSets (Tabelas)
-    // =======================
     public DbSet<Sistema> Sistemas => Set<Sistema>();
     public DbSet<Funcao> Funcoes => Set<Funcao>();
     public DbSet<BotaoFuncao> BotoesFuncao => Set<BotaoFuncao>();
@@ -24,16 +21,13 @@ public sealed class IdentityDbContext : DbContext
     public DbSet<GrupoFuncao> GruposFuncoes => Set<GrupoFuncao>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
 
-
-    // =======================
-    // Model Binding / Mappings
-    // =======================
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-        // Aplica todas as classes de configuração do assembly de Infrastructure
-        // (ex.: SistemaConfiguration, FuncaoConfiguration, etc.)
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(IdentityDbContext).Assembly);
     }
+
+    // IUnitOfWork
+    public Task<int> SaveChangesAsync(CancellationToken ct = default) =>
+        base.SaveChangesAsync(ct);
 }

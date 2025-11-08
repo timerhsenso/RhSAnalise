@@ -1,10 +1,10 @@
 using MediatR;
 using RhSensoERP.Identity.Core.Interfaces.Repositories;
-using RhSensoERP.Identity.Infrastructure.Repositories;
 using RhSensoERP.Shared.Core.Common;
 
 namespace RhSensoERP.Identity.Application.Features.Sistema.Commands;
 
+/// <summary>Command para excluir um Sistema.</summary>
 public sealed record DeleteSistemaCommand(string CdSistema) : IRequest<Result<bool>>;
 
 public sealed class DeleteSistemaCommandHandler : IRequestHandler<DeleteSistemaCommand, Result<bool>>
@@ -16,10 +16,13 @@ public sealed class DeleteSistemaCommandHandler : IRequestHandler<DeleteSistemaC
     public async Task<Result<bool>> Handle(DeleteSistemaCommand request, CancellationToken ct)
     {
         var entity = await _repo.GetByIdAsync(request.CdSistema, ct);
-        if (entity is null) return Result<bool>.Failure("SISTEMA_NOT_FOUND", "Sistema não encontrado.");
+        if (entity is null)
+            return Result<bool>.Failure("SISTEMA_NOT_FOUND", "Sistema não encontrado.");
 
+        // Pode usar Delete(...) (alias) ou Remove(...)
         _repo.Delete(entity);
         await _repo.UnitOfWork.SaveChangesAsync(ct);
+
         return Result<bool>.Success(true);
     }
 }

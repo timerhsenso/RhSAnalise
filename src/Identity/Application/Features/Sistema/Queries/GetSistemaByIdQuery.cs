@@ -2,11 +2,11 @@ using AutoMapper;
 using MediatR;
 using RhSensoERP.Identity.Application.DTOs.Sistema;
 using RhSensoERP.Identity.Core.Interfaces.Repositories;
-using RhSensoERP.Identity.Infrastructure.Repositories;
 using RhSensoERP.Shared.Core.Common;
 
 namespace RhSensoERP.Identity.Application.Features.Sistema.Queries;
 
+/// <summary>Query para buscar um Sistema por código.</summary>
 public sealed record GetSistemaByIdQuery(string CdSistema) : IRequest<Result<SistemaDto>>;
 
 public sealed class GetSistemaByIdQueryHandler : IRequestHandler<GetSistemaByIdQuery, Result<SistemaDto>>
@@ -23,7 +23,8 @@ public sealed class GetSistemaByIdQueryHandler : IRequestHandler<GetSistemaByIdQ
     public async Task<Result<SistemaDto>> Handle(GetSistemaByIdQuery request, CancellationToken ct)
     {
         var entity = await _repo.GetByIdAsync(request.CdSistema, ct);
-        if (entity is null) return Result<SistemaDto>.Failure("SISTEMA_NOT_FOUND", "Sistema não encontrado.");
+        if (entity is null)
+            return Result<SistemaDto>.Failure("SISTEMA_NOT_FOUND", "Sistema não encontrado.");
 
         return Result<SistemaDto>.Success(_mapper.Map<SistemaDto>(entity));
     }
