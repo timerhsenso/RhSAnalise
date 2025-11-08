@@ -1,89 +1,79 @@
-using Microsoft.EntityFrameworkCore;
-using AutoMapper;
-using RhSensoERP.Identity.Infrastructure.Persistence;
-using RhSensoERP.Identity.Application.Mapping;
-using RhSensoERP.Identity.Application.Services;
-using RhSensoERP.Identity.Infrastructure.Repositories;
+using RhSensoERP.Identity;
+using RhSensoERP.Shared.Application.Behaviors;
+using Serilog;
 
 namespace RhSensoERP.API;
 
-/// <summary>
-/// Classe principal da aplicação.
-/// </summary>
 public static class Program
 {
-    /// <summary>
-    /// Ponto de entrada da aplicação.
-    /// </summary>
     public static async Task Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
+        // ==================== CONFIGURAR SERILOG ====================
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
+            .CreateLogger();
 
-        // ===============================================
-        // Infra: DbContext (Identity)
-        // Requer "ConnectionStrings:DefaultConnection" no appsettings*.json
-        // ===============================================
-        builder.Services.AddDbContext<IdentityDbContext>(options =>
+        try
         {
-            options.UseSqlServer(
-                builder.Configuration.GetConnectionString("DefaultConnection"),
-                sql =>
+            Log.Information("Iniciando RhSensoERP API");
+
+            var builder = WebApplication.CreateBuilder(args);
+
+            // Usar Serilog
+            builder.Host.UseSerilog();
+
+            // ==================== REGISTRAR MÓDULO IDENTITY ====================
+            // ISSO REGISTRA TUDO: MediatR, Validators, AutoMapper, DbContext, Repositories, Services
+            builder.Services.AddIdentityModule(builder.Configuration);
+
+            // ==================== MVC + SWAGGER ====================
+            builder.Services.AddControllers();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new()
                 {
-                    sql.EnableRetryOnFailure();
-                    sql.CommandTimeout(60);
+                    Title = "RhSensoERP API",
+                    Version = "v1"
                 });
+            });
 
-            // 🔥 Habilita logs detalhados das consultas EF Core
-            options.EnableSensitiveDataLogging();      // Mostra valores dos parâmetros
-            options.EnableDetailedErrors();            // Mostra mensagens completas
-            options.LogTo(Console.WriteLine,           // Escreve no console
-                LogLevel.Information);                 // Nível de log (pode usar Debug, Warning, etc.)
-        });
+            // ==================== CORS ====================
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("Default", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
 
+            var app = builder.Build();
 
-        // ===============================================
-        // AutoMapper (Profiles do módulo Identity)
-        // ===============================================
-        builder.Services.AddAutoMapper(cfg =>
-        {
-            cfg.AddProfile<UsuarioProfile>();
-            cfg.AddProfile<PermissaoProfile>();
-        });
+            // ==================== PIPELINE HTTP ====================
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
 
-        // ===============================================
-        // DI: Repositórios e Serviços (Identity)
-        // ===============================================
-        builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
-        builder.Services.AddScoped<IUsuarioService, UsuarioService>();
-        builder.Services.AddScoped<IPermissaoRepository, PermissaoRepository>();
-        builder.Services.AddScoped<IPermissaoService, PermissaoService>();
+            app.UseSerilogRequestLogging();
+            app.UseHttpsRedirection();
+            app.UseCors("Default");
+            app.UseAuthorization();
+            app.MapControllers();
 
-        // ===============================================
-        // MVC + Swagger
-        // ===============================================
-        builder.Services.AddControllers();
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
-
-        var app = builder.Build();
-
-        // ===============================================
-        // Pipeline HTTP
-        // ===============================================
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
+            await app.RunAsync();
         }
-
-        app.UseHttpsRedirection();
-
-        // (Adicionar autenticação/autorizar quando implementar Identity/JWT)
-        // app.UseAuthentication();
-        app.UseAuthorization();
-
-        app.MapControllers();
-
-        await app.RunAsync().ConfigureAwait(false);
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Aplicação falhou ao iniciar");
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
     }
 }

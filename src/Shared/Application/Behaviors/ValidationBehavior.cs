@@ -1,27 +1,19 @@
 using FluentValidation;
 using MediatR;
+using RhSensoERP.Shared.Core.Common;
 
-namespace RhSensoERP.Shared.Application.Behaviors;
+namespace RhSensoERP.Identity.Application.Behaviors;
 
-/// <summary>
-/// Comportamento de validação para pipeline do MediatR.
-/// </summary>
-/// <typeparam name="TRequest">Tipo da requisição.</typeparam>
-/// <typeparam name="TResponse">Tipo da resposta.</typeparam>
 public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
     private readonly IEnumerable<IValidator<TRequest>> _validators;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ValidationBehavior{TRequest, TResponse}"/> class.
-    /// </summary>
     public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
     {
         _validators = validators;
     }
 
-    /// <inheritdoc/>
     public async Task<TResponse> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,
@@ -29,24 +21,34 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
     {
         if (!_validators.Any())
         {
-            return await next(cancellationToken).ConfigureAwait(false);
+            return await next();
         }
 
         var context = new ValidationContext<TRequest>(request);
+
         var validationResults = await Task.WhenAll(
-            _validators.Select(v => v.ValidateAsync(context, cancellationToken)))
-            .ConfigureAwait(false);
+            _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
 
         var failures = validationResults
             .SelectMany(result => result.Errors)
             .Where(failure => failure != null)
             .ToList();
 
-        if (failures.Count != 0)
+        if (failures.Any())
         {
-            throw new Exceptions.ValidationException(failures);
+            // Usa o Result<T> que já existe no seu projeto
+            if (typeof(TResponse).IsGenericType &&
+                typeof(TResponse).GetGenericTypeDefinition() == typeof(Result<>))
+            {
+                var errorMessage = string.Join("; ", failures.Select(f => f.ErrorMessage));
+                var method = typeof(Result<>)
+                    .MakeGenericType(typeof(TResponse).GetGenericArguments())
+                    .GetMethod("Failure", new[] { typeof(string), typeof(string) });
+
+                return (TResponse)method!.Invoke(null, new object[] { "VALIDATION_ERROR", errorMessage })!;
+            }
         }
 
-        return await next(cancellationToken).ConfigureAwait(false);
+        return await next();
     }
 }
