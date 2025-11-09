@@ -1,9 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using RhSensoERP.Identity.Core.Interfaces.Repositories;
 using RhSensoERP.Identity.Infrastructure.Persistence;
 using RhSensoERP.Identity.Infrastructure.Repositories;
+using RhSensoERP.Shared.Core.Abstractions;
+using System;
 
 namespace RhSensoERP.Identity.Infrastructure;
 
@@ -13,7 +16,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Database
+        // ==================== DATABASE ====================
         services.AddDbContext<IdentityDbContext>(options =>
         {
             options.UseSqlServer(
@@ -27,13 +30,17 @@ public static class DependencyInjection
 #if DEBUG
             options.EnableSensitiveDataLogging();
             options.EnableDetailedErrors();
+            options.LogTo(Console.WriteLine, LogLevel.Information);
 #endif
         });
 
-        // Repositories
+        // ==================== REPOSITORIES ====================
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IPermissaoRepository, PermissaoRepository>();
         services.AddScoped<ISistemaRepository, SistemaRepository>();
+
+        // ==================== UNIT OF WORK ====================
+        services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<IdentityDbContext>());
 
         return services;
     }

@@ -1,5 +1,5 @@
-using RhSensoERP.Identity;
-using RhSensoERP.Shared.Application.Behaviors;
+using RhSensoERP.Identity.Application;
+using RhSensoERP.Identity.Infrastructure;
 using Serilog;
 
 namespace RhSensoERP.API;
@@ -8,7 +8,7 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        // ==================== CONFIGURAR SERILOG ====================
+        // Configurar Serilog
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
             .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
@@ -20,48 +20,29 @@ public static class Program
 
             var builder = WebApplication.CreateBuilder(args);
 
-            // Usar Serilog
             builder.Host.UseSerilog();
 
-            // ==================== REGISTRAR MÓDULO IDENTITY ====================
-            // ISSO REGISTRA TUDO: MediatR, Validators, AutoMapper, DbContext, Repositories, Services
-            builder.Services.AddIdentityModule(builder.Configuration);
+            // ==================== REGISTRAR CAMADAS DO IDENTITY ====================
+            builder.Services.AddIdentityApplication();                      // MediatR, Validators, AutoMapper
+            builder.Services.AddIdentityInfrastructure(builder.Configuration); // DbContext, Repositories
 
-            // ==================== MVC + SWAGGER ====================
+            // ==================== API ====================
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(options =>
             {
-                options.SwaggerDoc("v1", new()
-                {
-                    Title = "RhSensoERP API",
-                    Version = "v1"
-                });
-            });
-
-            // ==================== CORS ====================
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("Default", policy =>
-                {
-                    policy.AllowAnyOrigin()
-                          .AllowAnyMethod()
-                          .AllowAnyHeader();
-                });
+                options.SwaggerDoc("v1", new() { Title = "RhSensoERP API", Version = "v1" });
             });
 
             var app = builder.Build();
 
-            // ==================== PIPELINE HTTP ====================
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
-            app.UseSerilogRequestLogging();
             app.UseHttpsRedirection();
-            app.UseCors("Default");
             app.UseAuthorization();
             app.MapControllers();
 
@@ -73,7 +54,7 @@ public static class Program
         }
         finally
         {
-            Log.CloseAndFlush();
+            await Log.CloseAndFlushAsync();
         }
     }
 }

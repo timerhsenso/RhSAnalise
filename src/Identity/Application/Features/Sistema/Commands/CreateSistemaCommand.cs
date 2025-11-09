@@ -1,7 +1,6 @@
 using AutoMapper;
 using FluentValidation;
 using MediatR;
-using RhSensoERP.Identity.Application.DTOs.Sistema;
 using RhSensoERP.Identity.Application.Requests.Sistema;
 using RhSensoERP.Identity.Core.Interfaces.Repositories;
 using RhSensoERP.Shared.Core.Common;
@@ -35,14 +34,14 @@ public sealed class CreateSistemaCommandHandler : IRequestHandler<CreateSistemaC
         if (!validationResult.IsValid)
         {
             var errors = string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage));
-            return Result<string>.Failure(new Error("VALIDATION", errors));
+            return Result<string>.Failure("VALIDATION", errors);
         }
 
         // Verificar duplicado
         var exists = await _repository.ExistsAsync(request.Payload.CdSistema, ct);
         if (exists)
         {
-            return Result<string>.Failure(new Error("DUPLICATE", "Sistema já existe"));
+            return Result<string>.Failure("DUPLICATE", "Sistema já existe");
         }
 
         // Mapear e salvar

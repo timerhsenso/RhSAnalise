@@ -25,7 +25,6 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
         }
 
         var context = new ValidationContext<TRequest>(request);
-
         var validationResults = await Task.WhenAll(
             _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
 
@@ -36,16 +35,25 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
 
         if (failures.Any())
         {
-            // Usa o Result<T> que já existe no seu projeto
-            if (typeof(TResponse).IsGenericType &&
-                typeof(TResponse).GetGenericTypeDefinition() == typeof(Result<>))
-            {
-                var errorMessage = string.Join("; ", failures.Select(f => f.ErrorMessage));
-                var method = typeof(Result<>)
-                    .MakeGenericType(typeof(TResponse).GetGenericArguments())
-                    .GetMethod("Failure", new[] { typeof(string), typeof(string) });
+            var errors = string.Join("; ", failures.Select(f => f.ErrorMessage));
 
-                return (TResponse)method!.Invoke(null, new object[] { "VALIDATION_ERROR", errorMessage })!;
+            // Se o tipo de resposta for Result<T>, retorna falha
+            if (typeof(TResponse).IsGenericType)
+            {
+                var genericType = typeof(TResponse).GetGenericTypeDefinition();
+                if (genericType == typeof(Result<>))
+                {
+                    var resultType = typeof(TResponse).GetGenericArguments()[0];
+                    var failureMethod = typeof(Result<>)
+                        .MakeGenericType(resultType)
+                        .GetMethod("Failure", new[] { typeof(string), typeof(string) });
+
+                    if (failureMethod != null)
+                    {
+                        var result = failureMethod.Invoke(null, new object[] { "VALIDATION_ERROR", errors });
+                        return (TResponse)result!;
+                    }
+                }
             }
         }
 

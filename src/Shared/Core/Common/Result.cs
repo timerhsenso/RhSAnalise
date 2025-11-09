@@ -1,24 +1,41 @@
 namespace RhSensoERP.Shared.Core.Common;
 
 /// <summary>
-/// Resultado padrão (Success/Failure) com payload opcional.
+/// Representa o resultado de uma operação.
 /// </summary>
-public sealed class Result<T>
+public class Result
 {
-    public bool Succeeded { get; init; }
-    public string? Code { get; init; }
-    public string? Message { get; init; }
-    public T? Data { get; init; }
+    protected Result(bool isSuccess, Error error)
+    {
+        IsSuccess = isSuccess;
+        Error = error;
+    }
 
-    public static Result<T> Success(T data) =>
-        new() { Succeeded = true, Data = data };
+    public bool IsSuccess { get; }
+    public Error Error { get; }
 
-    public static Result<T> Failure(string message) =>
-        new() { Succeeded = false, Message = message };
+    public static Result Success() => new(true, Error.None);
+    public static Result Failure(Error error) => new(false, error);
+}
 
-    /// <summary>
-    /// Falha com código e mensagem (usado pelos seus handlers).
-    /// </summary>
+/// <summary>
+/// Representa o resultado de uma operação com valor de retorno.
+/// </summary>
+public sealed class Result<T> : Result
+{
+    private Result(bool isSuccess, T? value, Error error)
+        : base(isSuccess, error)
+    {
+        Value = value;
+    }
+
+    public T? Value { get; }
+
+    public static Result<T> Success(T value) => new(true, value, Error.None);
+
+    public static new Result<T> Failure(Error error) => new(false, default, error);
+
+    // Sobrecarga para manter compatibilidade
     public static Result<T> Failure(string code, string message) =>
-        new() { Succeeded = false, Code = code, Message = message };
+        new(false, default, new Error(code, message));
 }
