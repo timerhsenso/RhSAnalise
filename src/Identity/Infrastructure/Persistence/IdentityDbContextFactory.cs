@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using RhSensoERP.Shared.Infrastructure.Persistence.Interceptors;
 using System.IO;
 
 namespace RhSensoERP.Identity.Infrastructure.Persistence;
@@ -33,6 +34,25 @@ public sealed class IdentityDbContextFactory : IDesignTimeDbContextFactory<Ident
         var optionsBuilder = new DbContextOptionsBuilder<IdentityDbContext>();
         optionsBuilder.UseSqlServer(connectionString);
 
-        return new IdentityDbContext(optionsBuilder.Options);
+        // Para design-time (migrations), criamos um interceptor fake
+        // Ele não será usado durante a geração das migrations
+        var fakeInterceptor = new AuditableEntityInterceptor(
+            new FakeCurrentUser(),
+            new FakeDateTimeProvider()
+        );
+
+        return new IdentityDbContext(optionsBuilder.Options, fakeInterceptor);
+    }
+
+    // Classes auxiliares para design-time apenas
+    private sealed class FakeCurrentUser : RhSensoERP.Shared.Core.Abstractions.ICurrentUser
+    {
+        public string? UserId => "migration-user";
+        public string? UserName => "Migration User";
+    }
+
+    private sealed class FakeDateTimeProvider : RhSensoERP.Shared.Core.Abstractions.IDateTimeProvider
+    {
+        public DateTime UtcNow => DateTime.UtcNow;
     }
 }

@@ -1,5 +1,6 @@
 using RhSensoERP.Identity.Application;
 using RhSensoERP.Identity.Infrastructure;
+using RhSensoERP.Shared.Infrastructure;  // ← ADICIONAR
 using Serilog;
 
 namespace RhSensoERP.API;
@@ -8,7 +9,6 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        // Configurar Serilog
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
             .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
@@ -19,12 +19,14 @@ public static class Program
             Log.Information("Iniciando RhSensoERP API");
 
             var builder = WebApplication.CreateBuilder(args);
-
             builder.Host.UseSerilog();
 
-            // ==================== REGISTRAR CAMADAS DO IDENTITY ====================
-            builder.Services.AddIdentityApplication();                      // MediatR, Validators, AutoMapper
-            builder.Services.AddIdentityInfrastructure(builder.Configuration); // DbContext, Repositories
+            // ==================== SHARED INFRASTRUCTURE (ANTES!) ====================
+            builder.Services.AddSharedInfrastructure();  // ← ADICIONAR
+
+            // ==================== IDENTITY ====================
+            builder.Services.AddIdentityApplication();
+            builder.Services.AddIdentityInfrastructure(builder.Configuration);
 
             // ==================== API ====================
             builder.Services.AddControllers();

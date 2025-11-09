@@ -16,6 +16,15 @@ public sealed class FuncaoConfiguration : IEntityTypeConfiguration<Funcao>
 {
     public void Configure(EntityTypeBuilder<Funcao> builder)
     {
+
+        //
+        builder.Ignore(e => e.Id);
+        builder.Ignore(e => e.CreatedAt);
+        builder.Ignore(e => e.CreatedBy);
+        builder.Ignore(e => e.UpdatedAt);
+        builder.Ignore(e => e.UpdatedBy);
+        //
+
         builder.ToTable("fucn1");
 
         builder.HasKey(e => new { e.CdSistema, e.CdFuncao });

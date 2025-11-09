@@ -4,13 +4,6 @@ using RhSensoERP.Identity.Domain.Entities;
 
 namespace RhSensoERP.Identity.Infrastructure.Configurations;
 
-/// <summary>
-/// Mapeia a entidade <see cref="Sistema"/> para a tabela tsistema.
-/// Regras principais:
-/// - PK: CdSistema (char(10))
-/// - Campos: DcSistema (varchar(60)), Ativo (bit, default 1)
-/// - Relacionamento: 1:N com Funcao
-/// </summary>
 public sealed class SistemaConfiguration : IEntityTypeConfiguration<Sistema>
 {
     public void Configure(EntityTypeBuilder<Sistema> builder)
@@ -18,6 +11,13 @@ public sealed class SistemaConfiguration : IEntityTypeConfiguration<Sistema>
         builder.ToTable("tsistema");
 
         builder.HasKey(e => e.CdSistema);
+
+        // ⚠️ IGNORAR propriedades que NÃO existem no banco legado
+        builder.Ignore(e => e.Id);
+        builder.Ignore(e => e.CreatedAt);
+        builder.Ignore(e => e.CreatedBy);
+        builder.Ignore(e => e.UpdatedAt);
+        builder.Ignore(e => e.UpdatedBy);
 
         builder.Property(e => e.CdSistema)
             .HasColumnName("cdsistema")
