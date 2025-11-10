@@ -52,40 +52,30 @@ public class LotacaoTributariaConfiguration : IEntityTypeConfiguration<LotacaoTr
                .HasColumnName("codtercssusp")
                .HasColumnType("char(4)");
 
-        builder.Property(x => x.TpInscContrat)
-               .HasColumnName("tpinsccontrat");
-
-        builder.Property(x => x.NrInscContrat)
-               .HasColumnName("nrInscContrat")
-               .HasMaxLength(14);
-
-        builder.Property(x => x.TpInscProp)
-               .HasColumnName("tpinscprop");
-
-        builder.Property(x => x.NrInscProp)
-               .HasColumnName("nrinscprop")
-               .HasMaxLength(14);
-
-        builder.Property(x => x.AliqRat)
-               .HasColumnName("aliqRat")
-               .HasColumnType("char(1)");
-
-        builder.Property(x => x.Fap)
-               .HasColumnName("fap");
+        builder.Property(x => x.TpInscContrat).HasColumnName("tpinsccontrat");
+        builder.Property(x => x.NrInscContrat).HasColumnName("nrInscContrat").HasMaxLength(14);
+        builder.Property(x => x.TpInscProp).HasColumnName("tpinscprop");
+        builder.Property(x => x.NrInscProp).HasColumnName("nrinscprop").HasMaxLength(14);
+        builder.Property(x => x.AliqRat).HasColumnName("aliqRat").HasColumnType("char(1)");
+        builder.Property(x => x.Fap).HasColumnName("fap");
 
         // Índices
         builder.HasIndex(x => x.FPAS).HasDatabaseName("IX_lotacoestributarias_fpas");
         builder.HasIndex(x => x.TpLotacao).HasDatabaseName("IX_lotacoestributarias_tplotacao");
 
-        // FKs (ativar quando existir o mapeamento das tabelas-alvo)
-        // builder.HasOne<Tab10Esocial>()
-        //        .WithMany()
-        //        .HasForeignKey(x => x.TpLotacao)
-        //        .HasConstraintName("FK_lotacoestributarias_tab10_esocial_tplotacao");
+        // ===== Relações (FKs) =====
+        // tplotacao (char(2)) -> tab10_esocial(tab10_codigo)
+        builder.HasOne<Tab10Esocial>()
+               .WithMany()
+               .HasForeignKey(x => x.TpLotacao)
+               .HasConstraintName("FK_lotacoestributarias_tab10_esocial_tplotacao")
+               .OnDelete(DeleteBehavior.NoAction);
 
-        // builder.HasOne<Tab4Esocial>()
-        //        .WithMany()
-        //        .HasForeignKey(x => x.FPAS)
-        //        .HasConstraintName("FK_lotacoestributarias_tab4_esocial_fpas");
+        // fpas (char(3)) -> tab4_esocial(tab4_codigo)
+        builder.HasOne<Tab4Esocial>()
+               .WithMany()
+               .HasForeignKey(x => x.FPAS)
+               .HasConstraintName("FK_lotacoestributarias_tab4_esocial_fpas")
+               .OnDelete(DeleteBehavior.NoAction);
     }
 }
