@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RhSensoERP.Modules.ControleDePonto.Core.Entities;
 
-namespace RhSensoERP.Modules.ControleDePonto.Core.Configurations;
+namespace RhSensoERP.Modules.ControleDePonto.Infrastructure.Persistence.Configurations;
 
 /// <summary>Configuration for BancoHoras.</summary>
 public sealed class BancoHorasConfiguration : IEntityTypeConfiguration<BancoHoras>
