@@ -1,5 +1,4 @@
-﻿// Batidas.cs
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using RhSensoERP.Shared.Core.Primitives;
 using System;
 using System.ComponentModel.DataAnnotations;
