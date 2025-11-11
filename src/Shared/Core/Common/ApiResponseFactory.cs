@@ -1,4 +1,6 @@
-namespace RhSensoERP.Shared.Contracts.Common;
+using RhSensoERP.Shared.Contracts.Common;
+
+namespace RhSensoERP.Shared.Core.Common;
 
 public static class ApiResponse
 {
