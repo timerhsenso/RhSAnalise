@@ -10,6 +10,9 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal;
 
+/// <summary>
+/// Controller para gerenciamento de bancos.
+/// </summary>
 [ApiController]
 [Route("api/v1/gestaodepessoas/tabelas/pessoal/bancos")]
 [Authorize]
@@ -28,23 +31,20 @@ public class BancosController : ControllerBase
     }
 
     /// <summary>
-    /// Lista bancos paginados
+    /// Lista bancos paginados.
     /// </summary>
-    /// <param name="page">Número da página (padrão: 1)</param>
-    /// <param name="pageSize">Tamanho da página (padrão: 10)</param>
-    /// <param name="search">Termo de busca (opcional)</param>
-    /// <returns>Lista paginada de bancos</returns>
     [HttpGet]
     [SwaggerOperation(Summary = "Lista bancos paginados", Description = "Retorna lista paginada de bancos com busca opcional")]
-    [ProducesResponseType(typeof(ApiResponse<PagedResult<BancoDto>>), 200)]
-    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
-    public async Task<IActionResult> GetPaged(
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<BancoDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<PagedResult<BancoDto>>>> GetPaged(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null)
     {
         try
         {
+            // Validação de parâmetros
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
             if (pageSize > 100) pageSize = 100;
@@ -67,12 +67,13 @@ public class BancosController : ControllerBase
     }
 
     /// <summary>
-    /// Lista todos os bancos (para combos/dropdowns)
+    /// Lista todos os bancos (para combos/dropdowns).
     /// </summary>
     [HttpGet("all")]
     [SwaggerOperation(Summary = "Lista todos os bancos", Description = "Retorna lista completa de bancos para uso em combos")]
-    [ProducesResponseType(typeof(ApiResponse<IEnumerable<BancoDto>>), 200)]
-    public async Task<IActionResult> GetAll()
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<BancoDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<IEnumerable<BancoDto>>>> GetAll()
     {
         try
         {
@@ -87,14 +88,14 @@ public class BancosController : ControllerBase
     }
 
     /// <summary>
-    /// Obtém banco por código
+    /// Obtém banco por código.
     /// </summary>
-    /// <param name="codigo">Código do banco (3 dígitos)</param>
     [HttpGet("{codigo}")]
     [SwaggerOperation(Summary = "Busca banco por código", Description = "Retorna dados do banco pelo código")]
-    [ProducesResponseType(typeof(ApiResponse<BancoDto>), 200)]
-    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
-    public async Task<IActionResult> GetById(string codigo)
+    [ProducesResponseType(typeof(ApiResponse<BancoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<BancoDto>>> GetById(string codigo)
     {
         try
         {
@@ -116,20 +117,25 @@ public class BancosController : ControllerBase
     }
 
     /// <summary>
-    /// Cria novo banco
+    /// Cria novo banco.
     /// </summary>
     [HttpPost]
     [SwaggerOperation(Summary = "Cria novo banco", Description = "Cadastra um novo banco no sistema")]
-    [ProducesResponseType(typeof(ApiResponse<BancoDto>), 201)]
-    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
-    [ProducesResponseType(typeof(ApiResponse<object>), 409)]
-    public async Task<IActionResult> Create([FromBody] CreateBancoDto dto)
+    [ProducesResponseType(typeof(ApiResponse<BancoDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<BancoDto>>> Create([FromBody] CreateBancoDto dto)
     {
         try
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse.Fail<BancoDto>("Dados inválidos"));
+                var errors = ModelState
+                    .SelectMany(x => x.Value?.Errors ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.ModelBinding.ModelError>())
+                    .Select(x => x.ErrorMessage)
+                    .ToList();
+
+                return BadRequest(ApiResponse.Fail<BancoDto>(string.Join("; ", errors)));
             }
 
             var result = await _bancoService.CreateAsync(dto);
@@ -161,26 +167,33 @@ public class BancosController : ControllerBase
     }
 
     /// <summary>
-    /// Atualiza banco existente
+    /// Atualiza banco existente.
     /// </summary>
     [HttpPut("{codigo}")]
     [SwaggerOperation(Summary = "Atualiza banco", Description = "Atualiza dados de um banco existente")]
-    [ProducesResponseType(typeof(ApiResponse<BancoDto>), 200)]
-    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
-    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
-    public async Task<IActionResult> Update(string codigo, [FromBody] UpdateBancoDto dto)
+    [ProducesResponseType(typeof(ApiResponse<BancoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<BancoDto>>> Update(string codigo, [FromBody] UpdateBancoDto dto)
     {
         try
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponse.Fail<BancoDto>("Dados inválidos"));
+                var errors = ModelState
+                    .SelectMany(x => x.Value?.Errors ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.ModelBinding.ModelError>())
+                    .Select(x => x.ErrorMessage)
+                    .ToList();
+
+                return BadRequest(ApiResponse.Fail<BancoDto>(string.Join("; ", errors)));
             }
 
             var result = await _bancoService.UpdateAsync(codigo, dto);
 
             if (!result.IsSuccess)
             {
+                _logger.LogWarning("Falha ao atualizar banco {Codigo}: {Error}", codigo, result.Error.Message);
+
                 if (result.Error.Code == "BANCO_NAO_ENCONTRADO")
                 {
                     return NotFound(ApiResponse.Fail<BancoDto>(result.Error.Message));
@@ -201,13 +214,13 @@ public class BancosController : ControllerBase
     }
 
     /// <summary>
-    /// Remove banco
+    /// Remove banco.
     /// </summary>
     [HttpDelete("{codigo}")]
     [SwaggerOperation(Summary = "Remove banco", Description = "Exclui um banco do sistema")]
-    [ProducesResponseType(204)]
-    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
-    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string codigo)
     {
         try
@@ -220,10 +233,10 @@ public class BancosController : ControllerBase
 
                 return result.Error.Code switch
                 {
-                    "BANCO_NAO_ENCONTRADO" => NotFound(ApiResponse.Fail<object>(result.Error.Message)),
-                    "BANCO_COM_AGENCIAS" => BadRequest(ApiResponse.Fail<object>(result.Error.Message)),
-                    "BANCO_COM_FUNCIONARIOS" => BadRequest(ApiResponse.Fail<object>(result.Error.Message)),
-                    _ => BadRequest(ApiResponse.Fail<object>(result.Error.Message))
+                    "BANCO_NAO_ENCONTRADO" => NotFound(ApiResponse.Fail(result.Error.Message)),
+                    "BANCO_COM_AGENCIAS" => BadRequest(ApiResponse.Fail(result.Error.Message)),
+                    "BANCO_COM_FUNCIONARIOS" => BadRequest(ApiResponse.Fail(result.Error.Message)),
+                    _ => BadRequest(ApiResponse.Fail(result.Error.Message))
                 };
             }
 
@@ -234,7 +247,7 @@ public class BancosController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao excluir banco {Codigo}", codigo);
-            return BadRequest(ApiResponse.Fail<object>("Erro ao excluir banco"));
+            return BadRequest(ApiResponse.Fail("Erro ao excluir banco"));
         }
     }
 }
