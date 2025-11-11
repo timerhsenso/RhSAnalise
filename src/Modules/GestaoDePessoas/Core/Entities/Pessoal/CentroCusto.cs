@@ -4,7 +4,7 @@ using RhSensoERP.Shared.Core.Primitives;
 using System;
 using System.Collections.Generic;
 
-namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities
+namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Pessoal
 {
     public class CentroCusto : BaseEntity
     {

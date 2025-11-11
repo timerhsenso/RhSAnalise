@@ -13,6 +13,13 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Core\Entities\Tabelas\Folha\" />
+    <Folder Include="Core\Entities\Tabelas\Eventos\" />
+    <Folder Include="Infrastructure\Persistence\Configurations\Tabelas\Folha\" />
+    <Folder Include="Infrastructure\Persistence\Configurations\Tabelas\Eventos\" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

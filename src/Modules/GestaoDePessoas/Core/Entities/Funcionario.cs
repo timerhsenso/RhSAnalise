@@ -1,5 +1,7 @@
 ﻿// src/Modules/GestaoDePessoas/Core/Entities/Funcionario.cs
 
+using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Pessoal;
+using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
 using RhSensoERP.Shared.Core.Primitives;
 using System;
 

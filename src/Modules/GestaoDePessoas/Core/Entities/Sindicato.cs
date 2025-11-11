@@ -1,5 +1,6 @@
 ﻿// src/Modules/GestaoDePessoas/Core/Entities/Sindicato.cs
 
+using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
 using RhSensoERP.Shared.Core.Primitives;
 using System;
 using System.Collections.Generic;

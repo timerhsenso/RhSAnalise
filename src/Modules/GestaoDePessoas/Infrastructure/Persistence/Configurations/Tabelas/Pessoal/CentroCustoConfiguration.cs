@@ -2,9 +2,9 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using RhSensoERP.Modules.GestaoDePessoas.Core.Entities;
+using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Pessoal;
 
-namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Configurations
+namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Configurations.Tabelas.Pessoal
 {
     public class CentroCustoConfiguration : IEntityTypeConfiguration<CentroCusto>
     {
