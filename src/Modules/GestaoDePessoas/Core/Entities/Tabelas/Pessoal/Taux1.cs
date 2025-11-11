@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Intrinsics.X86;
 
-namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities
+namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal
 {
     /// <summary>
     /// Tipos de tabelas auxiliares.

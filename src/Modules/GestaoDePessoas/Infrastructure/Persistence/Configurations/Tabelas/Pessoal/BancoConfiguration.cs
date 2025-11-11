@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
 
-namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Configurations
+namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Configurations.Tabelas.Pessoal
 {
     public class BancoConfiguration : IEntityTypeConfiguration<Banco>
     {

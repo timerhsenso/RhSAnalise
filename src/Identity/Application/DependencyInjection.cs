@@ -1,7 +1,8 @@
 ﻿using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using RhSensoERP.Identity.Application.Behaviors;
+using RhSensoERP.Shared.Application.Behaviors;
+
 using RhSensoERP.Identity.Application.Mapping;
 using RhSensoERP.Identity.Application.Services;
 using System.Reflection;

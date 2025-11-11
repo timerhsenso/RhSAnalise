@@ -1,6 +1,6 @@
 ﻿using RhSensoERP.Shared.Core.Primitives;
 
-namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities
+namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal
 {
     /// <summary>
     /// Situações/tipos auxiliares por categoria (Taux1).

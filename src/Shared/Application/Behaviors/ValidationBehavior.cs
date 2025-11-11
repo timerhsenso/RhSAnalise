@@ -2,7 +2,7 @@ using FluentValidation;
 using MediatR;
 using RhSensoERP.Shared.Core.Common;
 
-namespace RhSensoERP.Identity.Application.Behaviors;
+namespace RhSensoERP.Shared.Application.Behaviors;
 
 public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>

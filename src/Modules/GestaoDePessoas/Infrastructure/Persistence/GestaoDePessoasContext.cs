@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RhSensoERP.Modules.GestaoDePessoas.Core.Entities;
-using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Pessoal;
 using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
 using RhSensoERP.Modules.Esocial.Core.Entities;
 using System.Reflection;
