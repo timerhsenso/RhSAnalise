@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
@@ -20,6 +20,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\Modules\Esocial\RhSensoERP.Modules.Esocial.csproj" />
 		<ProjectReference Include="..\Shared\Core\RhSensoERP.Shared.Core.csproj" />
 		<ProjectReference Include="..\Shared\Contracts\RhSensoERP.Shared.Contracts.csproj" />
 		<ProjectReference Include="..\Shared\Application\RhSensoERP.Shared.Application.csproj" />
