@@ -1,24 +1,52 @@
-// Lanc3Configuration.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using RhSensoERP.Modules.GestaoDePessoas.Core.Entities;
 
-namespace RhSensoERP.Modules.GestaoDePessoas.Core.Configurations;
-
-public sealed class Lanc3Configuration : IEntityTypeConfiguration<Lanc3>
+namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities
 {
-    public void Configure(EntityTypeBuilder<Lanc3> b)
+    /// <summary>
+    /// Configuração EF Core da tabela LANC3 (tabela sem PK).
+    /// </summary>
+    public class Lanc3Configuration : IEntityTypeConfiguration<Lanc3>
     {
-        b.ToTable("lanc3");
+        public void Configure(EntityTypeBuilder<Lanc3> builder)
+        {
+            builder.ToTable("lanc3");
+            builder.HasNoKey(); // tabela sem PK
 
-        b.HasNoKey(); // sem PK
+            builder.Property(x => x.NoMatric)
+                   .HasColumnName("nomatric")
+                   .HasMaxLength(8)
+                   .IsRequired();
 
-        b.Property(x => x.NoMatric).HasMaxLength(8).IsRequired();
-        b.Property(x => x.NoProcesso).HasMaxLength(6).IsRequired();
-        b.Property(x => x.CdConta).HasMaxLength(4).IsRequired();
-        b.Property(x => x.CdCcUsRes).HasMaxLength(5);
-        b.Property(x => x.CdUsuario).HasMaxLength(20);
+            builder.Property(x => x.CdEmpresa)
+                   .HasColumnName("cdempresa")
+                   .IsRequired();
 
-        b.HasIndex(x => new { x.CdEmpresa, x.CdFilial, x.NoMatric, x.NoProcesso });
+            builder.Property(x => x.CdFilial)
+                   .HasColumnName("cdfilial")
+                   .IsRequired();
+
+            builder.Property(x => x.NoProcesso)
+                   .HasColumnName("noprocesso")
+                   .HasMaxLength(6)
+                   .IsRequired();
+
+            builder.Property(x => x.CdConta)
+                   .HasColumnName("cdconta")
+                   .HasMaxLength(4)
+                   .IsRequired();
+
+            builder.Property(x => x.CdCcUsRes)
+                   .HasColumnName("cdccusres")
+                   .HasMaxLength(5);
+
+            builder.Property(x => x.QtConta)
+                   .HasColumnName("qtconta")
+                   .HasColumnType("float");
+
+            builder.Property(x => x.CdUsuario)
+                   .HasColumnName("cdusuario")
+                   .HasMaxLength(20);
+        }
     }
 }

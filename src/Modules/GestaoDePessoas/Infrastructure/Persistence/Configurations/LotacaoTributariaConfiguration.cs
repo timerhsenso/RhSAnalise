@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RhSensoERP.Modules.GestaoDePessoas.Core.Entities;
+using RhSensoERP.Modules.Esocial.Core.Entities;
 
 namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Configurations;
 

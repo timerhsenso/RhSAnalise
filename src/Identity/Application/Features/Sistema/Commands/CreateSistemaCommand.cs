@@ -1,53 +1,46 @@
+﻿// src/Identity/Application/Features/Sistema/Commands/CreateSistemaCommand.cs
 using AutoMapper;
 using FluentValidation;
 using MediatR;
 using RhSensoERP.Identity.Application.Requests.Sistema;
 using RhSensoERP.Identity.Core.Interfaces.Repositories;
+using RhSensoERP.Identity.Domain.Entities;
 using RhSensoERP.Shared.Core.Common;
 
 namespace RhSensoERP.Identity.Application.Features.Sistema.Commands;
 
-// Command
 public sealed record CreateSistemaCommand(CreateSistemaRequest Payload) : IRequest<Result<string>>;
 
-// Handler
 public sealed class CreateSistemaCommandHandler : IRequestHandler<CreateSistemaCommand, Result<string>>
 {
-    private readonly ISistemaRepository _repository;
+    private readonly ISistemaRepository _repo;
     private readonly IValidator<CreateSistemaRequest> _validator;
     private readonly IMapper _mapper;
 
     public CreateSistemaCommandHandler(
-        ISistemaRepository repository,
+        ISistemaRepository repo,
         IValidator<CreateSistemaRequest> validator,
         IMapper mapper)
     {
-        _repository = repository;
+        _repo = repo;
         _validator = validator;
         _mapper = mapper;
     }
 
     public async Task<Result<string>> Handle(CreateSistemaCommand request, CancellationToken ct)
     {
-        // Validar
-        var validationResult = await _validator.ValidateAsync(request.Payload, ct);
-        if (!validationResult.IsValid)
-        {
-            var errors = string.Join("; ", validationResult.Errors.Select(e => e.ErrorMessage));
-            return Result<string>.Failure("VALIDATION", errors);
-        }
+        var vr = await _validator.ValidateAsync(request.Payload, ct);
+        if (!vr.IsValid)
+            return Result<string>.Failure("VALIDATION_ERROR", string.Join("; ", vr.Errors.Select(e => e.ErrorMessage)));
 
-        // Verificar duplicado
-        var exists = await _repository.ExistsAsync(request.Payload.CdSistema, ct);
+        var exists = await _repo.ExistsAsync(request.Payload.CdSistema, ct);
         if (exists)
-        {
-            return Result<string>.Failure("DUPLICATE", "Sistema j� existe");
-        }
+            return Result<string>.Failure("SISTEMA_EXISTS", "Sistema já existe.");
 
-        // Mapear e salvar
-        var entity = _mapper.Map<Domain.Entities.Sistema>(request.Payload);
-        await _repository.AddAsync(entity, ct);
-        await _repository.UnitOfWork.SaveChangesAsync(ct);
+  
+        var entity = _mapper.Map<RhSensoERP.Identity.Domain.Entities.Sistema>(request.Payload);
+        await _repo.AddAsync(entity, ct);
+        await _repo.UnitOfWork.SaveChangesAsync(ct);
 
         return Result<string>.Success(entity.CdSistema);
     }

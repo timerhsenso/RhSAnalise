@@ -4,6 +4,7 @@
     <ProjectReference Include="..\..\Shared\Core\RhSensoERP.Shared.Core.csproj" />
     <ProjectReference Include="..\..\Shared\Application\RhSensoERP.Shared.Application.csproj" />
     <ProjectReference Include="..\..\Shared\Infrastructure\RhSensoERP.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\Esocial\RhSensoERP.Modules.Esocial.csproj" />
   </ItemGroup>
 
   <ItemGroup>
