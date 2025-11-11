@@ -1,4 +1,4 @@
-﻿namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities;
+﻿namespace RhSensoERP.Modules.Esocial.Core.Entities;
 
 public class Tab10Esocial
 {

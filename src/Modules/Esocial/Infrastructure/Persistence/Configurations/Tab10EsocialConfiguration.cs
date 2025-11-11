@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using RhSensoERP.Modules.GestaoDePessoas.Core.Entities;
+using RhSensoERP.Modules.Esocial.Core.Entities;
 
-namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Configurations;
+namespace RhSensoERP.Modules.Esocial.Infrastructure.Persistence.Configurations;
 
 public class Tab10EsocialConfiguration : IEntityTypeConfiguration<Tab10Esocial>
 {
