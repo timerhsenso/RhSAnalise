@@ -42,6 +42,7 @@ public static class Program
             // Configuração do Swagger
             builder.Services.AddSwaggerGen(options =>
             {
+                // Documento principal
                 options.SwaggerDoc("v1", new OpenApiInfo
                 {
                     Title = "RhSensoERP API",
@@ -60,6 +61,20 @@ public static class Program
                     Title = "Módulo Gestão de Pessoas",
                     Version = "v1",
                     Description = "APIs do módulo de Gestão de Pessoas - Cadastros e manutenção de funcionários"
+                });
+
+                // ✅ ADICIONAR FILTRO PARA SEPARAR OS GRUPOS
+                options.DocInclusionPredicate((docName, apiDesc) =>
+                {
+                    if (docName == "v1")
+                    {
+                        // v1 inclui controllers SEM grupo OU com grupo "v1"
+                        var groupName = apiDesc.GroupName;
+                        return string.IsNullOrEmpty(groupName) || groupName == "v1";
+                    }
+
+                    // Outros documentos (GestaoDePessoas, etc.) filtram pelo nome do grupo
+                    return apiDesc.GroupName == docName;
                 });
 
                 // Habilitar anotações do Swagger
