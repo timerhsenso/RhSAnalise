@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>RhSensoERP.API</name>
+    </assembly>
+    <members>
+        <member name="T:RhSensoERP.API.Configuration.ModuleGroupConvention">
+            <summary>
+            Define o ApiExplorer.GroupName automaticamente a partir do namespace do controller,
+            sem sobrescrever quando o controller já definiu via atributo.
+            Suporta "RhSensoERP.Modules.*" e "RhSensoERP.API.Controllers.*".
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Configuration.SwaggerConfiguration">
+            <summary>Configuração do Swagger/OpenAPI com múltiplos documentos por módulo + doc geral v1.</summary>
+        </member>
+        <member name="T:RhSensoERP.API.Configuration.SwaggerDefaultValuesFilter">
+            <summary>
+            Filtro para adicionar valores padrão aos parâmetros do Swagger
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Configuration.LowercaseDocumentFilter">
+            <summary>
+            Filtro para converter paths do Swagger para lowercase
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.DiagnosticsController">
+            <summary>
+            Controller de diagnóstico e validações do ambiente (pré e pós-implantação).
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestDatabaseAsync">
+            <summary>Testa a conexão com o SQL Server, mede latência e retorna informações básicas.</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.GetMigrationsAsync">
+            <summary>Lista as últimas migrações do EF Core se a tabela __EFMigrationsHistory existir.</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestRedisAsync">
+            <summary>Testa o Redis usando a configuração em Redis:Configuration (StackExchange.Redis).</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.SendTestEmailAsync(System.String)">
+            <summary>Envia um e-mail de teste usando a seção Diagnostics:Smtp.*</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TailLogs(System.Int32)">
+            <summary>Lê as últimas N linhas do arquivo de log (config em Diagnostics:LogFilePath).</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestPermissions">
+            <summary>Testa permissão de escrita/leitura nas pastas (Logs, Uploads, Temp) definidas em Paths:*.</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.Memory">
+            <summary>Mostra uso de memória do processo e contadores de GC.</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.GetEnvironmentInfo">
+            <summary>Informações do ambiente: máquina, SO, .NET, IP, uptime.</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestPing(System.String)">
+            <summary>Ping ICMP para host (ex: 8.8.8.8).</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.ResolveDns(System.String)">
+            <summary>Resolve DNS de um domínio.</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.Overview">
+            <summary>Executa um resumo rápido do ambiente (útil para suporte/implantação).</summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController">
+            <summary>
+            Controller para gerenciamento de bancos.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.GetPaged(System.Int32,System.Int32,System.String)">
+            <summary>
+            Lista bancos paginados.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.GetAll">
+            <summary>
+            Lista todos os bancos (para combos/dropdowns).
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.GetById(System.String)">
+            <summary>
+            Obtém banco por código.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.Create(RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.CreateBancoDto)">
+            <summary>
+            Cria novo banco.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.Update(System.String,RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.UpdateBancoDto)">
+            <summary>
+            Atualiza banco existente.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.Delete(System.String)">
+            <summary>
+            Remove banco.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.PermissoesController.GetPermissoes(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>Permissões efetivas (funções + botões) do usuário, opcionalmente filtrando por sistema.</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.UsuariosController.GetByCodigo(System.String,System.Threading.CancellationToken)">
+            <summary>Obtém um usuário pelo código (cdusuario).</summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.UsuariosController.Search(System.String,System.Int32,System.Threading.CancellationToken)">
+            <summary>Pesquisa usuários por termo (cdusuario, nome ou e-mail).</summary>
+        </member>
+        <member name="T:RhSensoERP.API.Program">
+            <summary>
+            Classe principal responsável por inicializar e configurar a API RhSensoERP.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.SecretsConfig">
+            <summary>
+            Classe marcadora para User Secrets
+            </summary>
+        </member>
+    </members>
+</doc>
