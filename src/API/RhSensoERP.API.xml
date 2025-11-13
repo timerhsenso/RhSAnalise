@@ -6,13 +6,14 @@
     <members>
         <member name="T:RhSensoERP.API.Configuration.ModuleGroupConvention">
             <summary>
-            Define o ApiExplorer.GroupName automaticamente a partir do namespace do controller,
-            sem sobrescrever quando o controller já definiu via atributo.
-            Suporta "RhSensoERP.Modules.*" e "RhSensoERP.API.Controllers.*".
+            Define o ApiExplorer.GroupName automaticamente a partir do namespace do controller.
+            Não sobrescreve quando o controller já definiu via atributo [ApiExplorerSettings].
+            
+            Hierarquia de detecção:
+            1. Controllers em RhSensoERP.Modules.* → Nome do módulo
+            2. Controllers em RhSensoERP.API.Controllers.* → Nome da pasta/segmento
+            3. Controllers em RhSensoERP.API.Controllers → "API" (fallback)
             </summary>
-        </member>
-        <member name="T:RhSensoERP.API.Configuration.SwaggerConfiguration">
-            <summary>Configuração do Swagger/OpenAPI com múltiplos documentos por módulo + doc geral v1.</summary>
         </member>
         <member name="T:RhSensoERP.API.Configuration.SwaggerDefaultValuesFilter">
             <summary>
@@ -132,14 +133,103 @@
             Remove município.
             </summary>
         </member>
+        <member name="T:RhSensoERP.API.Controllers.Identity.PermissoesController">
+            <summary>
+            Controller para gerenciamento de permissões de usuários.
+            </summary>
+        </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.PermissoesController.GetPermissoes(System.String,System.String,System.Threading.CancellationToken)">
-            <summary>Permissões efetivas (funções + botões) do usuário, opcionalmente filtrando por sistema.</summary>
+            <summary>
+            Obtém permissões efetivas (funções + botões) do usuário.
+            Permite filtrar opcionalmente por sistema específico.
+            </summary>
+            <param name="cdUsuario">Código do usuário</param>
+            <param name="cdSistema">Código do sistema (opcional)</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Lista de permissões do usuário</returns>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.Identity.SistemasController">
+            <summary>
+            Controller para gerenciamento de sistemas do ERP.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.GetById(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Obtém um sistema pelo código.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.GetPaged(RhSensoERP.Shared.Contracts.Common.PagedRequest,System.Threading.CancellationToken)">
+            <summary>
+            Lista sistemas com paginação.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Create(RhSensoERP.Identity.Application.Requests.Sistema.CreateSistemaRequest,System.Threading.CancellationToken)">
+            <summary>
+            Cria novo sistema.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Update(System.String,RhSensoERP.Identity.Application.Requests.Sistema.UpdateSistemaRequest,System.Threading.CancellationToken)">
+            <summary>
+            Atualiza sistema existente.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Delete(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Remove sistema.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.Identity.UsuariosController">
+            <summary>
+            Controller para gerenciamento de usuários.
+            </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.UsuariosController.GetByCodigo(System.String,System.Threading.CancellationToken)">
-            <summary>Obtém um usuário pelo código (cdusuario).</summary>
+            <summary>
+            Obtém um usuário pelo código (cdusuario).
+            </summary>
+            <param name="cdUsuario">Código do usuário</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Dados do usuário ou NotFound</returns>
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.UsuariosController.Search(System.String,System.Int32,System.Threading.CancellationToken)">
-            <summary>Pesquisa usuários por termo (cdusuario, nome ou e-mail).</summary>
+            <summary>
+            Pesquisa usuários por termo (cdusuario, nome ou e-mail).
+            </summary>
+            <param name="term">Termo de busca (opcional)</param>
+            <param name="take">Quantidade de registros (padrão 20, máximo 100)</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Lista de usuários encontrados</returns>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.SwaggerTestController">
+            <summary>
+            Controller de teste para validar configuração do Swagger e detectar problemas.
+            ⚠️ REMOVER EM PRODUÇÃO - Apenas para diagnóstico.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.SwaggerTestController.GetControllersInfo">
+            <summary>
+            Lista todos os controllers e seus GroupNames para diagnóstico.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.SwaggerTestController.GetApiGroups">
+            <summary>
+            Lista todos os grupos (documentos) disponíveis no API Explorer.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.SwaggerTestController.GetDiagnostics">
+            <summary>
+            Valida configuração e retorna diagnóstico completo.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.SwaggerTestController.TestController(System.String)">
+            <summary>
+            Testa se um controller específico aparece no Swagger.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.SwaggerTestController.GetSwaggerDocs">
+            <summary>
+            Lista todos os documentos Swagger disponíveis.
+            </summary>
         </member>
         <member name="T:RhSensoERP.API.Program">
             <summary>

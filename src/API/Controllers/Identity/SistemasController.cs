@@ -1,4 +1,6 @@
-﻿using MediatR;
+﻿// src/API/Controllers/Identity/SistemasController.cs
+
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using RhSensoERP.Identity.Application.DTOs.Sistema;
 using RhSensoERP.Identity.Application.Features.Sistema.Commands;
@@ -9,31 +11,61 @@ using RhSensoERP.Shared.Core.Common;
 
 namespace RhSensoERP.API.Controllers.Identity;
 
+/// <summary>
+/// Controller para gerenciamento de sistemas do ERP.
+/// </summary>
 [ApiController]
 [Route("api/identity/sistemas")]
+[ApiExplorerSettings(GroupName = "Identity")]
 public sealed class SistemasController : ControllerBase
 {
     private readonly IMediator _mediator;
 
     public SistemasController(IMediator mediator) => _mediator = mediator;
 
+    /// <summary>
+    /// Obtém um sistema pelo código.
+    /// </summary>
     [HttpGet("{cdSistema}")]
-    public async Task<ActionResult<Result<SistemaDto>>> GetById([FromRoute] string cdSistema, CancellationToken ct)
+    public async Task<ActionResult<Result<SistemaDto>>> GetById(
+        [FromRoute] string cdSistema,
+        CancellationToken ct)
         => Ok(await _mediator.Send(new GetSistemaByIdQuery(cdSistema), ct));
 
+    /// <summary>
+    /// Lista sistemas com paginação.
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<Result<PagedResult<SistemaDto>>>> GetPaged([FromQuery] PagedRequest req, CancellationToken ct)
+    public async Task<ActionResult<Result<PagedResult<SistemaDto>>>> GetPaged(
+        [FromQuery] PagedRequest req,
+        CancellationToken ct)
         => Ok(await _mediator.Send(new GetSistemasPagedQuery(req), ct));
 
+    /// <summary>
+    /// Cria novo sistema.
+    /// </summary>
     [HttpPost]
-    public async Task<ActionResult<Result<string>>> Create([FromBody] CreateSistemaRequest body, CancellationToken ct)
+    public async Task<ActionResult<Result<string>>> Create(
+        [FromBody] CreateSistemaRequest body,
+        CancellationToken ct)
         => Ok(await _mediator.Send(new CreateSistemaCommand(body), ct));
 
+    /// <summary>
+    /// Atualiza sistema existente.
+    /// </summary>
     [HttpPut("{cdSistema}")]
-    public async Task<ActionResult<Result<bool>>> Update([FromRoute] string cdSistema, [FromBody] UpdateSistemaRequest body, CancellationToken ct)
+    public async Task<ActionResult<Result<bool>>> Update(
+        [FromRoute] string cdSistema,
+        [FromBody] UpdateSistemaRequest body,
+        CancellationToken ct)
         => Ok(await _mediator.Send(new UpdateSistemaCommand(cdSistema, body), ct));
 
+    /// <summary>
+    /// Remove sistema.
+    /// </summary>
     [HttpDelete("{cdSistema}")]
-    public async Task<ActionResult<Result<bool>>> Delete([FromRoute] string cdSistema, CancellationToken ct)
+    public async Task<ActionResult<Result<bool>>> Delete(
+        [FromRoute] string cdSistema,
+        CancellationToken ct)
         => Ok(await _mediator.Send(new DeleteSistemaCommand(cdSistema), ct));
 }

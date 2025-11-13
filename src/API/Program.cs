@@ -5,7 +5,6 @@ using AspNetCoreRateLimit;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.OpenApi.Models;
 using RhSensoERP.API.Configuration;
 using RhSensoERP.Identity.Application;
 using RhSensoERP.Identity.Infrastructure;
@@ -13,7 +12,6 @@ using RhSensoERP.Modules.GestaoDePessoas;
 using RhSensoERP.Shared.Infrastructure;
 using Serilog;
 using Serilog.Events;
-using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text.Json.Serialization;
 
@@ -65,7 +63,7 @@ public static class Program
             .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
             .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
             .Enrich.FromLogContext()
-            .Enrich.WithEnvironmentUserName() // CORRIGIDO
+            .Enrich.WithEnvironmentUserName()
             .Enrich.WithMachineName()
             .Enrich.WithThreadId()
             .Enrich.WithProperty("Environment", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production")
@@ -114,7 +112,6 @@ public static class Program
             var keyVaultUrl = builder.Configuration["AzureKeyVault:Url"];
             if (!string.IsNullOrEmpty(keyVaultUrl))
             {
-                // Configurar Azure Key Vault aqui se necessário
                 Log.Information("🔐 Conectando ao Azure Key Vault: {Url}", keyVaultUrl);
             }
         }
@@ -126,12 +123,12 @@ public static class Program
             .ReadFrom.Configuration(context.Configuration)
             .ReadFrom.Services(services)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", 
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore",
                 context.HostingEnvironment.IsDevelopment() ? LogEventLevel.Debug : LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .MinimumLevel.Override("Microsoft.AspNetCore.Authentication", LogEventLevel.Information)
             .Enrich.FromLogContext()
-            .Enrich.WithEnvironmentUserName() // CORRIGIDO
+            .Enrich.WithEnvironmentUserName()
             .Enrich.WithMachineName()
             .Enrich.WithThreadId()
             .Enrich.WithProperty("Application", "RhSensoERP-API")
@@ -154,11 +151,14 @@ public static class Program
         services.AddIdentityInfrastructure(configuration);
         services.AddGestaoDePessoasModule(configuration);
 
-        // Controllers e JSON
+        // ⭐ CRÍTICO: Aplicar ModuleGroupConvention ANTES de AddControllers
         services.AddControllers(options =>
         {
             options.Filters.Add(new ProducesAttribute("application/json"));
             options.Filters.Add(new ConsumesAttribute("application/json"));
+
+            // ✅ REGISTRA A CONVENTION PARA AUTO-ATRIBUIR GroupName
+            options.Conventions.Add(new ModuleGroupConvention());
         })
         .AddJsonOptions(options =>
         {
@@ -173,10 +173,11 @@ public static class Program
         // Versionamento de API
         ConfigureApiVersioning(services);
 
-        // Swagger
+        // ✅ Swagger usando SwaggerConfiguration.cs
         if (configuration.GetValue<bool>("Features:EnableSwagger"))
         {
-            services.AddSwaggerGen(options => ConfigureSwagger(options, configuration));
+            services.AddSwaggerDocs(); // Método do SwaggerConfiguration.cs
+            Log.Information("✅ Swagger configurado com documentos por módulo");
         }
 
         // CORS
@@ -234,70 +235,6 @@ public static class Program
             options.GroupNameFormat = "'v'VVV";
             options.SubstituteApiVersionInUrl = true;
         });
-    }
-
-    private static void ConfigureSwagger(SwaggerGenOptions options, IConfiguration configuration)
-    {
-        var swaggerConfig = configuration.GetSection("Swagger");
-
-        options.SwaggerDoc("v1", new OpenApiInfo
-        {
-            Title = swaggerConfig["Title"] ?? "RhSensoERP API",
-            Version = "v1",
-            Description = swaggerConfig["Description"] ?? "API do sistema RhSensoERP",
-            TermsOfService = new Uri(swaggerConfig["TermsOfService"] ?? "https://rhsenso.com.br/termos"),
-            Contact = new OpenApiContact
-            {
-                Name = swaggerConfig["ContactName"] ?? "Equipe RhSenso",
-                Email = swaggerConfig["ContactEmail"] ?? "suporte@rhsenso.com.br",
-                Url = new Uri(swaggerConfig["ContactUrl"] ?? "https://rhsenso.com.br")
-            },
-            License = new OpenApiLicense
-            {
-                Name = swaggerConfig["LicenseName"] ?? "Proprietário",
-                Url = new Uri(swaggerConfig["LicenseUrl"] ?? "https://rhsenso.com.br/licenca")
-            }
-        });
-
-        options.EnableAnnotations();
-
-        // Segurança JWT
-        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Description = "JWT Authorization. Digite: Bearer {seu token}",
-            Name = "Authorization",
-            In = ParameterLocation.Header,
-            Type = SecuritySchemeType.Http,
-            Scheme = "bearer",
-            BearerFormat = "JWT"
-        });
-
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                Array.Empty<string>()
-            }
-        });
-
-        // XML Comments
-        var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-        if (File.Exists(xmlPath))
-        {
-            options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
-        }
-
-        // Filtros customizados
-        options.OperationFilter<SwaggerDefaultValuesFilter>();
-        options.DocumentFilter<LowercaseDocumentFilter>();
     }
 
     private static void ConfigureCors(IServiceCollection services, IConfiguration configuration)
@@ -447,20 +384,12 @@ public static class Program
         // CORS
         app.UseCors("DefaultPolicy");
 
-        // Swagger
+        // ✅ Swagger usando SwaggerConfiguration.cs
         if (app.Configuration.GetValue<bool>("Features:EnableSwagger") &&
             (app.Environment.IsDevelopment() || app.Environment.IsStaging()))
         {
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "RhSensoERP API v1");
-                c.RoutePrefix = "swagger";
-                c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
-                c.DefaultModelsExpandDepth(-1);
-                c.EnableDeepLinking();
-                c.EnableValidator();
-            });
+            app.UseSwaggerDocs(); // Método do SwaggerConfiguration.cs
+            Log.Information("✅ Swagger UI disponível em /swagger");
         }
 
         // Autenticação e Autorização

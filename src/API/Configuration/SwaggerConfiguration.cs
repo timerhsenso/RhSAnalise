@@ -1,19 +1,18 @@
 // src/API/Configuration/SwaggerConfiguration.cs
 #nullable enable
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerUI;
+using Serilog;
 
 namespace RhSensoERP.API.Configuration;
 
-/// <summary>Configuração do Swagger/OpenAPI com múltiplos documentos por módulo + doc geral v1.</summary>
 public static class SwaggerConfiguration
 {
-    // Defina aqui os módulos visíveis no combo
     private static readonly (string Key, string Title)[] ModuleDocs =
     [
-        ("GestaoDePessoas",    "Gestão de Pessoas"),
         ("Identity",           "Identity"),
         ("Diagnostics",        "Diagnostics"),
+        ("GestaoDePessoas",    "Gestão de Pessoas"),
         ("ControleDePonto",    "Controle de Ponto"),
         ("Avaliacoes",         "Avaliações"),
         ("Esocial",            "eSocial"),
@@ -23,28 +22,29 @@ public static class SwaggerConfiguration
 
     public static IServiceCollection AddSwaggerDocs(this IServiceCollection services)
     {
+        Log.Information("🔧 Configurando Swagger com {Count} módulos", ModuleDocs.Length);
+
         services.AddSwaggerGen(c =>
         {
-            // ===== Documento geral (agrega tudo) =====
+            // ===== Documentos =====
             c.SwaggerDoc("v1", new OpenApiInfo
             {
-                Title = "RhSensoERP API",
+                Title = "RhSensoERP API - Todos os Módulos",
                 Version = "v1",
-                Description = "Doc geral (agrega todos os módulos)."
+                Description = "Documentação completa com todos os endpoints."
             });
 
-            // ===== Um documento por módulo =====
             foreach (var (key, title) in ModuleDocs)
             {
                 c.SwaggerDoc(key, new OpenApiInfo
                 {
-                    Title = $"{title} API",
+                    Title = title,
                     Version = "v1",
                     Description = $"Endpoints do módulo {title}."
                 });
             }
 
-            // ==== Autenticação JWT Bearer ====
+            // ===== JWT =====
             var jwtScheme = new OpenApiSecurityScheme
             {
                 Scheme = "bearer",
@@ -52,22 +52,20 @@ public static class SwaggerConfiguration
                 Name = "Authorization",
                 In = ParameterLocation.Header,
                 Type = SecuritySchemeType.Http,
-                Description = "Informe: Bearer {seu_token_jwt}",
+                Description = "Bearer {token}",
                 Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             };
             c.AddSecurityDefinition("Bearer", jwtScheme);
             c.AddSecurityRequirement(new OpenApiSecurityRequirement { [jwtScheme] = Array.Empty<string>() });
 
-            // ==== Boas práticas ====
+            // ===== Configurações =====
             c.SupportNonNullableReferenceTypes();
             c.DescribeAllParametersInCamelCase();
-            c.EnableAnnotations();
+            c.EnableAnnotations(); // ✅ IMPORTANTE: Habilita SwaggerTag
             c.UseInlineDefinitionsForEnums();
-
-            // Crítico: evita conflito de schemas (vários módulos, muitos DTOs com mesmo nome)
             c.CustomSchemaIds(t => t.FullName!.Replace("+", "."));
 
-            // Comentários XML (se habilitados nos csproj)
+            // ===== XML Comments =====
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic))
             {
                 var xml = Path.ChangeExtension(asm.Location, ".xml");
@@ -75,23 +73,43 @@ public static class SwaggerConfiguration
                     c.IncludeXmlComments(xml, includeControllerXmlComments: true);
             }
 
-            // Agrupamento por GroupName quando existir; senão, por controller
+            // ✅ CRÍTICO: TagActionsBy determina as SUBTAGS (Municipios, Bancos, etc)
             c.TagActionsBy(api =>
             {
-                if (api.GroupName is not null) return new[] { api.GroupName };
-                return new[] { api.ActionDescriptor.RouteValues["controller"] ?? "API" };
+                // 1. Tenta pegar descrição do SwaggerTag
+                var swaggerTagAttr = api.ActionDescriptor.EndpointMetadata
+                    .OfType<Swashbuckle.AspNetCore.Annotations.SwaggerOperationAttribute>()
+                    .FirstOrDefault();
+
+                // 2. Se não tem SwaggerTag, usa nome do controller
+                var controllerName = api.ActionDescriptor.RouteValues["controller"];
+
+                // 3. Retorna a tag apropriada
+                // IMPORTANTE: Não usa GroupName aqui, pois GroupName é para determinar o DOCUMENTO
+                if (!string.IsNullOrWhiteSpace(controllerName))
+                {
+                    return new[] { controllerName };
+                }
+
+                return new[] { "API" };
             });
 
-            // Regras de inclusão:
-            // - "v1" recebe tudo (doc geral)
-            // - docs de módulo recebem apenas actions cujo GroupName == nome do doc
+            // ✅ CRÍTICO: DocInclusionPredicate determina qual DOCUMENTO (v1, GestaoDePessoas, etc)
             c.DocInclusionPredicate((docName, apiDesc) =>
             {
-                if (docName == "v1") return true; // geral
-                return string.Equals(apiDesc.GroupName, docName, StringComparison.OrdinalIgnoreCase);
+                // "v1" inclui TUDO
+                if (docName == "v1")
+                    return true;
+
+                // Outros documentos: filtra por GroupName
+                if (!string.IsNullOrWhiteSpace(apiDesc.GroupName))
+                    return string.Equals(apiDesc.GroupName, docName, StringComparison.OrdinalIgnoreCase);
+
+                return false;
             });
         });
 
+        Log.Information("✅ Swagger configurado com {Total} documentos", ModuleDocs.Length + 1);
         return services;
     }
 
@@ -101,20 +119,26 @@ public static class SwaggerConfiguration
 
         app.UseSwaggerUI(ui =>
         {
-            // Doc geral
-            ui.SwaggerEndpoint("/swagger/v1/swagger.json", "RhSensoERP API (Geral)");
+            // Documento geral
+            ui.SwaggerEndpoint("/swagger/v1/swagger.json", "📚 Todos os Módulos");
 
-            // Docs por módulo (aparecem no combo)
+            // Documentos por módulo
             foreach (var (key, title) in ModuleDocs)
             {
                 ui.SwaggerEndpoint($"/swagger/{key}/swagger.json", title);
             }
 
+            ui.RoutePrefix = "swagger";
+            ui.DocumentTitle = "RhSensoERP API";
+            ui.DocExpansion(DocExpansion.List); // ✅ Mostra subtags colapsadas
+            ui.DefaultModelsExpandDepth(-1);
+            ui.EnableDeepLinking();
+            ui.EnableFilter();
             ui.DisplayOperationId();
             ui.DisplayRequestDuration();
-            ui.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
         });
 
+        Log.Information("✅ Swagger UI configurada");
         return app;
     }
 }
