@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using RhSensoERP.Modules.GestaoDePessoas.Application.DTOs;
 using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
-using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence;
+using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Contexts;
 using RhSensoERP.Shared.Core.Common;
 
 namespace RhSensoERP.Modules.GestaoDePessoas.Application.Services;
@@ -19,10 +19,10 @@ public interface IBancoService
 
 public class BancoService : IBancoService
 {
-    private readonly GestaoDePessoasContext _context;
+    private readonly GestaoDePessoasDbContext _context;
     private readonly ILogger<BancoService> _logger;
 
-    public BancoService(GestaoDePessoasContext context, ILogger<BancoService> logger)
+    public BancoService(GestaoDePessoasDbContext context, ILogger<BancoService> logger)
     {
         _context = context;
         _logger = logger;

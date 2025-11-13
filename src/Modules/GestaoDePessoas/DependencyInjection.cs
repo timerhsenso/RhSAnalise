@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RhSensoERP.Modules.GestaoDePessoas.Application.Services;
-using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence;
+using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Contexts;
 
 namespace RhSensoERP.Modules.GestaoDePessoas;
 
@@ -16,7 +16,7 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         // DbContext
-        services.AddDbContext<GestaoDePessoasContext>(options =>
+        services.AddDbContext<GestaoDePessoasDbContext>(options =>
         {
             options.UseSqlServer(
                 configuration.GetConnectionString("DefaultConnection"),

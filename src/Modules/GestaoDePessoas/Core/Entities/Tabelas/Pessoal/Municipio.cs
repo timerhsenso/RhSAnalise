@@ -6,8 +6,9 @@ using System.Collections.Generic;
 
 namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal
 {
-    public class Municipio : BaseEntity
+    public class Municipio 
     {
+        public Guid Id { get; set; }
         public string CodigoMunicipio { get; set; }
         public string SiglaEstado { get; set; }
         public string NomeMunicipio { get; set; }

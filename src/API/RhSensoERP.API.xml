@@ -97,6 +97,41 @@
             Remove banco.
             </summary>
         </member>
+        <member name="T:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController">
+            <summary>
+            Controller para gerenciamento de municípios.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.GetAll">
+            <summary>
+            Lista todos os municípios.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.GetByEstado(System.String)">
+            <summary>
+            Lista municípios por estado.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.GetById(System.String)">
+            <summary>
+            Busca município por código.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.Create(RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.MunicipioDto)">
+            <summary>
+            Cria novo município.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.Update(System.String,RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.MunicipioDto)">
+            <summary>
+            Atualiza município.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.Delete(System.String)">
+            <summary>
+            Remove município.
+            </summary>
+        </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.PermissoesController.GetPermissoes(System.String,System.String,System.Threading.CancellationToken)">
             <summary>Permissões efetivas (funções + botões) do usuário, opcionalmente filtrando por sistema.</summary>
         </member>

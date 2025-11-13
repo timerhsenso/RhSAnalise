@@ -4,11 +4,11 @@ using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
 using RhSensoERP.Modules.Esocial.Core.Entities;
 using System.Reflection;
 
-namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence
+namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Contexts
 {
-    public class GestaoDePessoasContext : DbContext
+    public class GestaoDePessoasDbContext : DbContext
     {
-        public GestaoDePessoasContext(DbContextOptions<GestaoDePessoasContext> options)
+        public GestaoDePessoasDbContext(DbContextOptions<GestaoDePessoasDbContext> options)
             : base(options)
         {
         }
