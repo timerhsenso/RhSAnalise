@@ -40,6 +40,7 @@ namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Contexts
         public DbSet<Tab10Esocial> Tabs10Esocial { get; set; }
         public DbSet<Tab4Esocial> Tabs4Esocial { get; set; }
 
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

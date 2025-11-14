@@ -133,6 +133,36 @@
             Remove município.
             </summary>
         </member>
+        <member name="T:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController">
+            <summary>
+            Controller para gerenciamento de sindicatos.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController.GetAll">
+            <summary>
+            Lista todos os sindicatos.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController.GetById(System.String)">
+            <summary>
+            Busca sindicato por código.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController.Create(RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.CreateSindicatoDto)">
+            <summary>
+            Cria novo sindicato.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController.Update(System.String,RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.UpdateSindicatoDto)">
+            <summary>
+            Atualiza sindicato.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController.Delete(System.String)">
+            <summary>
+            Remove sindicato.
+            </summary>
+        </member>
         <member name="T:RhSensoERP.API.Controllers.Identity.PermissoesController">
             <summary>
             Controller para gerenciamento de permissões de usuários.
