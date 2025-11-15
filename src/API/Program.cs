@@ -14,14 +14,21 @@ var builder = WebApplication.CreateBuilder(args);
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
-    .WriteTo.Console()
+    .Enrich.WithMachineName()
+    .Enrich.WithThreadId()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .WriteTo.File(
         path: "logs/log-.txt",
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 30)
+        retainedFileCountLimit: 30,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .CreateLogger();
 
 builder.Host.UseSerilog();
+
+Log.Information("🚀 Iniciando aplicação RhSensoERP API");
+Log.Information("⚙️ Ambiente: {Environment}", builder.Environment.EnvironmentName);
 
 // ==================== CONFIGURATION OPTIONS ====================
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
@@ -220,20 +227,25 @@ app.MapGet("/health", () => Results.Ok(new
 {
     status = "Healthy",
     timestamp = DateTime.UtcNow,
-    version = "1.0.0"
+    version = "1.0.0",
+    environment = app.Environment.EnvironmentName
 })).AllowAnonymous();
 
 // ==================== RUN ====================
 try
 {
-    Log.Information("Iniciando aplicação RhSensoERP API");
+    Log.Information("✅ Aplicação RhSensoERP API iniciada com sucesso");
+    Log.Information("📊 SQL Logging: {Status}",
+        builder.Configuration.GetValue<bool>("SqlLogging:Enabled") ? "HABILITADO" : "DESABILITADO");
+
     app.Run();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Aplicação encerrada inesperadamente");
+    Log.Fatal(ex, "❌ Aplicação encerrada inesperadamente");
 }
 finally
 {
+    Log.Information("🛑 Encerrando aplicação RhSensoERP API");
     Log.CloseAndFlush();
 }

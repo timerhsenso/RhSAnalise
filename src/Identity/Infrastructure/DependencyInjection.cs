@@ -6,6 +6,7 @@ using RhSensoERP.Identity.Core.Interfaces.Repositories;
 using RhSensoERP.Identity.Infrastructure.Persistence;
 using RhSensoERP.Identity.Infrastructure.Repositories;
 using RhSensoERP.Shared.Core.Abstractions;
+using RhSensoERP.Shared.Infrastructure.Persistence.Interceptors;
 
 namespace RhSensoERP.Identity.Infrastructure;
 
@@ -15,26 +16,30 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // O interceptor JÁ FOI registrado no AddSharedInfrastructure()
-        // O DbContext vai recebê-lo via construtor
-
-        services.AddDbContext<IdentityDbContext>(options =>
+        // ==================== DBCONTEXT ====================
+        services.AddDbContext<IdentityDbContext>((serviceProvider, options) =>
         {
-            options.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection"),
-                sql =>
-                {
-                    sql.EnableRetryOnFailure(3);
-                    sql.CommandTimeout(60);
-                });
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
+
+            options.UseSqlServer(connectionString, sql =>
+            {
+                sql.EnableRetryOnFailure(3);
+                sql.CommandTimeout(60);
+            });
+
+            // ✅ INTERCEPTORES (ordem importa!)
+            var auditInterceptor = serviceProvider.GetRequiredService<AuditableEntityInterceptor>();
+            var sqlLoggingInterceptor = serviceProvider.GetRequiredService<SqlLoggingInterceptor>();
+
+            options.AddInterceptors(auditInterceptor, sqlLoggingInterceptor);
 
 #if DEBUG
             options.EnableSensitiveDataLogging();
             options.EnableDetailedErrors();
-            options.LogTo(Console.WriteLine, LogLevel.Information);
 #endif
         });
 
+        // ==================== REPOSITORIES ====================
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IPermissaoRepository, PermissaoRepository>();
         services.AddScoped<ISistemaRepository, SistemaRepository>();
