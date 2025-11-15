@@ -234,7 +234,9 @@ public sealed class AuthService : IAuthService
                         userSecurity.AccessFailedCount);
                 }
 
-                await _db.SaveChangesAsync(ct);
+                // Atualiza UserSecurity diretamente no banco evitando o uso da cláusula OUTPUT do EF Core
+                await UpdateUserSecurityInDatabaseAsync(userSecurity, ct);
+
                 await RegisterFailedLoginAsync(userSecurity, ipAddress, userAgent, "Invalid password", ct);
 
                 return Result<AuthResponse>.Failure("INVALID_CREDENTIALS", "Usuário ou senha inválidos.");
@@ -260,7 +262,9 @@ public sealed class AuthService : IAuthService
             usuario.LastIpAddress = ipAddress;
             usuario.LastUserAgent = userAgent;
 
-            await _db.SaveChangesAsync(ct);
+            // Atualiza apenas UserSecurity diretamente no banco para evitar OUTPUT em tabelas com triggers
+            await UpdateUserSecurityInDatabaseAsync(userSecurity, ct);
+
             await RegisterSuccessfulLoginAsync(userSecurity, ipAddress, userAgent, ct);
 
             // 10. Gerar tokens
@@ -553,5 +557,50 @@ public sealed class AuthService : IAuthService
 
         _db.Set<LoginAuditLog>().Add(log);
         await _db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Atualiza explicitamente os campos relevantes de SEG_UserSecurity usando SQL direto.
+    /// Isso evita que o EF Core gere instruções DML com cláusula OUTPUT que falham em tabelas com triggers.
+    /// Lança DbUpdateConcurrencyException se nenhuma linha for afetada (concorrência).
+    /// </summary>
+    private async Task UpdateUserSecurityInDatabaseAsync(UserSecurity userSecurity, CancellationToken ct = default)
+    {
+        // Não tentar atribuir a UserSecurity.UpdatedAt se o set for inacessível.
+        // Em vez disso, calcular o valor localmente e usar na query parametrizada.
+        var updatedAt = userSecurity.UpdatedAt != default ? userSecurity.UpdatedAt : _dateTimeProvider.UtcNow;
+
+        // Executa UPDATE direto parametrizado (evitando OUTPUT)
+        var rowsAffected = await _db.Database.ExecuteSqlInterpolatedAsync($@"
+            UPDATE dbo.SEG_UserSecurity
+            SET AccessFailedCount = {userSecurity.AccessFailedCount},
+                LockoutEnd = {userSecurity.LockoutEnd},
+                UpdatedAt = {updatedAt}
+            WHERE Id = {userSecurity.Id} AND ConcurrencyStamp = {userSecurity.ConcurrencyStamp};
+        ", ct);
+
+        if (rowsAffected == 0)
+        {
+            _logger.LogWarning("Concurrency conflict updating UserSecurity {UserSecurityId}", userSecurity.Id);
+            throw new DbUpdateConcurrencyException($"Concurrency conflict updating UserSecurity {userSecurity.Id}");
+        }
+
+        // IMPORTANTE: Evitar que o EF Core tente enviar o mesmo UPDATE novamente em um SaveChanges subsequente.
+        // Como o userSecurity foi originalmente carregado como entidade rastreada e nós atualizamos com SQL direto,
+        // marcamos a entidade como Unchanged (ou desanexamos) para que o SaveChanges não inclua um UPDATE com OUTPUT.
+        try
+        {
+            var entry = _db.Entry(userSecurity);
+            if (entry != null)
+            {
+                entry.State = EntityState.Unchanged;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Não interromper o fluxo se não for possível ajustar o estado da entidade,
+            // apenas logar para diagnóstico.
+            _logger.LogDebug(ex, "Não foi possível ajustar o estado da entidade UserSecurity após atualização direta.");
+        }
     }
 }
