@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RhSensoERP.Identity.Domain.Entities;
 
-namespace RhSensoERP.Identity.Infrastructure.Configurations;
+namespace RhSensoERP.Identity.Infrastructure.Persistence.Configurations;
 
 /// <summary>
 /// Mapeia a entidade <see cref="Funcao"/> para a tabela fucn1.

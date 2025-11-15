@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RhSensoERP.Identity.Domain.Entities;
 
-namespace RhSensoERP.Identity.Infrastructure.Configurations;
+namespace RhSensoERP.Identity.Infrastructure.Persistence.Configurations;
 
 /// <summary>
 /// Mapeamento EF Core da entidade <see cref="Usuario"/> para a tabela dbo.tuse1.
