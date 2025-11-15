@@ -35,48 +35,82 @@ public sealed class AuthController : ControllerBase
     /// <response code="400">Dados de entrada inválidos</response>
     /// <response code="401">Credenciais inválidas ou conta bloqueada</response>
     /// <response code="429">Limite de requisições excedido</response>
+    /// <response code="504">Timeout na requisição</response>
     [HttpPost("login")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(StatusCodes.Status504GatewayTimeout)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
         var ipAddress = GetIpAddress();
         var userAgent = GetUserAgent();
 
         _logger.LogInformation(
-            "Tentativa de login: {CdUsuario} | IP: {IpAddress}",
+            "🔐 Tentativa de login: {CdUsuario} | IP: {IpAddress} | Strategy: {Strategy}",
             request.CdUsuario,
-            ipAddress);
+            ipAddress,
+            request.AuthStrategy ?? "Default");
 
-        var command = new LoginCommand(request, ipAddress, userAgent);
-        var result = await _mediator.Send(command, ct);
+        try
+        {
+            var command = new LoginCommand(request, ipAddress, userAgent);
+            var result = await _mediator.Send(command, ct);
 
-        if (!result.IsSuccess)
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning(
+                    "❌ Falha no login: {CdUsuario} | Erro: {ErrorCode} - {ErrorMessage}",
+                    request.CdUsuario,
+                    result.Error.Code,
+                    result.Error.Message);
+
+                return result.Error.Code switch
+                {
+                    "TIMEOUT" => StatusCode(504, new { error = result.Error.Code, message = result.Error.Message }),
+                    "VALIDATION_ERROR" => BadRequest(new { error = result.Error.Code, message = result.Error.Message }),
+                    "INVALID_CREDENTIALS" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
+                    "USER_INACTIVE" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
+                    "ACCOUNT_LOCKED" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
+                    "EMAIL_NOT_CONFIRMED" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
+                    "2FA_REQUIRED" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message, require2FA = true }),
+                    _ => StatusCode(500, new { error = "LOGIN_ERROR", message = "Erro ao processar login." })
+                };
+            }
+
+            _logger.LogInformation("✅ Login bem-sucedido: {CdUsuario}", request.CdUsuario);
+
+            return Ok(result.Value);
+        }
+        catch (OperationCanceledException)
         {
             _logger.LogWarning(
-                "Falha no login: {CdUsuario} | Erro: {ErrorCode} - {ErrorMessage}",
+                "⏱️ Timeout/Cancelamento na requisição de login: {CdUsuario} | IP: {IpAddress}",
                 request.CdUsuario,
-                result.Error.Code,
-                result.Error.Message);
+                ipAddress);
 
-            return result.Error.Code switch
+            return StatusCode(504, new
             {
-                "INVALID_CREDENTIALS" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
-                "USER_INACTIVE" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
-                "ACCOUNT_LOCKED" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
-                "EMAIL_NOT_CONFIRMED" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
-                "2FA_REQUIRED" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message, require2FA = true }),
-                "VALIDATION_ERROR" => BadRequest(new { error = result.Error.Code, message = result.Error.Message }),
-                _ => StatusCode(500, new { error = "LOGIN_ERROR", message = "Erro ao processar login." })
-            };
+                error = "TIMEOUT",
+                message = "A requisição foi cancelada ou excedeu o tempo limite."
+            });
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "💥 Erro inesperado no login: {CdUsuario} | IP: {IpAddress}",
+                request.CdUsuario,
+                ipAddress);
 
-        _logger.LogInformation("Login bem-sucedido: {CdUsuario}", request.CdUsuario);
-
-        return Ok(result.Value);
+            return StatusCode(500, new
+            {
+                error = "INTERNAL_ERROR",
+                message = "Erro interno ao processar login."
+            });
+        }
     }
 
     /// <summary>
@@ -97,31 +131,44 @@ public sealed class AuthController : ControllerBase
     {
         var ipAddress = GetIpAddress();
 
-        _logger.LogDebug("Tentativa de refresh token | IP: {IpAddress}", ipAddress);
+        _logger.LogDebug("🔄 Tentativa de refresh token | IP: {IpAddress}", ipAddress);
 
-        var command = new RefreshTokenCommand(request, ipAddress);
-        var result = await _mediator.Send(command, ct);
-
-        if (!result.IsSuccess)
+        try
         {
-            _logger.LogWarning(
-                "Falha no refresh token | Erro: {ErrorCode} - {ErrorMessage}",
-                result.Error.Code,
-                result.Error.Message);
+            var command = new RefreshTokenCommand(request, ipAddress);
+            var result = await _mediator.Send(command, ct);
 
-            return result.Error.Code switch
+            if (!result.IsSuccess)
             {
-                "INVALID_REFRESH_TOKEN" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
-                "USER_NOT_FOUND" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
-                "ACCOUNT_LOCKED" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
-                "VALIDATION_ERROR" => BadRequest(new { error = result.Error.Code, message = result.Error.Message }),
-                _ => StatusCode(500, new { error = "REFRESH_ERROR", message = "Erro ao renovar tokens." })
-            };
+                _logger.LogWarning(
+                    "❌ Falha no refresh token | Erro: {ErrorCode} - {ErrorMessage}",
+                    result.Error.Code,
+                    result.Error.Message);
+
+                return result.Error.Code switch
+                {
+                    "INVALID_REFRESH_TOKEN" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
+                    "USER_NOT_FOUND" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
+                    "ACCOUNT_LOCKED" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
+                    "VALIDATION_ERROR" => BadRequest(new { error = result.Error.Code, message = result.Error.Message }),
+                    _ => StatusCode(500, new { error = "REFRESH_ERROR", message = "Erro ao renovar tokens." })
+                };
+            }
+
+            _logger.LogInformation("✅ Tokens renovados com sucesso");
+
+            return Ok(result.Value);
         }
-
-        _logger.LogInformation("Tokens renovados com sucesso");
-
-        return Ok(result.Value);
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("⏱️ Timeout na renovação de tokens | IP: {IpAddress}", ipAddress);
+            return StatusCode(504, new { error = "TIMEOUT", message = "A requisição foi cancelada." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 Erro inesperado no refresh token | IP: {IpAddress}", ipAddress);
+            return StatusCode(500, new { error = "INTERNAL_ERROR", message = "Erro ao renovar tokens." });
+        }
     }
 
     /// <summary>
@@ -145,25 +192,33 @@ public sealed class AuthController : ControllerBase
             return Unauthorized(new { error = "INVALID_TOKEN", message = "Token inválido." });
         }
 
-        _logger.LogInformation("Logout iniciado: {UserId}", userId);
+        _logger.LogInformation("🚪 Logout iniciado: {UserId}", userId);
 
-        var command = new LogoutCommand(userId, request);
-        var result = await _mediator.Send(command, ct);
-
-        if (!result.IsSuccess)
+        try
         {
-            _logger.LogWarning(
-                "Falha no logout: {UserId} | Erro: {ErrorCode} - {ErrorMessage}",
-                userId,
-                result.Error.Code,
-                result.Error.Message);
+            var command = new LogoutCommand(userId, request);
+            var result = await _mediator.Send(command, ct);
 
-            return BadRequest(new { error = result.Error.Code, message = result.Error.Message });
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning(
+                    "❌ Falha no logout: {UserId} | Erro: {ErrorCode} - {ErrorMessage}",
+                    userId,
+                    result.Error.Code,
+                    result.Error.Message);
+
+                return BadRequest(new { error = result.Error.Code, message = result.Error.Message });
+            }
+
+            _logger.LogInformation("✅ Logout realizado com sucesso: {UserId}", userId);
+
+            return Ok(new { message = "Logout realizado com sucesso." });
         }
-
-        _logger.LogInformation("Logout realizado com sucesso: {UserId}", userId);
-
-        return Ok(new { message = "Logout realizado com sucesso." });
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 Erro inesperado no logout: {UserId}", userId);
+            return StatusCode(500, new { error = "INTERNAL_ERROR", message = "Erro ao processar logout." });
+        }
     }
 
     /// <summary>
@@ -188,15 +243,23 @@ public sealed class AuthController : ControllerBase
             return Unauthorized(new { error = "INVALID_TOKEN", message = "Token inválido." });
         }
 
-        var query = new GetCurrentUserQuery(userId);
-        var result = await _mediator.Send(query, ct);
-
-        if (!result.IsSuccess)
+        try
         {
-            return NotFound(new { error = result.Error.Code, message = result.Error.Message });
-        }
+            var query = new GetCurrentUserQuery(userId);
+            var result = await _mediator.Send(query, ct);
 
-        return Ok(result.Value);
+            if (!result.IsSuccess)
+            {
+                return NotFound(new { error = result.Error.Code, message = result.Error.Message });
+            }
+
+            return Ok(result.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 Erro ao obter dados do usuário: {UserId}", userId);
+            return StatusCode(500, new { error = "INTERNAL_ERROR", message = "Erro ao obter dados do usuário." });
+        }
     }
 
     /// <summary>

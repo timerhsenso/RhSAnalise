@@ -179,6 +179,7 @@
             <response code="400">Dados de entrada inválidos</response>
             <response code="401">Credenciais inválidas ou conta bloqueada</response>
             <response code="429">Limite de requisições excedido</response>
+            <response code="504">Timeout na requisição</response>
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.AuthController.RefreshToken(RhSensoERP.Identity.Application.DTOs.Auth.RefreshTokenRequest,System.Threading.CancellationToken)">
             <summary>

@@ -13,7 +13,7 @@ using RhSensoERP.Shared.Core.Common;
 namespace RhSensoERP.Identity.Application.Services;
 
 /// <summary>
-/// Implementação do serviço de autenticação.
+/// Implementação do serviço de autenticação com fallback de configuração.
 /// </summary>
 public sealed class AuthService : IAuthService
 {
@@ -41,6 +41,81 @@ public sealed class AuthService : IAuthService
         _logger = logger;
         _authSettings = authSettings.Value;
         _securityPolicy = securityPolicy.Value;
+
+        // ✅ CRÍTICO: Inicializar estratégias padrão se não configuradas
+        EnsureDefaultStrategiesExist();
+    }
+
+    /// <summary>
+    /// Garante que as estratégias padrão existam, mesmo se não configuradas no appsettings.json.
+    /// </summary>
+    private void EnsureDefaultStrategiesExist()
+    {
+        if (_authSettings.Strategies.Count == 0)
+        {
+            _logger.LogWarning(
+                "⚠️ INICIALIZAÇÃO: AuthSettings.Strategies vazio. Criando configurações padrão.");
+
+            _authSettings.Strategies["Legado"] = new StrategyConfig
+            {
+                Enabled = true,
+                UseBCrypt = false,
+                SyncWithUserSecurity = true,
+                RequireEmailConfirmation = false,
+                Require2FA = false
+            };
+
+            _authSettings.Strategies["SaaS"] = new StrategyConfig
+            {
+                Enabled = true,
+                UseBCrypt = true,
+                SyncWithUserSecurity = false,
+                RequireEmailConfirmation = true,
+                Require2FA = false
+            };
+
+            _authSettings.Strategies["WindowsAD"] = new StrategyConfig
+            {
+                Enabled = false,
+                UseBCrypt = false,
+                SyncWithUserSecurity = false,
+                RequireEmailConfirmation = false,
+                Require2FA = false
+            };
+
+            _logger.LogInformation(
+                "✅ INICIALIZAÇÃO: Estratégias padrão criadas: {Strategies}",
+                string.Join(", ", _authSettings.Strategies.Keys));
+        }
+        else
+        {
+            _logger.LogInformation(
+                "✅ INICIALIZAÇÃO: Estratégias carregadas do appsettings: {Strategies}",
+                string.Join(", ", _authSettings.Strategies.Keys));
+        }
+
+        // Validar DefaultStrategy
+        if (string.IsNullOrWhiteSpace(_authSettings.DefaultStrategy))
+        {
+            _authSettings.DefaultStrategy = "Legado";
+            _logger.LogWarning(
+                "⚠️ INICIALIZAÇÃO: DefaultStrategy vazio. Definido como '{DefaultStrategy}'",
+                _authSettings.DefaultStrategy);
+        }
+
+        // Verificar se DefaultStrategy existe nas Strategies
+        if (!_authSettings.Strategies.ContainsKey(_authSettings.DefaultStrategy))
+        {
+            var firstEnabled = _authSettings.Strategies
+                .FirstOrDefault(s => s.Value.Enabled).Key ?? "Legado";
+
+            _logger.LogWarning(
+                "⚠️ INICIALIZAÇÃO: DefaultStrategy '{DefaultStrategy}' não encontrada. Usando '{Fallback}'",
+                _authSettings.DefaultStrategy,
+                firstEnabled);
+
+            _authSettings.DefaultStrategy = firstEnabled;
+        }
     }
 
     public async Task<Result<AuthResponse>> LoginAsync(
@@ -51,6 +126,8 @@ public sealed class AuthService : IAuthService
     {
         try
         {
+            _logger.LogInformation("🚀 AuthService.LoginAsync INICIADO para {CdUsuario}", request.CdUsuario);
+
             // 1. Buscar usuário
             var usuario = await _db.Usuarios
                 .AsNoTracking()
@@ -58,28 +135,29 @@ public sealed class AuthService : IAuthService
 
             if (usuario == null)
             {
-                _logger.LogWarning("Tentativa de login com usuário inexistente: {CdUsuario}", request.CdUsuario);
+                _logger.LogWarning("❌ LOGIN: Usuário {CdUsuario} NÃO ENCONTRADO", request.CdUsuario);
                 return Result<AuthResponse>.Failure("INVALID_CREDENTIALS", "Usuário ou senha inválidos.");
             }
+
+            _logger.LogInformation("✅ LOGIN: Usuário {CdUsuario} encontrado. FlAtivo={FlAtivo}", usuario.CdUsuario, usuario.FlAtivo);
 
             // 2. Verificar se usuário está ativo
             if (usuario.FlAtivo != 'S')
             {
-                _logger.LogWarning("Tentativa de login com usuário inativo: {CdUsuario}", request.CdUsuario);
+                _logger.LogWarning("❌ LOGIN: Usuário {CdUsuario} INATIVO", request.CdUsuario);
                 return Result<AuthResponse>.Failure("USER_INACTIVE", "Usuário inativo.");
             }
 
             // 3. Buscar/Criar UserSecurity
+            _logger.LogInformation("🔍 LOGIN: Buscando UserSecurity para IdUsuario={IdUsuario}", usuario.Id);
             var userSecurity = await GetOrCreateUserSecurityAsync(usuario, ct);
+            _logger.LogInformation("✅ LOGIN: UserSecurity obtido. Id={Id}, LockoutEnd={LockoutEnd}", userSecurity.Id, userSecurity.LockoutEnd);
 
             // 4. Verificar lockout
             if (userSecurity.LockoutEnd.HasValue && userSecurity.LockoutEnd > _dateTimeProvider.UtcNow)
             {
                 var remainingMinutes = (userSecurity.LockoutEnd.Value - _dateTimeProvider.UtcNow).TotalMinutes;
-                _logger.LogWarning(
-                    "Tentativa de login com conta bloqueada: {CdUsuario}. Bloqueado até: {LockoutEnd}",
-                    request.CdUsuario,
-                    userSecurity.LockoutEnd);
+                _logger.LogWarning("🔒 LOGIN: Conta BLOQUEADA até {LockoutEnd}", userSecurity.LockoutEnd);
 
                 await RegisterFailedLoginAsync(userSecurity, ipAddress, userAgent, "Account locked", ct);
 
@@ -88,19 +166,60 @@ public sealed class AuthService : IAuthService
                     $"Conta bloqueada. Tente novamente em {Math.Ceiling(remainingMinutes)} minutos.");
             }
 
-            // 5. Determinar estratégia de autenticação
+            // 5. Determinar estratégia de autenticação com validação
             var strategy = request.AuthStrategy ?? _authSettings.DefaultStrategy;
-            if (!_authSettings.Strategies.TryGetValue(strategy, out var strategyConfig) || !strategyConfig.Enabled)
+            _logger.LogInformation(
+                "🔑 LOGIN: Estratégia solicitada: '{RequestedStrategy}', Default: '{DefaultStrategy}'",
+                request.AuthStrategy,
+                _authSettings.DefaultStrategy);
+
+            // ✅ VALIDAÇÃO: Verificar se a estratégia existe
+            if (!_authSettings.Strategies.TryGetValue(strategy, out var strategyConfig))
             {
+                _logger.LogError(
+                    "❌ LOGIN: Estratégia '{Strategy}' não encontrada. Disponíveis: {Available}",
+                    strategy,
+                    string.Join(", ", _authSettings.Strategies.Keys));
+
+                // Fallback para estratégia padrão
+                if (_authSettings.Strategies.TryGetValue(_authSettings.DefaultStrategy, out strategyConfig))
+                {
+                    strategy = _authSettings.DefaultStrategy;
+                    _logger.LogWarning("🔄 LOGIN: Usando estratégia padrão '{DefaultStrategy}'", strategy);
+                }
+                else
+                {
+                    return Result<AuthResponse>.Failure(
+                        "INVALID_AUTH_STRATEGY",
+                        "Nenhuma estratégia de autenticação disponível. Contate o administrador.");
+                }
+            }
+
+            if (!strategyConfig!.Enabled)
+            {
+                _logger.LogWarning("⚠️ LOGIN: Estratégia '{Strategy}' está DESABILITADA", strategy);
+
+                // Fallback para estratégia padrão
                 strategy = _authSettings.DefaultStrategy;
-                strategyConfig = _authSettings.Strategies[strategy];
+
+                if (!_authSettings.Strategies.TryGetValue(strategy, out strategyConfig) || !strategyConfig.Enabled)
+                {
+                    return Result<AuthResponse>.Failure(
+                        "NO_AUTH_STRATEGY_AVAILABLE",
+                        "Nenhuma estratégia de autenticação disponível. Contate o administrador.");
+                }
+
+                _logger.LogInformation("🔄 LOGIN: Usando estratégia padrão '{DefaultStrategy}'", strategy);
             }
 
             // 6. Validar senha
+            _logger.LogInformation("🔐 LOGIN: Validando senha com estratégia '{Strategy}'", strategy);
             var isPasswordValid = await ValidatePasswordAsync(request.CdUsuario, request.Senha, strategy, ct);
 
             if (!isPasswordValid)
             {
+                _logger.LogWarning("❌ LOGIN: SENHA INVÁLIDA para {CdUsuario}", request.CdUsuario);
+
                 // Incrementar contador de falhas
                 userSecurity.IncrementAccessFailedCount();
 
@@ -111,8 +230,7 @@ public sealed class AuthService : IAuthService
                     userSecurity.LockUntil(lockoutEnd, "Múltiplas tentativas de login falhadas");
 
                     _logger.LogWarning(
-                        "Conta bloqueada por múltiplas tentativas falhadas: {CdUsuario}. Tentativas: {Count}",
-                        request.CdUsuario,
+                        "🔒 LOGIN: Conta bloqueada. Tentativas: {Count}",
                         userSecurity.AccessFailedCount);
                 }
 
@@ -125,13 +243,14 @@ public sealed class AuthService : IAuthService
             // 7. Verificar se precisa confirmar email (apenas para SaaS)
             if (strategy == "SaaS" && strategyConfig.RequireEmailConfirmation && !userSecurity.EmailConfirmed)
             {
+                _logger.LogWarning("📧 LOGIN: Email não confirmado para {CdUsuario}", request.CdUsuario);
                 return Result<AuthResponse>.Failure("EMAIL_NOT_CONFIRMED", "Email não confirmado.");
             }
 
             // 8. Verificar 2FA
             if (userSecurity.TwoFactorEnabled && (strategy == "SaaS" && strategyConfig.Require2FA))
             {
-                // TODO: Implementar fluxo 2FA completo em Sprint futura
+                _logger.LogInformation("🔐 LOGIN: 2FA necessário para {CdUsuario}", request.CdUsuario);
                 return Result<AuthResponse>.Failure("2FA_REQUIRED", "Autenticação de dois fatores necessária.");
             }
 
@@ -142,11 +261,10 @@ public sealed class AuthService : IAuthService
             usuario.LastUserAgent = userAgent;
 
             await _db.SaveChangesAsync(ct);
-
-            // 10. Registrar sucesso no log de auditoria
             await RegisterSuccessfulLoginAsync(userSecurity, ipAddress, userAgent, ct);
 
-            // 11. Gerar tokens
+            // 10. Gerar tokens
+            _logger.LogInformation("🎫 LOGIN: Gerando tokens JWT para {CdUsuario}", request.CdUsuario);
             var accessToken = _jwtService.GenerateAccessToken(usuario, userSecurity);
             var refreshToken = await _jwtService.GenerateRefreshTokenAsync(
                 userSecurity.Id,
@@ -155,34 +273,32 @@ public sealed class AuthService : IAuthService
                 request.DeviceName,
                 ct);
 
-            // 12. Montar UserInfoDto
+            // 11. Montar UserInfoDto
             var userInfo = _mapper.Map<UserInfoDto>(usuario);
-
-            // Criar novo DTO com flags de segurança usando 'with' expression
             userInfo = userInfo with
             {
                 TwoFactorEnabled = userSecurity.TwoFactorEnabled,
                 MustChangePassword = userSecurity.MustChangePassword
             };
 
-            // 13. Montar AuthResponse
+            // 12. Montar AuthResponse
             var response = new AuthResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 TokenType = "Bearer",
-                ExpiresIn = 900, // 15 minutos em segundos
+                ExpiresIn = 900,
                 ExpiresAt = _dateTimeProvider.UtcNow.AddMinutes(15),
                 User = userInfo
             };
 
-            _logger.LogInformation("Login bem-sucedido: {CdUsuario}", request.CdUsuario);
+            _logger.LogInformation("✅ LOGIN: Sucesso para {CdUsuario}", request.CdUsuario);
 
             return Result<AuthResponse>.Success(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao processar login: {CdUsuario}", request.CdUsuario);
+            _logger.LogError(ex, "❌ Erro ao processar login: {CdUsuario}", request.CdUsuario);
             return Result<AuthResponse>.Failure("LOGIN_ERROR", "Erro ao processar login. Tente novamente.");
         }
     }
@@ -194,7 +310,7 @@ public sealed class AuthService : IAuthService
     {
         try
         {
-            // 1. Validar refresh token
+            // 1. Validar refresh token e obter UserSecurity
             var userSecurity = await _jwtService.ValidateRefreshTokenAsync(request.RefreshToken, ct);
 
             if (userSecurity == null)
@@ -320,7 +436,15 @@ public sealed class AuthService : IAuthService
         if (usuario == null)
             return false;
 
-        var strategyConfig = _authSettings.Strategies[strategy];
+        // ✅ SEGURANÇA: Verificar se estratégia existe antes de acessar
+        if (!_authSettings.Strategies.TryGetValue(strategy, out var strategyConfig))
+        {
+            _logger.LogError(
+                "Estratégia '{Strategy}' não encontrada em ValidatePasswordAsync. Usando Legado como fallback.",
+                strategy);
+            strategy = "Legado";
+            strategyConfig = _authSettings.Strategies[strategy];
+        }
 
         switch (strategy)
         {
