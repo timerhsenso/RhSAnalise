@@ -2,7 +2,6 @@
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using RhSensoERP.Shared.Application.Behaviors;
-
 using RhSensoERP.Identity.Application.Mapping;
 using RhSensoERP.Identity.Application.Services;
 using System.Reflection;
@@ -20,6 +19,7 @@ public static class DependencyInjection
         {
             cfg.RegisterServicesFromAssembly(assembly);
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
         });
 
         // ==================== FLUENT VALIDATION ====================
@@ -31,11 +31,14 @@ public static class DependencyInjection
             cfg.AddProfile<UsuarioProfile>();
             cfg.AddProfile<PermissaoProfile>();
             cfg.AddProfile<SistemaProfile>();
+            cfg.AddProfile<AuthProfile>();
         }, assembly);
 
         // ==================== APPLICATION SERVICES ====================
         services.AddScoped<IUsuarioService, UsuarioService>();
         services.AddScoped<IPermissaoService, PermissaoService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IJwtService, JwtService>();
 
         return services;
     }
