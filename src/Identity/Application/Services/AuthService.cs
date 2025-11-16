@@ -1,5 +1,12 @@
-﻿using AutoMapper;
-using BCrypt.Net;
+﻿// src/Identity/Application/Services/AuthService.cs
+
+using System;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,7 +17,9 @@ using RhSensoERP.Identity.Domain.Entities;
 using RhSensoERP.Identity.Infrastructure.Persistence;
 using RhSensoERP.Shared.Core.Abstractions;
 using RhSensoERP.Shared.Core.Common;
-using System.Linq;
+
+// Alias para evitar confusão com o namespace BCrypt.Net
+using BCryptNet = BCrypt.Net.BCrypt;
 
 namespace RhSensoERP.Identity.Application.Services;
 
@@ -482,22 +491,29 @@ public sealed class AuthService : IAuthService
         switch (strategy)
         {
             case "Legado":
-                // Suporta senha legada E UserSecurity
-                if (!string.IsNullOrWhiteSpace(usuario.PasswordHash) && strategyConfig.UseBCrypt)
+                // 1) Se já existe PasswordHash no usuário → SEMPRE usa BCrypt
+                if (!string.IsNullOrWhiteSpace(usuario.PasswordHash))
                 {
-                    return BCrypt.Net.BCrypt.Verify(senha, usuario.PasswordHash);
+                    return BCryptNet.Verify(senha, usuario.PasswordHash);
                 }
-                else if (!string.IsNullOrWhiteSpace(usuario.SenhaUser))
+
+                // 2) Se ainda está no modo legado (SenhaUser em texto)
+                if (!string.IsNullOrWhiteSpace(usuario.SenhaUser))
                 {
-                    return usuario.SenhaUser == senha;
+                    // Provisório: comparação em tempo constante para reduzir superfície de ataque
+                    // Ideal: migrar para BCrypt no primeiro login bem-sucedido
+                    return ConstantTimeEquals(senha, usuario.SenhaUser);
                 }
+
                 return false;
 
             case "SaaS":
                 if (userSecurity == null || string.IsNullOrWhiteSpace(userSecurity.PasswordHash))
+                {
                     return false;
+                }
 
-                return BCrypt.Net.BCrypt.Verify(senha, userSecurity.PasswordHash);
+                return BCryptNet.Verify(senha, userSecurity.PasswordHash);
 
             case "WindowsAD":
                 _logger.LogWarning("Autenticação WindowsAD ainda não implementada.");
@@ -522,13 +538,20 @@ public sealed class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.CdUsuario == cdUsuario, ct);
 
         if (usuario == null)
+        {
             return false;
+        }
 
         var userSecurity = await _db.Set<UserSecurity>()
             .AsNoTracking()
             .FirstOrDefaultAsync(us => us.IdUsuario == usuario.Id, ct);
 
-        return ValidatePassword(usuario, userSecurity!, senha, strategy);
+        if (userSecurity == null)
+        {
+            return false;
+        }
+
+        return ValidatePassword(usuario, userSecurity, senha, strategy);
     }
 
     /// <summary>
@@ -543,7 +566,7 @@ public sealed class AuthService : IAuthService
         {
             var passwordHash = !string.IsNullOrWhiteSpace(usuario.PasswordHash)
                 ? usuario.PasswordHash
-                : BCrypt.Net.BCrypt.HashPassword(usuario.SenhaUser ?? "ChangeMe@123");
+                : BCryptNet.HashPassword(usuario.SenhaUser ?? "ChangeMe@123");
 
             userSecurity = new UserSecurity(
                 usuario.Id,
@@ -663,5 +686,28 @@ public sealed class AuthService : IAuthService
         {
             _logger.LogError(ex, "⚠️ AUDIT: Erro ao registrar falha no audit log (não crítico)");
         }
+    }
+
+    /// <summary>
+    /// Comparação em tempo constante para strings (usada apenas como fallback legado).
+    /// </summary>
+    private static bool ConstantTimeEquals(string a, string b)
+    {
+        if (a is null || b is null)
+        {
+            return false;
+        }
+
+        var aBytes = Encoding.UTF8.GetBytes(a);
+        var bBytes = Encoding.UTF8.GetBytes(b);
+
+        if (aBytes.Length != bBytes.Length)
+        {
+            // Comparação "dummy" para consumir tempo similar e não vazar timing pelo tamanho
+            CryptographicOperations.FixedTimeEquals(aBytes, aBytes);
+            return false;
+        }
+
+        return CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
     }
 }
