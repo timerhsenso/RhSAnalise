@@ -31,14 +31,14 @@ namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Contexts
         // ===== ENTIDADES DO LOTE ATUAL =====
         public DbSet<LotacaoTributaria> LotacoesTributarias { get; set; }
         public DbSet<MotivoOcorrenciaFrequencia> MotivosOcorrenciaFrequencia { get; set; }
-        public DbSet<Tab21Esocial> Tabs21Esocial { get; set; }
-        public DbSet<Tab8Esocial> Tabs8Esocial { get; set; }
+   /////     public DbSet<Tab21Esocial> Tabs21Esocial { get; set; }
+   /////     public DbSet<Tab8Esocial> Tabs8Esocial { get; set; }
         public DbSet<Tcbo> Cbos { get; set; }
         public DbSet<TabelaSalarial> TabelasSalariais { get; set; }
 
         // ===== NOVOS CADASTROS DE REFERÊNCIA (agora com FK em LotacaoTributaria) =====
-        public DbSet<Tab10Esocial> Tabs10Esocial { get; set; }
-        public DbSet<Tab4Esocial> Tabs4Esocial { get; set; }
+     /////   public DbSet<Tab10Esocial> Tabs10Esocial { get; set; }
+    //////    public DbSet<Tab4Esocial> Tabs4Esocial { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

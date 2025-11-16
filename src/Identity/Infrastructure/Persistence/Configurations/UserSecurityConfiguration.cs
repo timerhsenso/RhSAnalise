@@ -10,7 +10,9 @@ public class UserSecurityConfiguration : IEntityTypeConfiguration<UserSecurity>
 {
     public void Configure(EntityTypeBuilder<UserSecurity> builder)
     {
-        builder.ToTable("SEG_UserSecurity", schema: "dbo");
+        // ✅ CORREÇÃO CRÍTICA: Informar que a tabela possui triggers
+        // Isso desabilita a cláusula OUTPUT e usa SELECT após INSERT/UPDATE
+        builder.ToTable("SEG_UserSecurity", "dbo", tb => tb.HasTrigger("TR_UserSecurity_Audit"));
 
         // Chave Primária
         builder.HasKey(x => x.Id).HasName("PK_SEG_UserSecurity");

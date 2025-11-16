@@ -3,6 +3,8 @@
 /// <summary>
 /// Informações básicas do usuário autenticado.
 /// </summary>
+/// 
+
 public sealed record UserInfoDto
 {
     public Guid Id { get; init; }
@@ -16,3 +18,6 @@ public sealed record UserInfoDto
     public bool TwoFactorEnabled { get; init; }
     public bool MustChangePassword { get; init; }
 }
+
+
+

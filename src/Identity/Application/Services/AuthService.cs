@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BCrypt.Net;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -9,11 +10,13 @@ using RhSensoERP.Identity.Domain.Entities;
 using RhSensoERP.Identity.Infrastructure.Persistence;
 using RhSensoERP.Shared.Core.Abstractions;
 using RhSensoERP.Shared.Core.Common;
+using System.Linq;
 
 namespace RhSensoERP.Identity.Application.Services;
 
 /// <summary>
-/// Implementação do serviço de autenticação com fallback de configuração.
+/// Implementação do serviço de autenticação com suporte a múltiplas estratégias.
+/// Responsável por login, refresh token, logout e validação de senhas.
 /// </summary>
 public sealed class AuthService : IAuthService
 {
@@ -42,12 +45,11 @@ public sealed class AuthService : IAuthService
         _authSettings = authSettings.Value;
         _securityPolicy = securityPolicy.Value;
 
-        // ✅ CRÍTICO: Inicializar estratégias padrão se não configuradas
         EnsureDefaultStrategiesExist();
     }
 
     /// <summary>
-    /// Garante que as estratégias padrão existam, mesmo se não configuradas no appsettings.json.
+    /// Garante que estratégias padrão existem caso o appsettings não as defina.
     /// </summary>
     private void EnsureDefaultStrategiesExist()
     {
@@ -94,7 +96,6 @@ public sealed class AuthService : IAuthService
                 string.Join(", ", _authSettings.Strategies.Keys));
         }
 
-        // Validar DefaultStrategy
         if (string.IsNullOrWhiteSpace(_authSettings.DefaultStrategy))
         {
             _authSettings.DefaultStrategy = "Legado";
@@ -103,7 +104,6 @@ public sealed class AuthService : IAuthService
                 _authSettings.DefaultStrategy);
         }
 
-        // Verificar se DefaultStrategy existe nas Strategies
         if (!_authSettings.Strategies.ContainsKey(_authSettings.DefaultStrategy))
         {
             var firstEnabled = _authSettings.Strategies
@@ -118,6 +118,9 @@ public sealed class AuthService : IAuthService
         }
     }
 
+    /// <summary>
+    /// Autentica um usuário com credenciais e retorna tokens JWT.
+    /// </summary>
     public async Task<Result<AuthResponse>> LoginAsync(
         LoginRequest request,
         string ipAddress,
@@ -128,7 +131,7 @@ public sealed class AuthService : IAuthService
         {
             _logger.LogInformation("🚀 AuthService.LoginAsync INICIADO para {CdUsuario}", request.CdUsuario);
 
-            // 1. Buscar usuário
+            // Buscar usuário
             var usuario = await _db.Usuarios
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.CdUsuario == request.CdUsuario, ct);
@@ -139,21 +142,22 @@ public sealed class AuthService : IAuthService
                 return Result<AuthResponse>.Failure("INVALID_CREDENTIALS", "Usuário ou senha inválidos.");
             }
 
-            _logger.LogInformation("✅ LOGIN: Usuário {CdUsuario} encontrado. FlAtivo={FlAtivo}", usuario.CdUsuario, usuario.FlAtivo);
+            _logger.LogInformation("✅ LOGIN: Usuário {CdUsuario} encontrado. FlAtivo={FlAtivo}",
+                usuario.CdUsuario, usuario.FlAtivo);
 
-            // 2. Verificar se usuário está ativo
             if (usuario.FlAtivo != 'S')
             {
                 _logger.LogWarning("❌ LOGIN: Usuário {CdUsuario} INATIVO", request.CdUsuario);
                 return Result<AuthResponse>.Failure("USER_INACTIVE", "Usuário inativo.");
             }
 
-            // 3. Buscar/Criar UserSecurity
+            // Buscar/Criar UserSecurity
             _logger.LogInformation("🔍 LOGIN: Buscando UserSecurity para IdUsuario={IdUsuario}", usuario.Id);
             var userSecurity = await GetOrCreateUserSecurityAsync(usuario, ct);
-            _logger.LogInformation("✅ LOGIN: UserSecurity obtido. Id={Id}, LockoutEnd={LockoutEnd}", userSecurity.Id, userSecurity.LockoutEnd);
+            _logger.LogInformation("✅ LOGIN: UserSecurity obtido. Id={Id}, LockoutEnd={LockoutEnd}",
+                userSecurity.Id, userSecurity.LockoutEnd);
 
-            // 4. Verificar lockout
+            // Verificar lockout
             if (userSecurity.LockoutEnd.HasValue && userSecurity.LockoutEnd > _dateTimeProvider.UtcNow)
             {
                 var remainingMinutes = (userSecurity.LockoutEnd.Value - _dateTimeProvider.UtcNow).TotalMinutes;
@@ -166,14 +170,13 @@ public sealed class AuthService : IAuthService
                     $"Conta bloqueada. Tente novamente em {Math.Ceiling(remainingMinutes)} minutos.");
             }
 
-            // 5. Determinar estratégia de autenticação com validação
+            // Determinar estratégia de autenticação
             var strategy = request.AuthStrategy ?? _authSettings.DefaultStrategy;
             _logger.LogInformation(
                 "🔑 LOGIN: Estratégia solicitada: '{RequestedStrategy}', Default: '{DefaultStrategy}'",
                 request.AuthStrategy,
                 _authSettings.DefaultStrategy);
 
-            // ✅ VALIDAÇÃO: Verificar se a estratégia existe
             if (!_authSettings.Strategies.TryGetValue(strategy, out var strategyConfig))
             {
                 _logger.LogError(
@@ -181,7 +184,6 @@ public sealed class AuthService : IAuthService
                     strategy,
                     string.Join(", ", _authSettings.Strategies.Keys));
 
-                // Fallback para estratégia padrão
                 if (_authSettings.Strategies.TryGetValue(_authSettings.DefaultStrategy, out strategyConfig))
                 {
                     strategy = _authSettings.DefaultStrategy;
@@ -199,76 +201,71 @@ public sealed class AuthService : IAuthService
             {
                 _logger.LogWarning("⚠️ LOGIN: Estratégia '{Strategy}' está DESABILITADA", strategy);
 
-                // Fallback para estratégia padrão
                 strategy = _authSettings.DefaultStrategy;
 
                 if (!_authSettings.Strategies.TryGetValue(strategy, out strategyConfig) || !strategyConfig.Enabled)
                 {
                     return Result<AuthResponse>.Failure(
-                        "NO_AUTH_STRATEGY_AVAILABLE",
-                        "Nenhuma estratégia de autenticação disponível. Contate o administrador.");
+                        "AUTH_STRATEGY_DISABLED",
+                        "A estratégia de autenticação solicitada está desabilitada.");
                 }
-
-                _logger.LogInformation("🔄 LOGIN: Usando estratégia padrão '{DefaultStrategy}'", strategy);
             }
 
-            // 6. Validar senha
+            // Validar senha
             _logger.LogInformation("🔐 LOGIN: Validando senha com estratégia '{Strategy}'", strategy);
-            var isPasswordValid = await ValidatePasswordAsync(request.CdUsuario, request.Senha, strategy, ct);
+            var isValidPassword = ValidatePassword(usuario, userSecurity, request.Senha, strategy);
 
-            if (!isPasswordValid)
+            if (!isValidPassword)
             {
-                _logger.LogWarning("❌ LOGIN: SENHA INVÁLIDA para {CdUsuario}", request.CdUsuario);
+                _logger.LogWarning("❌ LOGIN: Senha INVÁLIDA para {CdUsuario}", request.CdUsuario);
 
-                // Incrementar contador de falhas
                 userSecurity.IncrementAccessFailedCount();
 
-                // Verificar se deve bloquear
                 if (userSecurity.AccessFailedCount >= _securityPolicy.MaxFailedAccessAttempts)
                 {
                     var lockoutEnd = _dateTimeProvider.UtcNow.AddMinutes(_securityPolicy.LockoutDurationMinutes);
-                    userSecurity.LockUntil(lockoutEnd, "Múltiplas tentativas de login falhadas");
+                    userSecurity.LockUntil(lockoutEnd, $"Max failed attempts ({_securityPolicy.MaxFailedAccessAttempts})");
 
                     _logger.LogWarning(
-                        "🔒 LOGIN: Conta bloqueada. Tentativas: {Count}",
+                        "🔒 LOGIN: Conta {CdUsuario} BLOQUEADA até {LockoutEnd} após {Attempts} tentativas",
+                        usuario.CdUsuario,
+                        lockoutEnd,
                         userSecurity.AccessFailedCount);
                 }
 
-                // Atualiza UserSecurity diretamente no banco evitando o uso da cláusula OUTPUT do EF Core
                 await UpdateUserSecurityInDatabaseAsync(userSecurity, ct);
-
                 await RegisterFailedLoginAsync(userSecurity, ipAddress, userAgent, "Invalid password", ct);
 
                 return Result<AuthResponse>.Failure("INVALID_CREDENTIALS", "Usuário ou senha inválidos.");
             }
 
-            // 7. Verificar se precisa confirmar email (apenas para SaaS)
-            if (strategy == "SaaS" && strategyConfig.RequireEmailConfirmation && !userSecurity.EmailConfirmed)
+            // Validações de segurança adicionais
+            if (strategyConfig.RequireEmailConfirmation && !userSecurity.EmailConfirmed)
             {
-                _logger.LogWarning("📧 LOGIN: Email não confirmado para {CdUsuario}", request.CdUsuario);
-                return Result<AuthResponse>.Failure("EMAIL_NOT_CONFIRMED", "Email não confirmado.");
+                _logger.LogWarning("⚠️ LOGIN: E-mail não confirmado para {CdUsuario}", request.CdUsuario);
+                return Result<AuthResponse>.Failure(
+                    "EMAIL_NOT_CONFIRMED",
+                    "E-mail não confirmado. Verifique sua caixa de entrada.");
             }
 
-            // 8. Verificar 2FA
-            if (userSecurity.TwoFactorEnabled && (strategy == "SaaS" && strategyConfig.Require2FA))
+            if (strategyConfig.Require2FA && !userSecurity.TwoFactorEnabled)
             {
-                _logger.LogInformation("🔐 LOGIN: 2FA necessário para {CdUsuario}", request.CdUsuario);
-                return Result<AuthResponse>.Failure("2FA_REQUIRED", "Autenticação de dois fatores necessária.");
+                _logger.LogWarning("⚠️ LOGIN: 2FA obrigatório mas não configurado para {CdUsuario}", request.CdUsuario);
+                return Result<AuthResponse>.Failure(
+                    "2FA_REQUIRED",
+                    "Autenticação de dois fatores obrigatória. Configure 2FA antes de fazer login.");
             }
 
-            // 9. Login bem-sucedido - resetar contador de falhas e atualizar último login
+            // SUCESSO: Resetar tentativas e gerar tokens
+            _logger.LogInformation("✅ LOGIN: Credenciais VÁLIDAS para {CdUsuario}", usuario.CdUsuario);
+
+            userSecurity.ResetAccessFailedCount();
             userSecurity.RegisterSuccessfulLogin(ipAddress);
-            usuario.LastLoginAt = _dateTimeProvider.UtcNow;
-            usuario.LastIpAddress = ipAddress;
-            usuario.LastUserAgent = userAgent;
 
-            // Atualiza apenas UserSecurity diretamente no banco para evitar OUTPUT em tabelas com triggers
             await UpdateUserSecurityInDatabaseAsync(userSecurity, ct);
-
             await RegisterSuccessfulLoginAsync(userSecurity, ipAddress, userAgent, ct);
 
-            // 10. Gerar tokens
-            _logger.LogInformation("🎫 LOGIN: Gerando tokens JWT para {CdUsuario}", request.CdUsuario);
+            // Gerar tokens JWT
             var accessToken = _jwtService.GenerateAccessToken(usuario, userSecurity);
             var refreshToken = await _jwtService.GenerateRefreshTokenAsync(
                 userSecurity.Id,
@@ -277,26 +274,32 @@ public sealed class AuthService : IAuthService
                 request.DeviceName,
                 ct);
 
-            // 11. Montar UserInfoDto
-            var userInfo = _mapper.Map<UserInfoDto>(usuario);
-            userInfo = userInfo with
+            // Mapear informações do usuário
+            var userInfo = new UserInfoDto
             {
+                Id = usuario.Id,
+                CdUsuario = usuario.CdUsuario,
+                DcUsuario = usuario.DcUsuario,
+                Email = usuario.Email_Usuario,
+                NoMatric = usuario.NoMatric,
+                CdEmpresa = usuario.CdEmpresa,
+                CdFilial = usuario.CdFilial,
+                TenantId = usuario.TenantId,
                 TwoFactorEnabled = userSecurity.TwoFactorEnabled,
                 MustChangePassword = userSecurity.MustChangePassword
             };
 
-            // 12. Montar AuthResponse
             var response = new AuthResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 TokenType = "Bearer",
-                ExpiresIn = 900,
+                ExpiresIn = 900, // 15 minutos em segundos
                 ExpiresAt = _dateTimeProvider.UtcNow.AddMinutes(15),
                 User = userInfo
             };
 
-            _logger.LogInformation("✅ LOGIN: Sucesso para {CdUsuario}", request.CdUsuario);
+            _logger.LogInformation("✅ LOGIN: Tokens gerados com sucesso para {CdUsuario}", usuario.CdUsuario);
 
             return Result<AuthResponse>.Success(response);
         }
@@ -307,6 +310,9 @@ public sealed class AuthService : IAuthService
         }
     }
 
+    /// <summary>
+    /// Renova tokens JWT usando um refresh token válido.
+    /// </summary>
     public async Task<Result<AuthResponse>> RefreshTokenAsync(
         RefreshTokenRequest request,
         string ipAddress,
@@ -314,57 +320,75 @@ public sealed class AuthService : IAuthService
     {
         try
         {
-            // 1. Validar refresh token e obter UserSecurity
+            _logger.LogInformation("🔄 REFRESH: Validando refresh token");
+
+            // Validar refresh token
             var userSecurity = await _jwtService.ValidateRefreshTokenAsync(request.RefreshToken, ct);
 
             if (userSecurity == null)
             {
-                _logger.LogWarning("Tentativa de refresh com token inválido. IP: {IpAddress}", ipAddress);
+                _logger.LogWarning("❌ REFRESH: Token inválido ou expirado");
                 return Result<AuthResponse>.Failure("INVALID_REFRESH_TOKEN", "Refresh token inválido ou expirado.");
             }
 
-            // 2. Buscar usuário
+            // Buscar usuário associado
             var usuario = await _db.Usuarios
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == userSecurity.IdUsuario, ct);
 
-            if (usuario == null || usuario.FlAtivo != 'S')
+            if (usuario == null)
             {
-                await _jwtService.RevokeRefreshTokenAsync(request.RefreshToken, "User not found or inactive", ipAddress, ct);
-                return Result<AuthResponse>.Failure("USER_NOT_FOUND", "Usuário não encontrado ou inativo.");
+                _logger.LogWarning("❌ REFRESH: Usuário não encontrado para UserSecurity {Id}", userSecurity.Id);
+                return Result<AuthResponse>.Failure("USER_NOT_FOUND", "Usuário não encontrado.");
             }
 
-            // 3. Verificar lockout
+            if (usuario.FlAtivo != 'S')
+            {
+                _logger.LogWarning("❌ REFRESH: Usuário {CdUsuario} INATIVO", usuario.CdUsuario);
+                return Result<AuthResponse>.Failure("USER_INACTIVE", "Usuário inativo.");
+            }
+
+            // Verificar lockout
             if (userSecurity.LockoutEnd.HasValue && userSecurity.LockoutEnd > _dateTimeProvider.UtcNow)
             {
-                await _jwtService.RevokeRefreshTokenAsync(request.RefreshToken, "Account locked", ipAddress, ct);
+                _logger.LogWarning("🔒 REFRESH: Conta BLOQUEADA até {LockoutEnd}", userSecurity.LockoutEnd);
                 return Result<AuthResponse>.Failure("ACCOUNT_LOCKED", "Conta bloqueada.");
             }
 
-            // 4. Revogar o token antigo
-            await _jwtService.RevokeRefreshTokenAsync(request.RefreshToken, "Token rotation", ipAddress, ct);
+            // Revogar refresh token antigo
+            await _jwtService.RevokeRefreshTokenAsync(
+                request.RefreshToken,
+                "Replaced by new token",
+                ipAddress,
+                ct);
 
-            // 5. Gerar novos tokens
-            var accessToken = _jwtService.GenerateAccessToken(usuario, userSecurity);
+            // Gerar novos tokens
+            var newAccessToken = _jwtService.GenerateAccessToken(usuario, userSecurity);
             var newRefreshToken = await _jwtService.GenerateRefreshTokenAsync(
                 userSecurity.Id,
                 ipAddress,
-                ct: ct);
+                null,
+                null,
+                ct);
 
-            // 6. Montar UserInfoDto
-            var userInfo = _mapper.Map<UserInfoDto>(usuario);
-
-            // Criar novo DTO com flags de segurança
-            userInfo = userInfo with
+            // Mapear informações do usuário
+            var userInfo = new UserInfoDto
             {
+                Id = usuario.Id,
+                CdUsuario = usuario.CdUsuario,
+                DcUsuario = usuario.DcUsuario,
+                Email = usuario.Email_Usuario,
+                NoMatric = usuario.NoMatric,
+                CdEmpresa = usuario.CdEmpresa,
+                CdFilial = usuario.CdFilial,
+                TenantId = usuario.TenantId,
                 TwoFactorEnabled = userSecurity.TwoFactorEnabled,
                 MustChangePassword = userSecurity.MustChangePassword
             };
 
-            // 7. Montar AuthResponse
             var response = new AuthResponse
             {
-                AccessToken = accessToken,
+                AccessToken = newAccessToken,
                 RefreshToken = newRefreshToken,
                 TokenType = "Bearer",
                 ExpiresIn = 900,
@@ -372,17 +396,20 @@ public sealed class AuthService : IAuthService
                 User = userInfo
             };
 
-            _logger.LogInformation("Tokens renovados com sucesso: {CdUsuario}", usuario.CdUsuario);
+            _logger.LogInformation("✅ REFRESH: Tokens renovados com sucesso para {CdUsuario}", usuario.CdUsuario);
 
             return Result<AuthResponse>.Success(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao renovar tokens.");
-            return Result<AuthResponse>.Failure("REFRESH_ERROR", "Erro ao renovar tokens.");
+            _logger.LogError(ex, "❌ Erro ao processar refresh token");
+            return Result<AuthResponse>.Failure("REFRESH_ERROR", "Erro ao processar refresh token.");
         }
     }
 
+    /// <summary>
+    /// Realiza logout revogando refresh tokens do usuário.
+    /// </summary>
     public async Task<Result<bool>> LogoutAsync(
         string userId,
         LogoutRequest request,
@@ -390,43 +417,100 @@ public sealed class AuthService : IAuthService
     {
         try
         {
-            var usuario = await _db.Usuarios
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.CdUsuario == userId, ct);
-
-            if (usuario == null)
+            if (!Guid.TryParse(userId, out var userIdGuid))
             {
-                return Result<bool>.Failure("USER_NOT_FOUND", "Usuário não encontrado.");
-            }
-
-            var userSecurity = await _db.Set<UserSecurity>()
-                .FirstOrDefaultAsync(us => us.IdUsuario == usuario.Id, ct);
-
-            if (userSecurity == null)
-            {
-                return Result<bool>.Failure("USER_SECURITY_NOT_FOUND", "Dados de segurança não encontrados.");
+                return Result<bool>.Failure("INVALID_USER_ID", "ID de usuário inválido.");
             }
 
             if (request.RevokeAllTokens)
             {
-                await _jwtService.RevokeAllRefreshTokensAsync(userSecurity.Id, "User logout (all devices)", ct);
-                _logger.LogInformation("Logout realizado (todos os dispositivos): {CdUsuario}", userId);
+                _logger.LogInformation("🔓 LOGOUT: Revogando TODOS os tokens do usuário {UserId}", userId);
+
+                var userSecurity = await _db.Set<UserSecurity>()
+                    .FirstOrDefaultAsync(us => us.IdUsuario == userIdGuid, ct);
+
+                if (userSecurity != null)
+                {
+                    await _jwtService.RevokeAllRefreshTokensAsync(
+                        userSecurity.Id,
+                        "User logout - all tokens",
+                        ct);
+
+                    // Regenerar security stamp para invalidar tokens JWT existentes
+                    userSecurity.RegenerateSecurityStamp();
+                    await _db.SaveChangesAsync(ct);
+
+                    _logger.LogInformation("🔓 Todos os tokens do usuário foram revogados");
+                }
             }
             else if (!string.IsNullOrWhiteSpace(request.RefreshToken))
             {
-                await _jwtService.RevokeRefreshTokenAsync(request.RefreshToken, "User logout", ct: ct);
-                _logger.LogInformation("Logout realizado (dispositivo específico): {CdUsuario}", userId);
+                _logger.LogInformation("🔓 LOGOUT: Revogando token específico para usuário {UserId}", userId);
+                await _jwtService.RevokeRefreshTokenAsync(request.RefreshToken, "User logout", "N/A", ct);
             }
+
+            _logger.LogInformation("✅ Logout realizado com sucesso: {UserId}", userId);
 
             return Result<bool>.Success(true);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao processar logout: {UserId}", userId);
+            _logger.LogError(ex, "❌ Erro ao processar logout: {UserId}", userId);
             return Result<bool>.Failure("LOGOUT_ERROR", "Erro ao processar logout.");
         }
     }
 
+    /// <summary>
+    /// Valida senha do usuário de acordo com a estratégia especificada.
+    /// Suporta: Legado (texto plano ou BCrypt), SaaS (BCrypt) e WindowsAD.
+    /// </summary>
+    private bool ValidatePassword(
+        Usuario usuario,
+        UserSecurity userSecurity,
+        string senha,
+        string strategy)
+    {
+        if (!_authSettings.Strategies.TryGetValue(strategy, out var strategyConfig))
+        {
+            _logger.LogError(
+                "Estratégia '{Strategy}' não encontrada em ValidatePassword. Usando Legado como fallback.",
+                strategy);
+            strategy = "Legado";
+            strategyConfig = _authSettings.Strategies[strategy];
+        }
+
+        switch (strategy)
+        {
+            case "Legado":
+                // Suporta senha legada E UserSecurity
+                if (!string.IsNullOrWhiteSpace(usuario.PasswordHash) && strategyConfig.UseBCrypt)
+                {
+                    return BCrypt.Net.BCrypt.Verify(senha, usuario.PasswordHash);
+                }
+                else if (!string.IsNullOrWhiteSpace(usuario.SenhaUser))
+                {
+                    return usuario.SenhaUser == senha;
+                }
+                return false;
+
+            case "SaaS":
+                if (userSecurity == null || string.IsNullOrWhiteSpace(userSecurity.PasswordHash))
+                    return false;
+
+                return BCrypt.Net.BCrypt.Verify(senha, userSecurity.PasswordHash);
+
+            case "WindowsAD":
+                _logger.LogWarning("Autenticação WindowsAD ainda não implementada.");
+                return false;
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Valida senha do usuário (método público para compatibilidade).
+    /// </summary>
     public async Task<bool> ValidatePasswordAsync(
         string cdUsuario,
         string senha,
@@ -440,57 +524,16 @@ public sealed class AuthService : IAuthService
         if (usuario == null)
             return false;
 
-        // ✅ SEGURANÇA: Verificar se estratégia existe antes de acessar
-        if (!_authSettings.Strategies.TryGetValue(strategy, out var strategyConfig))
-        {
-            _logger.LogError(
-                "Estratégia '{Strategy}' não encontrada em ValidatePasswordAsync. Usando Legado como fallback.",
-                strategy);
-            strategy = "Legado";
-            strategyConfig = _authSettings.Strategies[strategy];
-        }
+        var userSecurity = await _db.Set<UserSecurity>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(us => us.IdUsuario == usuario.Id, ct);
 
-        switch (strategy)
-        {
-            case "Legado":
-                // Suporta senha legada E UserSecurity
-                if (!string.IsNullOrWhiteSpace(usuario.PasswordHash) && strategyConfig.UseBCrypt)
-                {
-                    // Senha moderna com BCrypt
-                    return BCrypt.Net.BCrypt.Verify(senha, usuario.PasswordHash);
-                }
-                else if (!string.IsNullOrWhiteSpace(usuario.SenhaUser))
-                {
-                    // Senha legada em texto plano (temporário)
-                    return usuario.SenhaUser == senha;
-                }
-                return false;
-
-            case "SaaS":
-                // Apenas UserSecurity com BCrypt
-                var userSecurity = await _db.Set<UserSecurity>()
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(us => us.IdUsuario == usuario.Id, ct);
-
-                if (userSecurity == null)
-                    return false;
-
-                return BCrypt.Net.BCrypt.Verify(senha, userSecurity.PasswordHash);
-
-            case "WindowsAD":
-                // TODO: Implementar integração com Active Directory
-                _logger.LogWarning("Autenticação WindowsAD ainda não implementada.");
-                return false;
-
-            default:
-                return false;
-        }
+        return ValidatePassword(usuario, userSecurity!, senha, strategy);
     }
 
-    // ========================================
-    // MÉTODOS PRIVADOS
-    // ========================================
-
+    /// <summary>
+    /// Busca ou cria UserSecurity para usuário legado (migração automática).
+    /// </summary>
     private async Task<UserSecurity> GetOrCreateUserSecurityAsync(Usuario usuario, CancellationToken ct)
     {
         var userSecurity = await _db.Set<UserSecurity>()
@@ -498,7 +541,6 @@ public sealed class AuthService : IAuthService
 
         if (userSecurity == null)
         {
-            // Criar UserSecurity se não existir (migração gradual)
             var passwordHash = !string.IsNullOrWhiteSpace(usuario.PasswordHash)
                 ? usuario.PasswordHash
                 : BCrypt.Net.BCrypt.HashPassword(usuario.SenhaUser ?? "ChangeMe@123");
@@ -507,9 +549,9 @@ public sealed class AuthService : IAuthService
                 usuario.Id,
                 usuario.TenantId,
                 passwordHash,
-                string.Empty); // Salt não usado com BCrypt
+                string.Empty);
 
-            userSecurity.ConfirmEmail(); // Auto-confirmar para usuários legados
+            userSecurity.ConfirmEmail();
 
             _db.Set<UserSecurity>().Add(userSecurity);
             await _db.SaveChangesAsync(ct);
@@ -522,85 +564,104 @@ public sealed class AuthService : IAuthService
         return userSecurity;
     }
 
+    /// <summary>
+    /// Atualiza UserSecurity no banco (lockout e tentativas de login).
+    /// Usa ExecuteSqlRawAsync com parâmetros SqlParameter explícitos para máxima compatibilidade.
+    /// </summary>
+    private async Task UpdateUserSecurityInDatabaseAsync(UserSecurity userSecurity, CancellationToken ct)
+    {
+        var parameters = new[]
+        {
+            new SqlParameter("@AccessFailedCount", userSecurity.AccessFailedCount),
+            new SqlParameter("@LockoutEnd", userSecurity.LockoutEnd.HasValue ? userSecurity.LockoutEnd.Value : DBNull.Value),
+            new SqlParameter("@UpdatedAt", _dateTimeProvider.UtcNow),
+            new SqlParameter("@Id", userSecurity.Id),
+            new SqlParameter("@ConcurrencyStamp", userSecurity.ConcurrencyStamp)
+        };
+
+        await _db.Database.ExecuteSqlRawAsync(
+            @"UPDATE dbo.SEG_UserSecurity
+              SET AccessFailedCount = @AccessFailedCount,
+                  LockoutEnd = @LockoutEnd,
+                  UpdatedAt = @UpdatedAt
+              WHERE Id = @Id AND ConcurrencyStamp = @ConcurrencyStamp;",
+            parameters,
+            ct);
+    }
+
+    /// <summary>
+    /// Registra tentativa de login bem-sucedida no audit log.
+    /// Não inclui [Id] no INSERT - SQL Server gera automaticamente via IDENTITY (bigint).
+    /// </summary>
     private async Task RegisterSuccessfulLoginAsync(
         UserSecurity userSecurity,
         string ipAddress,
         string? userAgent,
         CancellationToken ct)
     {
-        var log = new LoginAuditLog(
-            userSecurity.Id,
-            userSecurity.IdSaaS,
-            true,
-            ipAddress,
-            userAgent,
-            twoFactorUsed: userSecurity.TwoFactorEnabled);
+        try
+        {
+            var parameters = new[]
+            {
+                new SqlParameter("@IdUserSecurity", userSecurity.Id),
+                new SqlParameter("@IdSaaS", userSecurity.IdSaaS.HasValue ? userSecurity.IdSaaS.Value : DBNull.Value),
+                new SqlParameter("@IpAddress", !string.IsNullOrWhiteSpace(ipAddress) ? ipAddress : DBNull.Value),
+                new SqlParameter("@UserAgent", !string.IsNullOrWhiteSpace(userAgent) ? userAgent : DBNull.Value),
+                new SqlParameter("@LoginAttemptAt", _dateTimeProvider.UtcNow)
+            };
 
-        _db.Set<LoginAuditLog>().Add(log);
-        await _db.SaveChangesAsync(ct);
+            await _db.Database.ExecuteSqlRawAsync(
+                @"INSERT INTO [dbo].[SEG_LoginAuditLog] 
+                      ([IdUserSecurity], [IdSaaS], [IsSuccess], [IpAddress], [UserAgent], [LoginAttemptAt])
+                  VALUES 
+                      (@IdUserSecurity, @IdSaaS, 1, @IpAddress, @UserAgent, @LoginAttemptAt);",
+                parameters,
+                ct);
+
+            _logger.LogInformation("✅ LOGIN: Audit log registrado com sucesso");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "⚠️ AUDIT: Erro ao registrar login no audit log (não crítico)");
+        }
     }
 
+    /// <summary>
+    /// Registra tentativa de login falhada no audit log.
+    /// Não inclui [Id] no INSERT - SQL Server gera automaticamente via IDENTITY (bigint).
+    /// </summary>
     private async Task RegisterFailedLoginAsync(
         UserSecurity userSecurity,
         string ipAddress,
         string? userAgent,
-        string reason,
+        string? reason,
         CancellationToken ct)
     {
-        var log = new LoginAuditLog(
-            userSecurity.Id,
-            userSecurity.IdSaaS,
-            false,
-            ipAddress,
-            userAgent,
-            failureReason: reason);
-
-        _db.Set<LoginAuditLog>().Add(log);
-        await _db.SaveChangesAsync(ct);
-    }
-
-    /// <summary>
-    /// Atualiza explicitamente os campos relevantes de SEG_UserSecurity usando SQL direto.
-    /// Isso evita que o EF Core gere instruções DML com cláusula OUTPUT que falham em tabelas com triggers.
-    /// Lança DbUpdateConcurrencyException se nenhuma linha for afetada (concorrência).
-    /// </summary>
-    private async Task UpdateUserSecurityInDatabaseAsync(UserSecurity userSecurity, CancellationToken ct = default)
-    {
-        // Não tentar atribuir a UserSecurity.UpdatedAt se o set for inacessível.
-        // Em vez disso, calcular o valor localmente e usar na query parametrizada.
-        var updatedAt = userSecurity.UpdatedAt != default ? userSecurity.UpdatedAt : _dateTimeProvider.UtcNow;
-
-        // Executa UPDATE direto parametrizado (evitando OUTPUT)
-        var rowsAffected = await _db.Database.ExecuteSqlInterpolatedAsync($@"
-            UPDATE dbo.SEG_UserSecurity
-            SET AccessFailedCount = {userSecurity.AccessFailedCount},
-                LockoutEnd = {userSecurity.LockoutEnd},
-                UpdatedAt = {updatedAt}
-            WHERE Id = {userSecurity.Id} AND ConcurrencyStamp = {userSecurity.ConcurrencyStamp};
-        ", ct);
-
-        if (rowsAffected == 0)
-        {
-            _logger.LogWarning("Concurrency conflict updating UserSecurity {UserSecurityId}", userSecurity.Id);
-            throw new DbUpdateConcurrencyException($"Concurrency conflict updating UserSecurity {userSecurity.Id}");
-        }
-
-        // IMPORTANTE: Evitar que o EF Core tente enviar o mesmo UPDATE novamente em um SaveChanges subsequente.
-        // Como o userSecurity foi originalmente carregado como entidade rastreada e nós atualizamos com SQL direto,
-        // marcamos a entidade como Unchanged (ou desanexamos) para que o SaveChanges não inclua um UPDATE com OUTPUT.
         try
         {
-            var entry = _db.Entry(userSecurity);
-            if (entry != null)
+            var parameters = new[]
             {
-                entry.State = EntityState.Unchanged;
-            }
+                new SqlParameter("@IdUserSecurity", userSecurity.Id),
+                new SqlParameter("@IdSaaS", userSecurity.IdSaaS.HasValue ? userSecurity.IdSaaS.Value : DBNull.Value),
+                new SqlParameter("@IpAddress", !string.IsNullOrWhiteSpace(ipAddress) ? ipAddress : DBNull.Value),
+                new SqlParameter("@UserAgent", !string.IsNullOrWhiteSpace(userAgent) ? userAgent : DBNull.Value),
+                new SqlParameter("@FailureReason", !string.IsNullOrWhiteSpace(reason) ? reason : DBNull.Value),
+                new SqlParameter("@LoginAttemptAt", _dateTimeProvider.UtcNow)
+            };
+
+            await _db.Database.ExecuteSqlRawAsync(
+                @"INSERT INTO [dbo].[SEG_LoginAuditLog] 
+                      ([IdUserSecurity], [IdSaaS], [IsSuccess], [IpAddress], [UserAgent], [FailureReason], [LoginAttemptAt])
+                  VALUES 
+                      (@IdUserSecurity, @IdSaaS, 0, @IpAddress, @UserAgent, @FailureReason, @LoginAttemptAt);",
+                parameters,
+                ct);
+
+            _logger.LogInformation("✅ LOGIN: Falha registrada no audit log");
         }
         catch (Exception ex)
         {
-            // Não interromper o fluxo se não for possível ajustar o estado da entidade,
-            // apenas logar para diagnóstico.
-            _logger.LogDebug(ex, "Não foi possível ajustar o estado da entidade UserSecurity após atualização direta.");
+            _logger.LogError(ex, "⚠️ AUDIT: Erro ao registrar falha no audit log (não crítico)");
         }
     }
 }

@@ -10,7 +10,9 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 {
     public void Configure(EntityTypeBuilder<RefreshToken> builder)
     {
-        builder.ToTable("SEG_RefreshToken", schema: "dbo");
+        // ✅ CORREÇÃO CRÍTICA: Informar que a tabela possui triggers
+        // Isso desabilita a cláusula OUTPUT e usa SELECT após INSERT/UPDATE
+        builder.ToTable("SEG_RefreshToken", "dbo", tb => tb.HasTrigger("TR_RefreshToken_Audit"));
 
         // Chave Primária
         builder.HasKey(x => x.Id).HasName("PK_SEG_RefreshToken");
@@ -42,17 +44,22 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.Property(x => x.RevokedReason).HasMaxLength(100).IsRequired(false);
         builder.Property(x => x.ReplacedByTokenId).IsRequired(false);
 
-        // Relacionamentos
+        // ✅ FIX: Relacionamento opcional para evitar warning com query filter
+        // UserSecurity tem query filter (!IsDeleted), então a navegação deve ser opcional
         builder.HasOne(x => x.UserSecurity)
             .WithMany(x => x.RefreshTokens)
             .HasForeignKey(x => x.IdUserSecurity)
             .HasConstraintName("FK_SEG_RefreshToken_UserSecurity")
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired(false); // ✅ Navegação opcional
 
         builder.HasOne(x => x.ReplacedByToken)
             .WithMany()
             .HasForeignKey(x => x.ReplacedByTokenId)
             .HasConstraintName("FK_SEG_RefreshToken_ReplacedBy")
             .OnDelete(DeleteBehavior.NoAction);
+
+        // ✅ ALTERNATIVA: Adicionar query filter correspondente (comentado)
+        // builder.HasQueryFilter(rt => !rt.UserSecurity.IsDeleted);
     }
 }

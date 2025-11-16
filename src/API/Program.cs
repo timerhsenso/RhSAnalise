@@ -4,6 +4,7 @@ using Microsoft.OpenApi.Models;
 using RhSensoERP.Identity.Application;
 using RhSensoERP.Identity.Application.Configuration;
 using RhSensoERP.Identity.Infrastructure;
+using RhSensoERP.Modules.GestaoDePessoas;
 using RhSensoERP.Shared.Infrastructure;
 using Serilog;
 using System.Text;
@@ -40,33 +41,30 @@ builder.Services.AddSharedInfrastructure();
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
 builder.Services.AddIdentityApplication();
 
+builder.Services.AddGestaoDePessoasModule(builder.Configuration);
+
 // ==================== CONTROLLERS ====================
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// ==================== CORS ====================
+// ==================== CORS - CORRIGIDO ====================
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
+// ✅ FIX: Adicionar os próprios hosts da aplicação para permitir Swagger
+var allOrigins = new List<string>(corsOrigins)
+{
+    "https://localhost:7193",  // HTTPS
+    "http://localhost:5174"    // HTTP
+};
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DefaultCorsPolicy", policy =>
     {
-        if (corsOrigins.Length > 0)
-        {
-            policy.WithOrigins(corsOrigins);
-        }
-        else
-        {
-            policy.AllowAnyOrigin();
-        }
-
-        policy.AllowAnyMethod()
-              .AllowAnyHeader();
-
-        if (corsOrigins.Length > 0)
-        {
-            policy.AllowCredentials();
-        }
+        policy.WithOrigins(allOrigins.ToArray())
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();  // Necessário para JWT
     });
 });
 
@@ -215,6 +213,7 @@ if (builder.Configuration.GetValue<bool>("Features:EnableSwagger"))
 app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
 
+// ✅ CRITICAL: CORS deve vir ANTES de Authentication
 app.UseCors("DefaultCorsPolicy");
 
 app.UseAuthentication();
@@ -237,6 +236,7 @@ try
     Log.Information("✅ Aplicação RhSensoERP API iniciada com sucesso");
     Log.Information("📊 SQL Logging: {Status}",
         builder.Configuration.GetValue<bool>("SqlLogging:Enabled") ? "HABILITADO" : "DESABILITADO");
+    Log.Information("🌐 CORS: Permitindo origins: {Origins}", string.Join(", ", allOrigins));
 
     app.Run();
 }

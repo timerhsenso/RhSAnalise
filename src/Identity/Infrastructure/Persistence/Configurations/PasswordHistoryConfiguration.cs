@@ -31,11 +31,12 @@ public class PasswordHistoryConfiguration : IEntityTypeConfiguration<PasswordHis
         builder.Property(x => x.ChangedByIP).HasMaxLength(45).IsRequired(false);
         builder.Property(x => x.ChangeReason).HasMaxLength(50).IsRequired(false);
 
-        // Relacionamento
+        // ✅ FIX: Navegação opcional para compatibilidade com query filter
         builder.HasOne(x => x.UserSecurity)
             .WithMany(x => x.PasswordHistories)
             .HasForeignKey(x => x.IdUserSecurity)
             .HasConstraintName("FK_SEG_PasswordHistory_UserSecurity")
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired(false); // ✅ Navegação opcional
     }
 }

@@ -34,11 +34,12 @@ public class UserSecurityTokenConfiguration : IEntityTypeConfiguration<UserSecur
         builder.Property(x => x.UsedAt).HasColumnType("datetime2(7)").IsRequired(false);
         builder.Property(x => x.UsedFromIp).HasMaxLength(45).IsRequired(false);
 
-        // Relacionamento
+        // ✅ FIX: Navegação opcional para compatibilidade com query filter
         builder.HasOne(x => x.UserSecurity)
             .WithMany(x => x.SecurityTokens)
             .HasForeignKey(x => x.IdUserSecurity)
             .HasConstraintName("FK_SEG_UserSecurityToken_UserSecurity")
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired(false); // ✅ Navegação opcional
     }
 }
