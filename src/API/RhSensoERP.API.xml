@@ -57,7 +57,7 @@
         </member>
         <member name="T:RhSensoERP.API.Controllers.SqlLoggingOptions">
             <summary>
-            Classe para desserializar configuração (reutilizando do interceptor).
+            Opções de configuração do SqlLogging.
             </summary>
         </member>
         <member name="T:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController">
@@ -313,6 +313,21 @@
         <member name="M:RhSensoERP.API.Controllers.SwaggerTestController.GetSwaggerDocs">
             <summary>
             Lista todos os documentos Swagger disponíveis.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Extensions.ServiceCollectionExtensions">
+            <summary>
+            Extensões para configuração de serviços da API.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Extensions.ServiceCollectionExtensions.AddJwtAuthentication(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)">
+            <summary>
+            Configura autenticação JWT.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Extensions.ServiceCollectionExtensions.AddCustomAuthorization(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+            <summary>
+            Configura autorização com políticas customizadas.
             </summary>
         </member>
         <member name="T:RhSensoERP.API.SecretsConfig">

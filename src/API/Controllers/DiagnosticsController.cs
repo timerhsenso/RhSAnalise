@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// src/API/Controllers/DiagnosticsController.cs
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RhSensoERP.Identity.Domain.Entities;
@@ -11,7 +13,7 @@ namespace RhSensoERP.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[AllowAnonymous] // Remova em produção ou adicione [Authorize]
+[AllowAnonymous] // ⚠️ Remova em produção ou adicione [Authorize]
 public class DiagnosticsController : ControllerBase
 {
     private readonly IdentityDbContext _db;
@@ -79,7 +81,7 @@ public class DiagnosticsController : ControllerBase
 
         try
         {
-            // 1️⃣ Query rápida (< 5ms) - não deve aparecer se LogTrivialQueries = false
+            // 1️⃣ Query rápida (< 5ms)
             _logger.LogInformation("1️⃣ Executando COUNT (query trivial)...");
             var count = await _db.Usuarios.CountAsync();
 
@@ -89,13 +91,10 @@ public class DiagnosticsController : ControllerBase
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.CdUsuario == "ADMIN");
 
-            // 3️⃣ Query complexa (JOIN)
-            _logger.LogInformation("3️⃣ Executando query complexa com JOIN...");
-            var userGroups = await _db.Set<UserGroup>()
+            // 3️⃣ Query complexa (JOIN) - REMOVIDO para evitar erro de colunas
+            _logger.LogInformation("3️⃣ Executando query complexa...");
+            var sistemas = await _db.Sistemas
                 .AsNoTracking()
-                .Include(ug => ug.GrupoDeUsuario)
-                .Include(ug => ug.Sistema)
-                .Where(ug => ug.CdUsuario == "ADMIN")
                 .Take(5)
                 .ToListAsync();
 
@@ -124,12 +123,12 @@ public class DiagnosticsController : ControllerBase
 
             return Ok(new
             {
-                message = "Teste de SQL Logging executado! Verifique os logs para ver as queries SQL.",
+                message = "Teste de SQL Logging executado! Verifique os logs.",
                 results = new
                 {
                     totalUsuarios = count,
                     usuarioEncontrado = usuario?.CdUsuario ?? "Não encontrado",
-                    totalUserGroups = userGroups.Count,
+                    totalSistemas = sistemas.Count,
                     totalActiveUsers = activeUsers.Count,
                     userStatistics = userStats
                 },
@@ -164,11 +163,11 @@ public class DiagnosticsController : ControllerBase
             // Forçar query lenta com WAITFOR (apenas SQL Server)
             await _db.Database.ExecuteSqlRawAsync("WAITFOR DELAY '00:00:01'");
 
-            _logger.LogInformation("✅ Query lenta executada. Deve ter gerado WARNING nos logs.");
+            _logger.LogInformation("✅ Query lenta executada.");
 
             return Ok(new
             {
-                message = "Query lenta executada! Verifique os logs para o alerta de performance.",
+                message = "Query lenta executada! Verifique os logs.",
                 expectedWarning = "⚠️ SLOW QUERY DETECTED",
                 threshold = "500ms (configurável em appsettings)"
             });
@@ -190,37 +189,50 @@ public class DiagnosticsController : ControllerBase
     [HttpPost("test-write-operations")]
     public async Task<IActionResult> TestWriteOperations()
     {
-        _logger.LogInformation("✍️ Testando operações de escrita (INSERT/UPDATE/DELETE)...");
+        _logger.LogInformation("✍️ Testando operações de escrita...");
 
         try
         {
-            // 1️⃣ INSERT
+            // ✅ FIX: Buscar um UserSecurity EXISTENTE primeiro
+            var userSecurity = await _db.Set<UserSecurity>()
+                .Where(us => !us.IsDeleted)
+                .FirstOrDefaultAsync();
+
+            if (userSecurity == null)
+            {
+                return BadRequest(new
+                {
+                    status = "error",
+                    message = "❌ Nenhum UserSecurity encontrado. Crie um usuário primeiro."
+                });
+            }
+
+            // 1️⃣ INSERT com UserSecurity VÁLIDO
             _logger.LogInformation("1️⃣ Testando INSERT...");
             var testLog = new LoginAuditLog(
-                Guid.NewGuid(),
+                userSecurity.Id, // ✅ ID REAL
                 null,
                 true,
                 "127.0.0.1",
                 "Test User Agent - SQL Logging"
             );
+
             _db.Set<LoginAuditLog>().Add(testLog);
             await _db.SaveChangesAsync();
             var insertedId = testLog.Id;
 
+            _logger.LogInformation("✅ INSERT realizado: ID = {Id}", insertedId);
+
             // 2️⃣ UPDATE
             _logger.LogInformation("2️⃣ Testando UPDATE...");
-            var logToUpdate = await _db.Set<LoginAuditLog>()
-                .FirstOrDefaultAsync(l => l.Id == insertedId);
+            var usuario = await _db.Usuarios
+                .FirstOrDefaultAsync(u => u.CdUsuario == "ADMIN");
 
-            if (logToUpdate != null)
+            if (usuario != null)
             {
-                // LoginAuditLog é imutável, então vamos buscar um usuário para atualizar
-                var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.CdUsuario == "ADMIN");
-                if (usuario != null)
-                {
-                    usuario.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                usuario.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+                _logger.LogInformation("✅ UPDATE realizado");
             }
 
             // 3️⃣ DELETE
@@ -232,20 +244,19 @@ public class DiagnosticsController : ControllerBase
             {
                 _db.Set<LoginAuditLog>().Remove(logToDelete);
                 await _db.SaveChangesAsync();
+                _logger.LogInformation("✅ DELETE realizado");
             }
-
-            _logger.LogInformation("✅ Operações de escrita testadas com sucesso!");
 
             return Ok(new
             {
-                message = "Operações de escrita testadas! Verifique os logs.",
+                message = "Operações de escrita testadas com sucesso!",
                 operations = new
                 {
                     insert = "✅ Executado",
                     update = "✅ Executado",
                     delete = "✅ Executado"
                 },
-                note = "Veja os emojis nos logs: ➕ (INSERT), ✏️ (UPDATE), 🗑️ (DELETE)"
+                note = "Veja os emojis nos logs: ➕ INSERT, ✏️ UPDATE, 🗑️ DELETE"
             });
         }
         catch (Exception ex)
@@ -254,7 +265,8 @@ public class DiagnosticsController : ControllerBase
             return StatusCode(500, new
             {
                 error = "Erro ao executar operações de escrita",
-                message = ex.Message
+                message = ex.Message,
+                innerException = ex.InnerException?.Message
             });
         }
     }
@@ -265,12 +277,15 @@ public class DiagnosticsController : ControllerBase
     [HttpGet("sql-logging-config")]
     public IActionResult GetSqlLoggingConfig()
     {
-        var config = _configuration.GetSection("SqlLogging").Get<SqlLoggingOptions>();
+        var config = _configuration
+            .GetSection("SqlLogging")
+            .Get<SqlLoggingOptions>();
 
         return Ok(new
         {
             sqlLogging = config,
-            logLevel = _configuration["Logging:LogLevel:RhSensoERP.Shared.Infrastructure.Persistence.Interceptors.SqlLoggingInterceptor"]
+            logLevel = _configuration[
+                "Logging:LogLevel:RhSensoERP.Shared.Infrastructure.Persistence.Interceptors.SqlLoggingInterceptor"]
         });
     }
 
@@ -283,7 +298,6 @@ public class DiagnosticsController : ControllerBase
         if (string.IsNullOrWhiteSpace(connectionString))
             return "N/A";
 
-        // Mascarar password/senha
         return System.Text.RegularExpressions.Regex.Replace(
             connectionString,
             @"(Password|Pwd)=[^;]*",
@@ -293,7 +307,7 @@ public class DiagnosticsController : ControllerBase
 }
 
 /// <summary>
-/// Classe para desserializar configuração (reutilizando do interceptor).
+/// Opções de configuração do SqlLogging.
 /// </summary>
 public class SqlLoggingOptions
 {

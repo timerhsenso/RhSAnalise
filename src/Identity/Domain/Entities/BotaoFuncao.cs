@@ -1,21 +1,21 @@
-﻿using RhSensoERP.Shared.Core.Primitives;
+﻿namespace RhSensoERP.Identity.Domain.Entities;
 
-namespace RhSensoERP.Identity.Domain.Entities;
 /// <summary>
-/// Entidade que representa botões/ações de uma função (tabela btfuncao)
-/// Estrutura baseada no script SQL do banco bd_rhu_copenor
+/// Entidade que representa botões/ações de uma função (tabela btfuncao).
+/// NOTA: Esta é uma tabela LEGADA sem colunas de auditoria (Id, CreatedAt, etc.).
+/// Portanto, NÃO herda de BaseEntity.
 /// </summary>
-public class BotaoFuncao : BaseEntity
+public class BotaoFuncao
 {
-    /// <summary>
-    /// Código da função - varchar(30) - parte da PK composta
-    /// </summary>
-    public string CdFuncao { get; set; } = string.Empty;
-
     /// <summary>
     /// Código do sistema - char(10) - parte da PK composta
     /// </summary>
     public string CdSistema { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Código da função - varchar(30) - parte da PK composta
+    /// </summary>
+    public string CdFuncao { get; set; } = string.Empty;
 
     /// <summary>
     /// Nome do botão - varchar(30) - parte da PK composta

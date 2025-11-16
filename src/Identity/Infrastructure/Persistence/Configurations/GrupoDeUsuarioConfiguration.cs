@@ -1,16 +1,13 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// src/Identity/Infrastructure/Persistence/Configurations/GrupoDeUsuarioConfiguration.cs
+
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RhSensoERP.Identity.Domain.Entities;
 
 namespace RhSensoERP.Identity.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// Mapeia <see cref="GrupoDeUsuario"/> para a tabela gurh1.
-/// Regras principais:
-/// - PK composta: (CdSistema, CdGrUser) — aderente ao legado
-/// - Alternate Key: Id (BaseEntity) para integrações modernas
-/// - Campos: DcGrUser (varchar(60)?)
-/// - FK: Sistema(CdSistema)
+/// Configuração EF Core para GrupoDeUsuario (tabela gurh1).
 /// </summary>
 public sealed class GrupoDeUsuarioConfiguration : IEntityTypeConfiguration<GrupoDeUsuario>
 {
@@ -18,11 +15,21 @@ public sealed class GrupoDeUsuarioConfiguration : IEntityTypeConfiguration<Grupo
     {
         builder.ToTable("gurh1");
 
-        // PK composta conforme padrão legado
-        builder.HasKey(e => new { e.CdSistema, e.CdGrUser });
+        // ============================================================
+        // CHAVES
+        // ============================================================
 
-        // Alternate Key no Id para facilitar integrações internas modernas
-        builder.HasAlternateKey(e => e.Id);
+        // PK composta conforme padrão legado
+        builder.HasKey(e => new { e.CdSistema, e.CdGrUser })
+            .HasName("PK_gurh1");
+
+        // Alternate Key no Id para integrações modernas
+        builder.HasAlternateKey(e => e.Id)
+            .HasName("AK_gurh1_Id");
+
+        // ============================================================
+        // PROPRIEDADES
+        // ============================================================
 
         builder.Property(e => e.CdGrUser)
             .HasColumnName("cdgruser")
@@ -39,10 +46,19 @@ public sealed class GrupoDeUsuarioConfiguration : IEntityTypeConfiguration<Grupo
             .IsRequired()
             .IsFixedLength();
 
-        // Se o banco tiver default (newsequentialid()) para a coluna Id, aplique:
         builder.Property(e => e.Id)
             .HasColumnName("id")
             .ValueGeneratedOnAdd();
+
+        // ✅ FIX: IGNORAR colunas de auditoria (não existem na tabela legacy)
+        builder.Ignore(e => e.CreatedAt);
+        builder.Ignore(e => e.CreatedBy);
+        builder.Ignore(e => e.UpdatedAt);
+        builder.Ignore(e => e.UpdatedBy);
+
+        // ============================================================
+        // RELACIONAMENTOS
+        // ============================================================
 
         builder.HasOne(e => e.Sistema)
             .WithMany()
@@ -51,8 +67,8 @@ public sealed class GrupoDeUsuarioConfiguration : IEntityTypeConfiguration<Grupo
 
         builder.HasMany(e => e.GrupoFuncoes)
             .WithOne(gf => gf.GrupoDeUsuario!)
-            .HasPrincipalKey(e => new { e.CdSistema, e.CdGrUser }) // principal = PK composta
-            .HasForeignKey(gf => new { gf.CdSistema, gf.CdGrUser }) // FK composta no filho
+            .HasPrincipalKey(e => new { e.CdSistema, e.CdGrUser })
+            .HasForeignKey(gf => new { gf.CdSistema, gf.CdGrUser })
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

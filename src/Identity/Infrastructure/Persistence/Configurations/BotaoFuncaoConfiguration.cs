@@ -10,6 +10,7 @@ namespace RhSensoERP.Identity.Infrastructure.Persistence.Configurations;
 /// - PK composta: (CdSistema, CdFuncao, NmBotao)
 /// - Campos: DcBotao (varchar(60) req.), CdAcao (char(1))
 /// - FK: Funcao(CdSistema, CdFuncao)
+/// NOTA: Tabela legada SEM colunas de auditoria (Id, CreatedAt, etc.)
 /// </summary>
 public sealed class BotaoFuncaoConfiguration : IEntityTypeConfiguration<BotaoFuncao>
 {

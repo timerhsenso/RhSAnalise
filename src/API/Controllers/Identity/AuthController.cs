@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿//C:\Users\eduardo\source\repos\RhSAnalise\src\API\Controllers\Identity
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RhSensoERP.Identity.Application.DTOs.Auth;
@@ -185,38 +186,39 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken ct)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        // ✅ FIX: Usar claim customizado "cdusuario" em vez de ClaimTypes.NameIdentifier
+        var cdUsuario = User.FindFirstValue("cdusuario");
 
-        if (string.IsNullOrWhiteSpace(userId))
+        if (string.IsNullOrWhiteSpace(cdUsuario))
         {
             return Unauthorized(new { error = "INVALID_TOKEN", message = "Token inválido." });
         }
 
-        _logger.LogInformation("🚪 Logout iniciado: {UserId}", userId);
+        _logger.LogInformation("🚪 Logout iniciado: {CdUsuario}", cdUsuario);
 
         try
         {
-            var command = new LogoutCommand(userId, request);
+            var command = new LogoutCommand(cdUsuario, request);
             var result = await _mediator.Send(command, ct);
 
             if (!result.IsSuccess)
             {
                 _logger.LogWarning(
-                    "❌ Falha no logout: {UserId} | Erro: {ErrorCode} - {ErrorMessage}",
-                    userId,
+                    "❌ Falha no logout: {CdUsuario} | Erro: {ErrorCode} - {ErrorMessage}",
+                    cdUsuario,
                     result.Error.Code,
                     result.Error.Message);
 
                 return BadRequest(new { error = result.Error.Code, message = result.Error.Message });
             }
 
-            _logger.LogInformation("✅ Logout realizado com sucesso: {UserId}", userId);
+            _logger.LogInformation("✅ Logout realizado com sucesso: {CdUsuario}", cdUsuario);
 
             return Ok(new { message = "Logout realizado com sucesso." });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "💥 Erro inesperado no logout: {UserId}", userId);
+            _logger.LogError(ex, "💥 Erro inesperado no logout: {CdUsuario}", cdUsuario);
             return StatusCode(500, new { error = "INTERNAL_ERROR", message = "Erro ao processar logout." });
         }
     }
@@ -236,16 +238,18 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCurrentUser(CancellationToken ct)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        // ✅ FIX: Usar claim customizado "cdusuario" em vez de ClaimTypes.NameIdentifier
+        // ClaimTypes.NameIdentifier pode retornar o GUID do Sub, mas precisamos do CdUsuario
+        var cdUsuario = User.FindFirstValue("cdusuario");
 
-        if (string.IsNullOrWhiteSpace(userId))
+        if (string.IsNullOrWhiteSpace(cdUsuario))
         {
             return Unauthorized(new { error = "INVALID_TOKEN", message = "Token inválido." });
         }
 
         try
         {
-            var query = new GetCurrentUserQuery(userId);
+            var query = new GetCurrentUserQuery(cdUsuario);
             var result = await _mediator.Send(query, ct);
 
             if (!result.IsSuccess)
@@ -257,7 +261,7 @@ public sealed class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "💥 Erro ao obter dados do usuário: {UserId}", userId);
+            _logger.LogError(ex, "💥 Erro ao obter dados do usuário: {CdUsuario}", cdUsuario);
             return StatusCode(500, new { error = "INTERNAL_ERROR", message = "Erro ao obter dados do usuário." });
         }
     }
