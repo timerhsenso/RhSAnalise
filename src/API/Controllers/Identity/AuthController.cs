@@ -2,6 +2,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RhSensoERP.Identity.Application.DTOs.Auth;
 using RhSensoERP.Identity.Application.Features.Auth.Commands;
 using RhSensoERP.Identity.Application.Features.Auth.Queries;
@@ -39,6 +40,7 @@ public sealed class AuthController : ControllerBase
     /// <response code="504">Timeout na requisição</response>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("login")] 
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -125,6 +127,7 @@ public sealed class AuthController : ControllerBase
     /// <response code="401">Refresh token inválido ou expirado</response>
     [HttpPost("refresh-token")]
     [AllowAnonymous]
+    [EnableRateLimiting("refresh")] // ✅ ADICIONAR
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

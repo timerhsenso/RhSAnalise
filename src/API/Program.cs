@@ -185,6 +185,9 @@ if (builder.Configuration.GetValue<bool>("Features:EnableSwagger"))
     });
 }
 
+builder.Services.AddRateLimiting(); // ✅ ADICIONAR
+
+
 // ==================== BUILD APP ====================
 var app = builder.Build();
 
@@ -215,6 +218,9 @@ app.UseSerilogRequestLogging();
 
 // ✅ CRITICAL: CORS deve vir ANTES de Authentication
 app.UseCors("DefaultCorsPolicy");
+
+app.UseRateLimiter(); // ✅ ADICIONAR (antes de UseAuthentication)
+
 
 app.UseAuthentication();
 app.UseAuthorization();
