@@ -220,10 +220,10 @@ public sealed class JwtService : IJwtService
 
         foreach (var token in tokens)
         {
-            token.IsRevoked = true;
-            token.RevokedAt = _dateTimeProvider.UtcNow;
-            token.RevokedByIp = ipAddress;
-            token.RevokeReason = reason ?? "All tokens revoked";
+            token.Revoke(ipAddress, reason ?? "All tokens revoked");
+
+
+
         }
 
         await _db.SaveChangesAsync(ct);

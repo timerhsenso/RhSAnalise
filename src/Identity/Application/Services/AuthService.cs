@@ -583,6 +583,7 @@ public sealed class AuthService : IAuthService
                 ipAddress,
                 null,
                 null,
+                null,
                 ct);
 
             // Mapear informações do usuário
