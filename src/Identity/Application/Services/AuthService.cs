@@ -36,6 +36,7 @@ public sealed class AuthService : IAuthService
     private readonly IMapper _mapper;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ITenantContext _tenantContext; // ✅ NOVO - FASE 1
+    private readonly IPermissaoService _permissaoService; // ✅ NOVO - FASE 2
     private readonly ILogger<AuthService> _logger;
     private readonly AuthSettings _authSettings;
     private readonly SecurityPolicySettings _securityPolicy;
@@ -46,6 +47,7 @@ public sealed class AuthService : IAuthService
         IMapper mapper,
         IDateTimeProvider dateTimeProvider,
         ITenantContext tenantContext, // ✅ NOVO - FASE 1
+        IPermissaoService permissaoService, // ✅ NOVO - FASE 2
         ILogger<AuthService> logger,
         IOptions<AuthSettings> authSettings,
         IOptions<SecurityPolicySettings> securityPolicy)
@@ -55,6 +57,7 @@ public sealed class AuthService : IAuthService
         _mapper = mapper;
         _dateTimeProvider = dateTimeProvider;
         _tenantContext = tenantContext; // ✅ NOVO - FASE 1
+        _permissaoService = permissaoService; // ✅ NOVO - FASE 2
         _logger = logger;
         _authSettings = authSettings.Value;
         _securityPolicy = securityPolicy.Value;
@@ -299,20 +302,45 @@ public sealed class AuthService : IAuthService
             // ============================================================================
             // ETAPA 9: CARREGAR PERMISSÕES
             // ============================================================================
-            // TODO: Implementar na FASE 2
-            _logger.LogInformation("⚠️ ETAPA 9: Carregamento de permissões não implementado (FASE 2)");
+            _logger.LogInformation("🔑 ETAPA 9: Carregando permissões do usuário");
+
+            UserPermissionsDto? permissions = null;
+
+            try
+            {
+                permissions = await _permissaoService.CarregarPermissoesAsync(
+                    usuario.CdUsuario,
+                    cdSistema: null, // null = carregar de todos os sistemas
+                    ct);
+
+                _logger.LogInformation(
+                    "✅ ETAPA 9: Permissões carregadas - Grupos: {Grupos}, Funções: {Funcoes}, Botões: {Botoes}",
+                    permissions.Grupos.Count,
+                    permissions.Funcoes.Count,
+                    permissions.Botoes.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "⚠️ ETAPA 9: Erro ao carregar permissões. Login continuará sem permissões.");
+
+                // Não bloquear o login se houver erro ao carregar permissões
+                // O usuário consegue logar, mas sem permissões no token
+                permissions = null;
+            }
 
             // ============================================================================
             // ETAPA 10: CRIAR SESSÃO / TOKEN / CLAIMS
             // ============================================================================
             _logger.LogInformation("✅ ETAPA 10: Gerando tokens JWT");
 
-            var accessToken = _jwtService.GenerateAccessToken(usuario, userSecurity);
+            var accessToken = _jwtService.GenerateAccessToken(usuario, userSecurity, permissions);
             var refreshToken = await _jwtService.GenerateRefreshTokenAsync(
                 userSecurity.Id,
                 ipAddress,
                 request.DeviceId,
                 request.DeviceName,
+                null, // expirationDays
                 ct);
 
             // Mapear informações do usuário
@@ -481,15 +509,29 @@ public sealed class AuthService : IAuthService
             _logger.LogInformation("🔄 REFRESH: Validando refresh token");
 
             // Validar refresh token
-            var userSecurity = await _jwtService.ValidateRefreshTokenAsync(request.RefreshToken, ct);
+            // Validar refresh token e buscar UserSecurity
+            var isValid = await _jwtService.ValidateRefreshTokenAsync(request.RefreshToken, Guid.Empty, ct);
 
-            if (userSecurity == null)
+            if (!isValid)
             {
                 _logger.LogWarning("❌ REFRESH: Token inválido ou expirado");
                 return Result<AuthResponse>.Failure("INVALID_REFRESH_TOKEN", "Refresh token inválido ou expirado.");
             }
 
-            // Buscar usuário associado
+            // Buscar UserSecurity pelo token
+            var userSecurity = await _db.Set<UserSecurity>()
+                // Usuario será buscado separadamente
+                .FirstOrDefaultAsync(us => us.RefreshTokens.Any(rt => rt.TokenHash == request.RefreshToken), ct);
+
+
+
+            // Buscar usuário associado ao UserSecurity
+            if (userSecurity == null)
+            {
+                _logger.LogWarning("❌ REFRESH: UserSecurity não encontrado");
+                return Result<AuthResponse>.Failure("INVALID_REFRESH_TOKEN", "Refresh token inválido.");
+            }
+
             var usuario = await _db.Usuarios
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == userSecurity.IdUsuario, ct);
@@ -521,7 +563,18 @@ public sealed class AuthService : IAuthService
                 ct);
 
             // Gerar novos tokens
-            var newAccessToken = _jwtService.GenerateAccessToken(usuario, userSecurity);
+            // Carregar permissões para o novo token
+            UserPermissionsDto? permissions = null;
+            try
+            {
+                permissions = await _permissaoService.CarregarPermissoesAsync(usuario.CdUsuario, null, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Erro ao carregar permissões no refresh token");
+            }
+
+            var newAccessToken = _jwtService.GenerateAccessToken(usuario, userSecurity, permissions);
             var newRefreshToken = await _jwtService.GenerateRefreshTokenAsync(
                 userSecurity.Id,
                 ipAddress,
@@ -589,8 +642,9 @@ public sealed class AuthService : IAuthService
 
                 if (userSecurity != null)
                 {
-                    await _jwtService.RevokeAllRefreshTokensAsync(
+                    await _jwtService.RevokeAllUserTokensAsync(
                         userSecurity.Id,
+                        "unknown", // ipAddress não disponível no contexto
                         "User logout - all tokens",
                         ct);
 

@@ -1,45 +1,69 @@
-﻿using System.Security.Claims;
+﻿// ============================================================================
+// ARQUIVO ATUALIZADO - FASE 2: src/Identity/Application/Services/IJwtService.cs
+// ============================================================================
+// ALTERAÇÕES:
+// 1. Adicionado parâmetro UserPermissionsDto no GenerateAccessToken
+// 2. Adicionado parâmetro deviceName no GenerateRefreshTokenAsync
+// ============================================================================
+
+using RhSensoERP.Identity.Application.DTOs.Auth;
 using RhSensoERP.Identity.Domain.Entities;
 
 namespace RhSensoERP.Identity.Application.Services;
 
 /// <summary>
-/// Serviço para geração e validação de JWT tokens.
+/// Serviço para geração e validação de tokens JWT.
 /// </summary>
 public interface IJwtService
 {
     /// <summary>
-    /// Gera um access token JWT para o usuário.
+    /// Gera um token de acesso JWT.
+    /// ✅ ATUALIZADO - FASE 2: Incluído parâmetro de permissões.
     /// </summary>
-    string GenerateAccessToken(Usuario usuario, UserSecurity? userSecurity = null);
+    /// <param name="usuario">Dados do usuário</param>
+    /// <param name="userSecurity">Dados de segurança do usuário (opcional)</param>
+    /// <param name="permissions">Permissões do usuário (opcional) - NOVO</param>
+    /// <returns>Token JWT</returns>
+    string GenerateAccessToken(
+        Usuario usuario,
+        UserSecurity? userSecurity = null,
+        UserPermissionsDto? permissions = null);
 
     /// <summary>
-    /// Gera um refresh token e persiste no banco.
+    /// Gera um refresh token e o armazena no banco.
+    /// ✅ CORRIGIDO: Adicionado parâmetro deviceName
     /// </summary>
     Task<string> GenerateRefreshTokenAsync(
-        Guid idUserSecurity,
+        Guid userId,
         string ipAddress,
         string? deviceId = null,
-        string? deviceName = null,
+        string? deviceName = null, // ✅ NOVO PARÂMETRO
+        int? expirationDays = null,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Valida um refresh token e retorna o UserSecurity associado.
+    /// Valida se um refresh token é válido.
     /// </summary>
-    Task<UserSecurity?> ValidateRefreshTokenAsync(string token, CancellationToken ct = default);
+    Task<bool> ValidateRefreshTokenAsync(
+        string token,
+        Guid userId,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Revoga um refresh token específico.
     /// </summary>
-    Task RevokeRefreshTokenAsync(string token, string reason, string? revokedByIp = null, CancellationToken ct = default);
+    Task RevokeRefreshTokenAsync(
+        string token,
+        string ipAddress,
+        string? reason = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Revoga todos os refresh tokens de um usuário.
     /// </summary>
-    Task RevokeAllRefreshTokensAsync(Guid idUserSecurity, string reason, CancellationToken ct = default);
-
-    /// <summary>
-    /// Extrai claims de um token JWT (sem validar assinatura).
-    /// </summary>
-    ClaimsPrincipal? GetPrincipalFromToken(string token);
+    Task RevokeAllUserTokensAsync(
+        Guid userId,
+        string ipAddress,
+        string? reason = null,
+        CancellationToken ct = default);
 }

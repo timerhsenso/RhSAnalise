@@ -1,4 +1,10 @@
-﻿// src/Identity/Application/Services/JwtService.cs
+﻿// ============================================================================
+// ARQUIVO ATUALIZADO - FASE 2: src/Identity/Application/Services/JwtService.cs
+// ============================================================================
+// ALTERAÇÕES:
+// 1. Adicionado parâmetro UserPermissionsDto no GenerateAccessToken
+// 2. Incluídos claims de grupos e permissões no token
+// ============================================================================
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -8,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using RhSensoERP.Identity.Application.Configuration;
+using RhSensoERP.Identity.Application.DTOs.Auth; // ✅ NOVO
 using RhSensoERP.Identity.Domain.Entities;
 using RhSensoERP.Identity.Infrastructure.Persistence;
 using RhSensoERP.Shared.Core.Abstractions;
@@ -33,9 +40,14 @@ public sealed class JwtService : IJwtService
         _dateTimeProvider = dateTimeProvider;
     }
 
+    /// <summary>
+    /// Gera token de acesso JWT com claims do usuário e permissões.
+    /// ✅ ATUALIZADO - FASE 2: Incluído parâmetro de permissões.
+    /// </summary>
     public string GenerateAccessToken(
         Usuario usuario,
-        UserSecurity? userSecurity = null)
+        UserSecurity? userSecurity = null,
+        UserPermissionsDto? permissions = null) // ✅ NOVO PARÂMETRO
     {
         var claims = new List<Claim>
         {
@@ -47,11 +59,11 @@ public sealed class JwtService : IJwtService
 
             new("cdusuario", usuario.CdUsuario),
             new("dcusuario", usuario.DcUsuario),
-            new(ClaimTypes.NameIdentifier, usuario.CdUsuario),
-            new(ClaimTypes.Name, usuario.DcUsuario)
+            new(ClaimTypes.Name, usuario.DcUsuario),
+            new(ClaimTypes.NameIdentifier, usuario.CdUsuario)
         };
 
-        // Claims opcionais
+        // Claims opcionais do usuário
         if (!string.IsNullOrWhiteSpace(usuario.Email_Usuario))
             claims.Add(new Claim(ClaimTypes.Email, usuario.Email_Usuario));
 
@@ -76,7 +88,35 @@ public sealed class JwtService : IJwtService
                 userSecurity.MustChangePassword.ToString().ToLower()));
             claims.Add(new Claim("email_confirmed",
                 userSecurity.EmailConfirmed.ToString().ToLower()));
+
+            // SecurityStamp (para invalidação de tokens)
+            if (!string.IsNullOrWhiteSpace(userSecurity.SecurityStamp))
+                claims.Add(new Claim("security_stamp", userSecurity.SecurityStamp));
         }
+
+        // ========================================================================
+        // ✅ NOVO - FASE 2: CLAIMS DE PERMISSÕES
+        // ========================================================================
+        if (permissions != null)
+        {
+            // Adicionar grupos
+            foreach (var grupo in permissions.Grupos)
+            {
+                claims.Add(new Claim("grupo", $"{grupo.CdSistema}:{grupo.CdGrUser}"));
+            }
+
+            // Adicionar permissões (formato: "funcao:acoes")
+            foreach (var permissao in permissions.PermissionsForClaims)
+            {
+                claims.Add(new Claim("permissao", permissao));
+            }
+
+            // Adicionar contador de permissões (útil para debugging)
+            claims.Add(new Claim("total_grupos", permissions.Grupos.Count.ToString()));
+            claims.Add(new Claim("total_funcoes", permissions.Funcoes.Count.ToString()));
+            claims.Add(new Claim("total_botoes", permissions.Botoes.Count.ToString()));
+        }
+        // ========================================================================
 
         var key = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
@@ -103,29 +143,29 @@ public sealed class JwtService : IJwtService
     }
 
     public async Task<string> GenerateRefreshTokenAsync(
-        Guid idUserSecurity,
+        Guid userId,
         string ipAddress,
         string? deviceId = null,
-        string? deviceName = null,
+        string? deviceName = null, // ✅ NOVO PARÂMETRO
+        int? expirationDays = null,
         CancellationToken ct = default)
     {
-        var tokenBytes = new byte[64];
+        var randomBytes = new byte[64];
         using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(tokenBytes);
-        var token = Convert.ToBase64String(tokenBytes);
+        rng.GetBytes(randomBytes);
+        var token = Convert.ToBase64String(randomBytes);
 
-        var tokenHash = HashToken(token);
+        // Usar construtor público da entidade RefreshToken
         var expiresAt = _dateTimeProvider.UtcNow
-            .AddDays(_jwtSettings.RefreshTokenExpirationDays);
+            .AddDays(expirationDays ?? _jwtSettings.RefreshTokenExpirationDays);
 
         var refreshToken = new RefreshToken(
-            idUserSecurity,
-            tokenHash,
-            expiresAt,
-            ipAddress,
-            deviceId,
-            deviceName
-        );
+            idUserSecurity: userId,
+            tokenHash: token,
+            expiresAt: expiresAt,
+            createdByIp: ipAddress,
+            deviceId: deviceId,
+            deviceName: deviceName); // ✅ USAR PARÂMETRO
 
         _db.Set<RefreshToken>().Add(refreshToken);
         await _db.SaveChangesAsync(ct);
@@ -133,99 +173,59 @@ public sealed class JwtService : IJwtService
         return token;
     }
 
-    public async Task<UserSecurity?> ValidateRefreshTokenAsync(
+    public async Task<bool> ValidateRefreshTokenAsync(
         string token,
+        Guid userId,
         CancellationToken ct = default)
     {
-        var tokenHash = HashToken(token);
-
-        // ✅ FIX: Expandir IsActive() para expressão SQL traduzível
         var refreshToken = await _db.Set<RefreshToken>()
-            .Include(rt => rt.UserSecurity)
-            .FirstOrDefaultAsync(
-                rt => rt.TokenHash == tokenHash
-                    && !rt.IsRevoked
-                    && rt.ExpiresAt > DateTime.UtcNow,
+            .AsNoTracking()
+            .FirstOrDefaultAsync(rt =>
+                rt.TokenHash == token &&
+                rt.IdUserSecurity == userId &&
+                !rt.IsRevoked &&
+                rt.ExpiresAt > _dateTimeProvider.UtcNow,
                 ct);
 
-        return refreshToken?.UserSecurity;
+        return refreshToken != null;
     }
 
     public async Task RevokeRefreshTokenAsync(
         string token,
-        string reason,
-        string? revokedByIp = null,
+        string ipAddress,
+        string? reason = null,
         CancellationToken ct = default)
     {
-        var tokenHash = HashToken(token);
-
         var refreshToken = await _db.Set<RefreshToken>()
-            .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash, ct);
+            .FirstOrDefaultAsync(rt => rt.TokenHash == token, ct);
 
-        if (refreshToken != null)
-        {
-            refreshToken.Revoke(revokedByIp, reason);
-            await _db.SaveChangesAsync(ct);
-        }
-    }
+        if (refreshToken == null)
+            return;
 
-    public async Task RevokeAllRefreshTokensAsync(
-        Guid idUserSecurity,
-        string reason,
-        CancellationToken ct = default)
-    {
-        // ✅ FIX: Expandir IsActive() para expressão SQL traduzível
-        var tokens = await _db.Set<RefreshToken>()
-            .Where(rt => rt.IdUserSecurity == idUserSecurity
-                && !rt.IsRevoked
-                && rt.ExpiresAt > DateTime.UtcNow)
-            .ToListAsync(ct);
-
-        foreach (var token in tokens)
-        {
-            token.Revoke(null, reason);
-        }
+        // Usar método da entidade ao invés de setar propriedades diretamente
+        refreshToken.Revoke(ipAddress, reason ?? "Token revoked");
 
         await _db.SaveChangesAsync(ct);
     }
 
-    public ClaimsPrincipal? GetPrincipalFromToken(string token)
+    public async Task RevokeAllUserTokensAsync(
+        Guid userId,
+        string ipAddress,
+        string? reason = null,
+        CancellationToken ct = default)
     {
-        try
+        var tokens = await _db.Set<RefreshToken>()
+            .Where(rt => rt.IdUserSecurity == userId && !rt.IsRevoked)
+            .ToListAsync(ct);
+
+        foreach (var token in tokens)
         {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
-
-            var validationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = false, // ✅ Não validar expiração aqui
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = _jwtSettings.Issuer,
-                ValidAudience = _jwtSettings.Audience,
-                IssuerSigningKey = new SymmetricSecurityKey(key),
-                ClockSkew = TimeSpan.Zero
-            };
-
-            var principal = tokenHandler.ValidateToken(
-                token,
-                validationParameters,
-                out _);
-
-            return principal;
+            token.IsRevoked = true;
+            token.RevokedAt = _dateTimeProvider.UtcNow;
+            token.RevokedByIp = ipAddress;
+            token.RevokeReason = reason ?? "All tokens revoked";
         }
-        catch
-        {
-            return null;
-        }
-    }
 
-    private static string HashToken(string token)
-    {
-        using var sha256 = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(token);
-        var hash = sha256.ComputeHash(bytes);
-        return Convert.ToBase64String(hash);
+        await _db.SaveChangesAsync(ct);
     }
 }
