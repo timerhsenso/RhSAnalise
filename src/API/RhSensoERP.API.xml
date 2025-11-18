@@ -330,6 +330,33 @@
             Configura autorização com políticas customizadas.
             </summary>
         </member>
+        <member name="T:RhSensoERP.API.Middleware.TenantMiddleware">
+            <summary>
+            Middleware que resolve o tenant atual baseado no hostname da requisição.
+            Armazena o TenantId no HttpContext.Items para uso posterior.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Middleware.TenantMiddleware.ResolverTenantPorDominioAsync(RhSensoERP.Identity.Infrastructure.Persistence.IdentityDbContext,System.String)">
+            <summary>
+            Resolve o tenant por domínio consultando a tabela SaasTenants.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Middleware.TenantInfo">
+            <summary>
+            DTO para informações básicas do tenant.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Middleware.TenantMiddlewareExtensions">
+            <summary>
+            Extension method para registrar o TenantMiddleware.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Middleware.TenantMiddlewareExtensions.UseTenantResolution(Microsoft.AspNetCore.Builder.IApplicationBuilder)">
+            <summary>
+            Adiciona o TenantMiddleware ao pipeline de requisições.
+            Deve ser chamado ANTES da autenticação.
+            </summary>
+        </member>
         <member name="T:RhSensoERP.API.SecretsConfig">
             <summary>
             Classe marcadora para User Secrets

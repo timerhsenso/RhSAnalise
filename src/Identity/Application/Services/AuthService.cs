@@ -1,4 +1,6 @@
-﻿// src/Identity/Application/Services/AuthService.cs
+﻿// ============================================================================
+// ARQUIVO ALTERADO - SUBSTITUIR: src/Identity/Application/Services/AuthService.cs
+// ============================================================================
 
 using System;
 using System.Linq;
@@ -33,6 +35,7 @@ public sealed class AuthService : IAuthService
     private readonly IJwtService _jwtService;
     private readonly IMapper _mapper;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly ITenantContext _tenantContext; // ✅ NOVO - FASE 1
     private readonly ILogger<AuthService> _logger;
     private readonly AuthSettings _authSettings;
     private readonly SecurityPolicySettings _securityPolicy;
@@ -42,6 +45,7 @@ public sealed class AuthService : IAuthService
         IJwtService jwtService,
         IMapper mapper,
         IDateTimeProvider dateTimeProvider,
+        ITenantContext tenantContext, // ✅ NOVO - FASE 1
         ILogger<AuthService> logger,
         IOptions<AuthSettings> authSettings,
         IOptions<SecurityPolicySettings> securityPolicy)
@@ -50,6 +54,7 @@ public sealed class AuthService : IAuthService
         _jwtService = jwtService;
         _mapper = mapper;
         _dateTimeProvider = dateTimeProvider;
+        _tenantContext = tenantContext; // ✅ NOVO - FASE 1
         _logger = logger;
         _authSettings = authSettings.Value;
         _securityPolicy = securityPolicy.Value;
@@ -67,7 +72,7 @@ public sealed class AuthService : IAuthService
             _logger.LogWarning(
                 "⚠️ INICIALIZAÇÃO: AuthSettings.Strategies vazio. Criando configurações padrão.");
 
-            _authSettings.Strategies["Legado"] = new StrategyConfig
+            _authSettings.Strategies["Legacy"] = new StrategyConfig
             {
                 Enabled = true,
                 UseBCrypt = false,
@@ -85,7 +90,7 @@ public sealed class AuthService : IAuthService
                 Require2FA = false
             };
 
-            _authSettings.Strategies["WindowsAD"] = new StrategyConfig
+            _authSettings.Strategies["ADWin"] = new StrategyConfig
             {
                 Enabled = false,
                 UseBCrypt = false,
@@ -107,7 +112,7 @@ public sealed class AuthService : IAuthService
 
         if (string.IsNullOrWhiteSpace(_authSettings.DefaultStrategy))
         {
-            _authSettings.DefaultStrategy = "Legado";
+            _authSettings.DefaultStrategy = "Legacy";
             _logger.LogWarning(
                 "⚠️ INICIALIZAÇÃO: DefaultStrategy vazio. Definido como '{DefaultStrategy}'",
                 _authSettings.DefaultStrategy);
@@ -116,7 +121,7 @@ public sealed class AuthService : IAuthService
         if (!_authSettings.Strategies.ContainsKey(_authSettings.DefaultStrategy))
         {
             var firstEnabled = _authSettings.Strategies
-                .FirstOrDefault(s => s.Value.Enabled).Key ?? "Legado";
+                .FirstOrDefault(s => s.Value.Enabled).Key ?? "Legacy";
 
             _logger.LogWarning(
                 "⚠️ INICIALIZAÇÃO: DefaultStrategy '{DefaultStrategy}' não encontrada. Usando '{Fallback}'",
@@ -129,6 +134,7 @@ public sealed class AuthService : IAuthService
 
     /// <summary>
     /// Autentica um usuário com credenciais e retorna tokens JWT.
+    /// ✅ REFATORADO - FASE 1: Implementa lógica correta conforme documento de requisitos.
     /// </summary>
     public async Task<Result<AuthResponse>> LoginAsync(
         LoginRequest request,
@@ -138,39 +144,66 @@ public sealed class AuthService : IAuthService
     {
         try
         {
-            _logger.LogInformation("🚀 AuthService.LoginAsync INICIADO para {CdUsuario}", request.CdUsuario);
+            _logger.LogInformation("🚀 AuthService.LoginAsync INICIADO para {LoginIdentifier}", request.LoginIdentifier);
 
-            // Buscar usuário
-            var usuario = await _db.Usuarios
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.CdUsuario == request.CdUsuario, ct);
+            // ============================================================================
+            // ETAPA 1: RESOLVER TENANT
+            // ============================================================================
+            var tenantId = _tenantContext.TenantId;
+            Guid? tenantGuid = null;
+
+            if (!string.IsNullOrEmpty(tenantId) && Guid.TryParse(tenantId, out var parsedTenantId))
+            {
+                tenantGuid = parsedTenantId;
+                _logger.LogInformation("✅ ETAPA 1: Tenant resolvido - TenantId: {TenantId}", tenantId);
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ ETAPA 1: Tenant não resolvido. Usando configuração global.");
+            }
+
+            // ============================================================================
+            // ETAPA 2: DETERMINAR AUTHMODE
+            // ============================================================================
+            var authMode = await DeterminarAuthModeAsync(tenantGuid, ct);
+            _logger.LogInformation("✅ ETAPA 2: AuthMode determinado: '{AuthMode}'", authMode);
+
+            // ============================================================================
+            // ETAPA 3: LOCALIZAR USUÁRIO
+            // ============================================================================
+            var usuario = await LocalizarUsuarioAsync(request.LoginIdentifier, authMode, ct);
 
             if (usuario == null)
             {
-                _logger.LogWarning("❌ LOGIN: Usuário {CdUsuario} NÃO ENCONTRADO", request.CdUsuario);
+                _logger.LogWarning("❌ ETAPA 3: Usuário '{LoginIdentifier}' NÃO ENCONTRADO", request.LoginIdentifier);
                 return Result<AuthResponse>.Failure("INVALID_CREDENTIALS", "Usuário ou senha inválidos.");
             }
 
-            _logger.LogInformation("✅ LOGIN: Usuário {CdUsuario} encontrado. FlAtivo={FlAtivo}",
+            _logger.LogInformation("✅ ETAPA 3: Usuário encontrado - CdUsuario: {CdUsuario}, FlAtivo: {FlAtivo}",
                 usuario.CdUsuario, usuario.FlAtivo);
 
+            // Verificar se usuário está ativo
             if (usuario.FlAtivo != 'S')
             {
-                _logger.LogWarning("❌ LOGIN: Usuário {CdUsuario} INATIVO", request.CdUsuario);
+                _logger.LogWarning("❌ LOGIN: Usuário {CdUsuario} INATIVO", usuario.CdUsuario);
                 return Result<AuthResponse>.Failure("USER_INACTIVE", "Usuário inativo.");
             }
 
-            // Buscar/Criar UserSecurity
-            _logger.LogInformation("🔍 LOGIN: Buscando UserSecurity para IdUsuario={IdUsuario}", usuario.Id);
+            // ============================================================================
+            // ETAPA 4: CARREGAR SEGURANÇA MODERNA
+            // ============================================================================
+            _logger.LogInformation("🔍 ETAPA 4: Buscando UserSecurity para IdUsuario={IdUsuario}", usuario.Id);
             var userSecurity = await GetOrCreateUserSecurityAsync(usuario, ct);
-            _logger.LogInformation("✅ LOGIN: UserSecurity obtido. Id={Id}, LockoutEnd={LockoutEnd}",
+            _logger.LogInformation("✅ ETAPA 4: UserSecurity obtido. Id={Id}, LockoutEnd={LockoutEnd}",
                 userSecurity.Id, userSecurity.LockoutEnd);
 
-            // Verificar lockout
+            // ============================================================================
+            // ETAPA 5: VERIFICAR LOCKOUT
+            // ============================================================================
             if (userSecurity.LockoutEnd.HasValue && userSecurity.LockoutEnd > _dateTimeProvider.UtcNow)
             {
                 var remainingMinutes = (userSecurity.LockoutEnd.Value - _dateTimeProvider.UtcNow).TotalMinutes;
-                _logger.LogWarning("🔒 LOGIN: Conta BLOQUEADA até {LockoutEnd}", userSecurity.LockoutEnd);
+                _logger.LogWarning("🔒 ETAPA 5: Conta BLOQUEADA até {LockoutEnd}", userSecurity.LockoutEnd);
 
                 await RegisterFailedLoginAsync(userSecurity, ipAddress, userAgent, "Account locked", ct);
 
@@ -179,54 +212,38 @@ public sealed class AuthService : IAuthService
                     $"Conta bloqueada. Tente novamente em {Math.Ceiling(remainingMinutes)} minutos.");
             }
 
-            // Determinar estratégia de autenticação
-            var strategy = request.AuthStrategy ?? _authSettings.DefaultStrategy;
-            _logger.LogInformation(
-                "🔑 LOGIN: Estratégia solicitada: '{RequestedStrategy}', Default: '{DefaultStrategy}'",
-                request.AuthStrategy,
-                _authSettings.DefaultStrategy);
+            _logger.LogInformation("✅ ETAPA 5: Lockout verificado - Conta não está bloqueada");
 
-            if (!_authSettings.Strategies.TryGetValue(strategy, out var strategyConfig))
+            // Obter configuração da estratégia
+            if (!_authSettings.Strategies.TryGetValue(authMode, out var strategyConfig))
             {
                 _logger.LogError(
-                    "❌ LOGIN: Estratégia '{Strategy}' não encontrada. Disponíveis: {Available}",
-                    strategy,
+                    "❌ LOGIN: Estratégia '{AuthMode}' não encontrada. Disponíveis: {Available}",
+                    authMode,
                     string.Join(", ", _authSettings.Strategies.Keys));
 
-                if (_authSettings.Strategies.TryGetValue(_authSettings.DefaultStrategy, out strategyConfig))
-                {
-                    strategy = _authSettings.DefaultStrategy;
-                    _logger.LogWarning("🔄 LOGIN: Usando estratégia padrão '{DefaultStrategy}'", strategy);
-                }
-                else
-                {
-                    return Result<AuthResponse>.Failure(
-                        "INVALID_AUTH_STRATEGY",
-                        "Nenhuma estratégia de autenticação disponível. Contate o administrador.");
-                }
+                return Result<AuthResponse>.Failure(
+                    "INVALID_AUTH_STRATEGY",
+                    "Modo de autenticação inválido. Contate o administrador.");
             }
 
-            if (!strategyConfig!.Enabled)
+            if (!strategyConfig.Enabled)
             {
-                _logger.LogWarning("⚠️ LOGIN: Estratégia '{Strategy}' está DESABILITADA", strategy);
-
-                strategy = _authSettings.DefaultStrategy;
-
-                if (!_authSettings.Strategies.TryGetValue(strategy, out strategyConfig) || !strategyConfig.Enabled)
-                {
-                    return Result<AuthResponse>.Failure(
-                        "AUTH_STRATEGY_DISABLED",
-                        "A estratégia de autenticação solicitada está desabilitada.");
-                }
+                _logger.LogWarning("⚠️ LOGIN: Estratégia '{AuthMode}' está DESABILITADA", authMode);
+                return Result<AuthResponse>.Failure(
+                    "AUTH_STRATEGY_DISABLED",
+                    "O modo de autenticação está desabilitado.");
             }
 
-            // Validar senha
-            _logger.LogInformation("🔐 LOGIN: Validando senha com estratégia '{Strategy}'", strategy);
-            var isValidPassword = ValidatePassword(usuario, userSecurity, request.Senha, strategy);
+            // ============================================================================
+            // ETAPA 6: VALIDAR CREDENCIAIS
+            // ============================================================================
+            _logger.LogInformation("🔐 ETAPA 6: Validando senha com estratégia '{AuthMode}'", authMode);
+            var isValidPassword = ValidatePassword(usuario, userSecurity, request.Senha, authMode);
 
             if (!isValidPassword)
             {
-                _logger.LogWarning("❌ LOGIN: Senha INVÁLIDA para {CdUsuario}", request.CdUsuario);
+                _logger.LogWarning("❌ ETAPA 6: Senha INVÁLIDA para {CdUsuario}", usuario.CdUsuario);
 
                 userSecurity.IncrementAccessFailedCount();
 
@@ -248,10 +265,12 @@ public sealed class AuthService : IAuthService
                 return Result<AuthResponse>.Failure("INVALID_CREDENTIALS", "Usuário ou senha inválidos.");
             }
 
+            _logger.LogInformation("✅ ETAPA 6: Credenciais VÁLIDAS");
+
             // Validações de segurança adicionais
             if (strategyConfig.RequireEmailConfirmation && !userSecurity.EmailConfirmed)
             {
-                _logger.LogWarning("⚠️ LOGIN: E-mail não confirmado para {CdUsuario}", request.CdUsuario);
+                _logger.LogWarning("⚠️ LOGIN: E-mail não confirmado para {CdUsuario}", usuario.CdUsuario);
                 return Result<AuthResponse>.Failure(
                     "EMAIL_NOT_CONFIRMED",
                     "E-mail não confirmado. Verifique sua caixa de entrada.");
@@ -259,14 +278,17 @@ public sealed class AuthService : IAuthService
 
             if (strategyConfig.Require2FA && !userSecurity.TwoFactorEnabled)
             {
-                _logger.LogWarning("⚠️ LOGIN: 2FA obrigatório mas não configurado para {CdUsuario}", request.CdUsuario);
+                _logger.LogWarning("⚠️ LOGIN: 2FA obrigatório mas não configurado para {CdUsuario}", usuario.CdUsuario);
                 return Result<AuthResponse>.Failure(
                     "2FA_REQUIRED",
                     "Autenticação de dois fatores obrigatória. Configure 2FA antes de fazer login.");
             }
 
-            // SUCESSO: Resetar tentativas e gerar tokens
-            _logger.LogInformation("✅ LOGIN: Credenciais VÁLIDAS para {CdUsuario}", usuario.CdUsuario);
+            // ============================================================================
+            // ETAPA 7: REGISTRAR AUDITORIA
+            // ETAPA 8: RESET/INCREMENTO DE TENTATIVAS
+            // ============================================================================
+            _logger.LogInformation("✅ ETAPA 7-8: Resetando tentativas e registrando auditoria");
 
             userSecurity.ResetAccessFailedCount();
             userSecurity.RegisterSuccessfulLogin(ipAddress);
@@ -274,7 +296,17 @@ public sealed class AuthService : IAuthService
             await UpdateUserSecurityInDatabaseAsync(userSecurity, ct);
             await RegisterSuccessfulLoginAsync(userSecurity, ipAddress, userAgent, ct);
 
-            // Gerar tokens JWT
+            // ============================================================================
+            // ETAPA 9: CARREGAR PERMISSÕES
+            // ============================================================================
+            // TODO: Implementar na FASE 2
+            _logger.LogInformation("⚠️ ETAPA 9: Carregamento de permissões não implementado (FASE 2)");
+
+            // ============================================================================
+            // ETAPA 10: CRIAR SESSÃO / TOKEN / CLAIMS
+            // ============================================================================
+            _logger.LogInformation("✅ ETAPA 10: Gerando tokens JWT");
+
             var accessToken = _jwtService.GenerateAccessToken(usuario, userSecurity);
             var refreshToken = await _jwtService.GenerateRefreshTokenAsync(
                 userSecurity.Id,
@@ -314,10 +346,127 @@ public sealed class AuthService : IAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Erro ao processar login: {CdUsuario}", request.CdUsuario);
+            _logger.LogError(ex, "❌ Erro ao processar login: {LoginIdentifier}", request.LoginIdentifier);
             return Result<AuthResponse>.Failure("LOGIN_ERROR", "Erro ao processar login. Tente novamente.");
         }
     }
+
+    // ============================================================================
+    // MÉTODOS AUXILIARES - NOVOS (FASE 1)
+    // ============================================================================
+
+    /// <summary>
+    /// ✅ NOVO - FASE 1: Determina o AuthMode consultando SEG_SecurityPolicy do banco.
+    /// Ordem de prioridade:
+    /// 1. SEG_SecurityPolicy.AuthMode (por tenant)
+    /// 2. DefaultStrategy (appsettings.json)
+    /// </summary>
+    private async Task<string> DeterminarAuthModeAsync(Guid? tenantId, CancellationToken ct)
+    {
+        try
+        {
+            // Consultar política de segurança do tenant
+            SecurityPolicy? securityPolicy = null;
+
+            if (tenantId.HasValue)
+            {
+                securityPolicy = await _db.Set<SecurityPolicy>()
+                    .AsNoTracking()
+                    .Where(sp => sp.IdSaaS == tenantId && sp.IsActive)
+                    .FirstOrDefaultAsync(ct);
+            }
+
+            // Se não encontrou por tenant, buscar política global (IdSaaS = null)
+            if (securityPolicy == null)
+            {
+                securityPolicy = await _db.Set<SecurityPolicy>()
+                    .AsNoTracking()
+                    .Where(sp => sp.IdSaaS == null && sp.IsActive)
+                    .FirstOrDefaultAsync(ct);
+            }
+
+            // Se encontrou política e tem AuthMode definido, usar
+            if (securityPolicy != null && !string.IsNullOrWhiteSpace(securityPolicy.AuthMode))
+            {
+                _logger.LogInformation(
+                    "✅ AuthMode obtido do banco: '{AuthMode}' (Tenant: {TenantId})",
+                    securityPolicy.AuthMode,
+                    tenantId?.ToString() ?? "Global");
+
+                return securityPolicy.AuthMode;
+            }
+
+            // Fallback: usar configuração padrão do appsettings
+            _logger.LogInformation(
+                "⚠️ AuthMode não encontrado no banco. Usando DefaultStrategy: '{DefaultStrategy}'",
+                _authSettings.DefaultStrategy);
+
+            return _authSettings.DefaultStrategy;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Erro ao determinar AuthMode. Usando DefaultStrategy: '{DefaultStrategy}'",
+                _authSettings.DefaultStrategy);
+
+            return _authSettings.DefaultStrategy;
+        }
+    }
+
+    /// <summary>
+    /// ✅ NOVO - FASE 1: Localiza usuário por email ou cdusuario conforme o AuthMode.
+    /// - Legacy: busca por cdusuario OU email
+    /// - SaaS: busca SOMENTE por email
+    /// - ADWin: busca por cdusuario
+    /// </summary>
+    private async Task<Usuario?> LocalizarUsuarioAsync(
+        string loginIdentifier,
+        string authMode,
+        CancellationToken ct)
+    {
+        Usuario? usuario = null;
+
+        switch (authMode)
+        {
+            case "SaaS":
+                // SaaS: buscar SOMENTE por email
+                _logger.LogDebug("🔍 Buscando usuário por EMAIL (modo SaaS): {Email}", loginIdentifier);
+                usuario = await _db.Usuarios
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Email_Usuario == loginIdentifier, ct);
+                break;
+
+            case "Legacy":
+                // Legacy: buscar por cdusuario OU email
+                _logger.LogDebug("🔍 Buscando usuário por CDUSUARIO ou EMAIL (modo Legacy): {Identifier}", loginIdentifier);
+                usuario = await _db.Usuarios
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u =>
+                        u.CdUsuario == loginIdentifier ||
+                        u.Email_Usuario == loginIdentifier, ct);
+                break;
+
+            case "ADWin":
+                // ADWin: buscar por cdusuario (deve corresponder ao AD)
+                _logger.LogDebug("🔍 Buscando usuário por CDUSUARIO (modo ADWin): {CdUsuario}", loginIdentifier);
+                usuario = await _db.Usuarios
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.CdUsuario == loginIdentifier, ct);
+                break;
+
+            default:
+                _logger.LogWarning("⚠️ AuthMode desconhecido: '{AuthMode}'. Usando busca padrão por cdusuario.", authMode);
+                usuario = await _db.Usuarios
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.CdUsuario == loginIdentifier, ct);
+                break;
+        }
+
+        return usuario;
+    }
+
+    // ============================================================================
+    // MÉTODOS AUXILIARES - MANTIDOS DO CÓDIGO ORIGINAL
+    // ============================================================================
 
     /// <summary>
     /// Renova tokens JWT usando um refresh token válido.
@@ -471,7 +620,7 @@ public sealed class AuthService : IAuthService
 
     /// <summary>
     /// Valida senha do usuário de acordo com a estratégia especificada.
-    /// Suporta: Legado (texto plano ou BCrypt), SaaS (BCrypt) e WindowsAD.
+    /// Suporta: Legacy (texto plano ou BCrypt), SaaS (BCrypt) e ADWin.
     /// </summary>
     private bool ValidatePassword(
         Usuario usuario,
@@ -482,15 +631,15 @@ public sealed class AuthService : IAuthService
         if (!_authSettings.Strategies.TryGetValue(strategy, out var strategyConfig))
         {
             _logger.LogError(
-                "Estratégia '{Strategy}' não encontrada em ValidatePassword. Usando Legado como fallback.",
+                "Estratégia '{Strategy}' não encontrada em ValidatePassword. Usando Legacy como fallback.",
                 strategy);
-            strategy = "Legado";
+            strategy = "Legacy";
             strategyConfig = _authSettings.Strategies[strategy];
         }
 
         switch (strategy)
         {
-            case "Legado":
+            case "Legacy":
                 // 1) Se já existe PasswordHash no usuário → SEMPRE usa BCrypt
                 if (!string.IsNullOrWhiteSpace(usuario.PasswordHash))
                 {
@@ -515,8 +664,8 @@ public sealed class AuthService : IAuthService
 
                 return BCryptNet.Verify(senha, userSecurity.PasswordHash);
 
-            case "WindowsAD":
-                _logger.LogWarning("Autenticação WindowsAD ainda não implementada.");
+            case "ADWin":
+                _logger.LogWarning("Autenticação ADWin ainda não implementada (FASE 3).");
                 return false;
 
             default:

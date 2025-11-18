@@ -1,18 +1,23 @@
-﻿namespace RhSensoERP.Identity.Application.DTOs.Auth;
+﻿// ============================================================================
+// ARQUIVO ALTERADO - SUBSTITUIR: src/Identity/Application/DTOs/Auth/LoginRequest.cs
+// ============================================================================
+
+namespace RhSensoERP.Identity.Application.DTOs.Auth;
 
 /// <summary>
 /// Request de login do usuário.
 /// </summary>
 public sealed class LoginRequest
 {
-    /// <summary>Código do usuário (cdusuario).</summary>
-    public string CdUsuario { get; init; } = string.Empty;
+    /// <summary>
+    /// ✅ ALTERADO - FASE 1: Identificador de login do usuário.
+    /// Pode ser email (modo SaaS) ou cdusuario (modo Legacy/ADWin).
+    /// O sistema determina automaticamente qual usar baseado no AuthMode do tenant.
+    /// </summary>
+    public string LoginIdentifier { get; init; } = string.Empty;
 
     /// <summary>Senha em texto plano.</summary>
     public string Senha { get; init; } = string.Empty;
-
-    /// <summary>Estratégia de autenticação (opcional, usa padrão do config se não informado).</summary>
-    public string? AuthStrategy { get; init; }
 
     /// <summary>Lembrar-me (refresh token com duração estendida).</summary>
     public bool RememberMe { get; init; }

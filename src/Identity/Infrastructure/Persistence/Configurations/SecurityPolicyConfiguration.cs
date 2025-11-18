@@ -1,4 +1,6 @@
-﻿// RhSensoERP.Identity/Infrastructure/Persistence/SecurityPolicyConfiguration.cs
+﻿// ============================================================================
+// ARQUIVO ALTERADO - SUBSTITUIR: src/Identity/Infrastructure/Persistence/Configurations/SecurityPolicyConfiguration.cs
+// ============================================================================
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -27,6 +29,12 @@ public class SecurityPolicyConfiguration : IEntityTypeConfiguration<SecurityPoli
         builder.Property(x => x.IdSaaS).IsRequired(false);
         builder.Property(x => x.PolicyName).HasMaxLength(100).IsRequired();
 
+        // ✅ NOVO - FASE 1: Modo de Autenticação
+        builder.Property(x => x.AuthMode)
+            .HasMaxLength(20)
+            .IsRequired(false)
+            .HasComment("Modo de autenticação: Legacy, SaaS, ADWin. NULL = usar configuração padrão do sistema.");
+
         builder.Property(x => x.PasswordMinLength).HasDefaultValue(8).IsRequired();
         builder.Property(x => x.PasswordRequireDigit).HasDefaultValue(true).IsRequired();
         builder.Property(x => x.PasswordRequireUppercase).HasDefaultValue(true).IsRequired();
@@ -50,7 +58,12 @@ public class SecurityPolicyConfiguration : IEntityTypeConfiguration<SecurityPoli
         builder.Property(x => x.CreatedAt).HasColumnType("datetime2(7)").HasDefaultValueSql("GETUTCDATE()").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime2(7)").HasDefaultValueSql("GETUTCDATE()").IsRequired();
 
-        // Seed Data
-        builder.HasData(new SecurityPolicy("DefaultGlobal", null));
+        // ✅ NOVO - FASE 1: Índice para AuthMode
+        builder.HasIndex(x => x.AuthMode)
+            .HasDatabaseName("IX_SEG_SecurityPolicy_AuthMode")
+            .HasFilter("[AuthMode] IS NOT NULL");
+
+        // Seed Data (comentado - usar migration separada para seed)
+        // builder.HasData(new SecurityPolicy("DefaultGlobal", null));
     }
 }

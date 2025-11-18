@@ -1,4 +1,6 @@
-﻿// RhSensoERP.Identity/Domain/Entities/SecurityPolicy.cs
+﻿// ============================================================================
+// ARQUIVO ALTERADO - SUBSTITUIR: src/Identity/Domain/Entities/SecurityPolicy.cs
+// ============================================================================
 
 namespace RhSensoERP.Identity.Domain.Entities;
 
@@ -15,6 +17,12 @@ public class SecurityPolicy
     public Guid Id { get; private set; }
     public Guid? IdSaaS { get; private set; }
     public string PolicyName { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// ✅ NOVO - FASE 1: Modo de autenticação: "Legacy", "SaaS", "ADWin".
+    /// Define qual estratégia de autenticação será usada para este tenant.
+    /// </summary>
+    public string? AuthMode { get; private set; }
 
     // ========================================
     // CONFIGURAÇÕES DE SENHA
@@ -123,6 +131,26 @@ public class SecurityPolicy
     public void SetActiveStatus(bool isActive)
     {
         IsActive = isActive;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// ✅ NOVO - FASE 1: Define o modo de autenticação para este tenant.
+    /// </summary>
+    /// <param name="authMode">Modo: "Legacy", "SaaS" ou "ADWin"</param>
+    /// <exception cref="ArgumentException">Quando o modo é inválido</exception>
+    public void SetAuthMode(string authMode)
+    {
+        var validModes = new[] { "Legacy", "SaaS", "ADWin" };
+
+        if (!string.IsNullOrWhiteSpace(authMode) && !validModes.Contains(authMode))
+        {
+            throw new ArgumentException(
+                $"AuthMode inválido: '{authMode}'. Valores válidos: {string.Join(", ", validModes)}",
+                nameof(authMode));
+        }
+
+        AuthMode = authMode;
         UpdatedAt = DateTime.UtcNow;
     }
 }

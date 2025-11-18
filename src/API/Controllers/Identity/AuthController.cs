@@ -40,7 +40,7 @@ public sealed class AuthController : ControllerBase
     /// <response code="504">Timeout na requisição</response>
     [HttpPost("login")]
     [AllowAnonymous]
-    [EnableRateLimiting("login")] 
+    [EnableRateLimiting("login")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -52,10 +52,9 @@ public sealed class AuthController : ControllerBase
         var userAgent = GetUserAgent();
 
         _logger.LogInformation(
-            "🔐 Tentativa de login: {CdUsuario} | IP: {IpAddress} | Strategy: {Strategy}",
-            request.CdUsuario,
-            ipAddress,
-            request.AuthStrategy ?? "Default");
+            "🔐 Tentativa de login: {LoginIdentifier} | IP: {IpAddress}",
+            request.LoginIdentifier,
+            ipAddress);
 
         try
         {
@@ -65,8 +64,8 @@ public sealed class AuthController : ControllerBase
             if (!result.IsSuccess)
             {
                 _logger.LogWarning(
-                    "❌ Falha no login: {CdUsuario} | Erro: {ErrorCode} - {ErrorMessage}",
-                    request.CdUsuario,
+                    "❌ Falha no login: {LoginIdentifier} | Erro: {ErrorCode} - {ErrorMessage}",
+                    request.LoginIdentifier,
                     result.Error.Code,
                     result.Error.Message);
 
@@ -83,15 +82,15 @@ public sealed class AuthController : ControllerBase
                 };
             }
 
-            _logger.LogInformation("✅ Login bem-sucedido: {CdUsuario}", request.CdUsuario);
+            _logger.LogInformation("✅ Login bem-sucedido: {LoginIdentifier}", request.LoginIdentifier);
 
             return Ok(result.Value);
         }
         catch (OperationCanceledException)
         {
             _logger.LogWarning(
-                "⏱️ Timeout/Cancelamento na requisição de login: {CdUsuario} | IP: {IpAddress}",
-                request.CdUsuario,
+                "⏱️ Timeout/Cancelamento na requisição de login: {LoginIdentifier} | IP: {IpAddress}",
+                request.LoginIdentifier,
                 ipAddress);
 
             return StatusCode(504, new
@@ -104,8 +103,8 @@ public sealed class AuthController : ControllerBase
         {
             _logger.LogError(
                 ex,
-                "💥 Erro inesperado no login: {CdUsuario} | IP: {IpAddress}",
-                request.CdUsuario,
+                "💥 Erro inesperado no login: {LoginIdentifier} | IP: {IpAddress}",
+                request.LoginIdentifier,
                 ipAddress);
 
             return StatusCode(500, new

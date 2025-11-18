@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RhSensoERP.API.Middleware;
 using RhSensoERP.Identity.Application;
 using RhSensoERP.Identity.Application.Configuration;
 using RhSensoERP.Identity.Infrastructure;
 using RhSensoERP.Modules.GestaoDePessoas;
+using RhSensoERP.Shared.Core.Abstractions;
 using RhSensoERP.Shared.Infrastructure;
+using RhSensoERP.Shared.Infrastructure.Services;
 using Serilog;
 using System.Text;
 
@@ -104,6 +107,9 @@ builder.Services.Configure<SecurityPolicySettings>(builder.Configuration.GetSect
 
 // Infraestrutura compartilhada (Audit, Base Repository, UnitOfWork)
 builder.Services.AddSharedInfrastructure();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantContext, TenantContext>();
 
 // Infraestrutura de Identity (ApplicationDbContext, Repositories)
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
@@ -470,6 +476,9 @@ app.UseCors("DefaultCorsPolicy");
 // Aplica as regras de limitação de taxa configuradas
 // Deve vir antes de Authentication para proteger o próprio endpoint de login
 app.UseRateLimiter();
+
+
+app.UseTenantResolution();
 
 // ====================================================================
 // AUTHENTICATION (VALIDA JWT TOKEN)

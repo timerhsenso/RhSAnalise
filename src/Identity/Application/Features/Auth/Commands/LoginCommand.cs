@@ -1,4 +1,11 @@
-﻿using FluentValidation;
+﻿// ============================================================================
+// ARQUIVO: src/Identity/Application/Features/Auth/Commands/LoginCommand.cs
+// AÇÃO: SUBSTITUIR COMPLETAMENTE
+// ============================================================================
+// CORREÇÃO FASE 1: Alterado CdUsuario para LoginIdentifier
+// ============================================================================
+
+using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using RhSensoERP.Identity.Application.DTOs.Auth;
@@ -36,8 +43,8 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
     {
         try
         {
-            // ✅ LOG: Início da validação
-            _logger.LogDebug("🔍 Iniciando validação do LoginRequest para {CdUsuario}", request.Request.CdUsuario);
+            // ✅ LOG: Início da validação (CORRIGIDO: LoginIdentifier)
+            _logger.LogDebug("🔍 Iniciando validação do LoginRequest para {LoginIdentifier}", request.Request.LoginIdentifier);
 
             // ✅ VALIDAÇÃO com timeout de 5 segundos
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -59,7 +66,8 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<A
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("⏱️ Timeout na validação de login para {CdUsuario}", request.Request.CdUsuario);
+            // ✅ LOG: Timeout (CORRIGIDO: LoginIdentifier)
+            _logger.LogWarning("⏱️ Timeout na validação de login para {LoginIdentifier}", request.Request.LoginIdentifier);
             return Result<AuthResponse>.Failure("TIMEOUT", "A requisição excedeu o tempo limite.");
         }
         catch (Exception ex)
