@@ -2,9 +2,11 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using RhSensoERP.Identity.Application.Services; // ✅ NOVO - FASE 3
 using RhSensoERP.Identity.Core.Interfaces.Repositories;
 using RhSensoERP.Identity.Infrastructure.Persistence;
 using RhSensoERP.Identity.Infrastructure.Repositories;
+using RhSensoERP.Identity.Infrastructure.Services; // ✅ NOVO - FASE 3
 using RhSensoERP.Shared.Core.Abstractions;
 using RhSensoERP.Shared.Infrastructure.Persistence.Interceptors;
 
@@ -44,6 +46,14 @@ public static class DependencyInjection
         services.AddScoped<IPermissaoRepository, PermissaoRepository>();
         services.AddScoped<ISistemaRepository, SistemaRepository>();
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<IdentityDbContext>());
+
+        // ==================== ACTIVE DIRECTORY - FASE 3 ====================
+        // Registrar configurações do AD
+        services.Configure<ActiveDirectorySettings>(
+            configuration.GetSection(ActiveDirectorySettings.SectionName));
+
+        // Registrar serviço de AD
+        services.AddScoped<IActiveDirectoryService, ActiveDirectoryService>();
 
         return services;
     }

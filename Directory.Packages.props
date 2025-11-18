@@ -54,6 +54,15 @@
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
 
     <!-- ========================================================= -->
+    <!--  Active Directory - FASE 3                                 -->
+    <!--  ✅ NOVO: Pacotes para autenticação AD/LDAP                -->
+    <!--  ⚠️ IMPORTANTE: Funcionam apenas em Windows!               -->
+    <!--  Para Linux, usar Novell.Directory.Ldap.NETStandard        -->
+    <!-- ========================================================= -->
+    <PackageVersion Include="System.DirectoryServices" Version="8.0.0" />
+    <PackageVersion Include="System.DirectoryServices.AccountManagement" Version="8.0.0" />
+
+    <!-- ========================================================= -->
     <!--  API Documentation                                          -->
     <!-- ========================================================= -->
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="9.0.6" />

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
 		<ProjectReference Include="..\Shared\Contracts\RhSensoERP.Shared.Contracts.csproj" />
@@ -13,6 +13,9 @@
 		<PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
 		<PackageReference Include="FluentValidation" />
 		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+		<!-- ✅ NOVO - FASE 3: Active Directory -->
+		<PackageReference Include="System.DirectoryServices" />
+		<PackageReference Include="System.DirectoryServices.AccountManagement" />
 	</ItemGroup>
 
 	<PropertyGroup>

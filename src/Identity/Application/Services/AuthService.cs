@@ -37,6 +37,7 @@ public sealed class AuthService : IAuthService
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ITenantContext _tenantContext; // ✅ NOVO - FASE 1
     private readonly IPermissaoService _permissaoService; // ✅ NOVO - FASE 2
+    private readonly IActiveDirectoryService _activeDirectoryService; // ✅ NOVO - FASE 3
     private readonly ILogger<AuthService> _logger;
     private readonly AuthSettings _authSettings;
     private readonly SecurityPolicySettings _securityPolicy;
@@ -48,6 +49,7 @@ public sealed class AuthService : IAuthService
         IDateTimeProvider dateTimeProvider,
         ITenantContext tenantContext, // ✅ NOVO - FASE 1
         IPermissaoService permissaoService, // ✅ NOVO - FASE 2
+        IActiveDirectoryService activeDirectoryService, // ✅ NOVO - FASE 3
         ILogger<AuthService> logger,
         IOptions<AuthSettings> authSettings,
         IOptions<SecurityPolicySettings> securityPolicy)
@@ -58,6 +60,7 @@ public sealed class AuthService : IAuthService
         _dateTimeProvider = dateTimeProvider;
         _tenantContext = tenantContext; // ✅ NOVO - FASE 1
         _permissaoService = permissaoService; // ✅ NOVO - FASE 2
+        _activeDirectoryService = activeDirectoryService; // ✅ NOVO - FASE 3
         _logger = logger;
         _authSettings = authSettings.Value;
         _securityPolicy = securityPolicy.Value;
@@ -719,8 +722,63 @@ public sealed class AuthService : IAuthService
                 return BCryptNet.Verify(senha, userSecurity.PasswordHash);
 
             case "ADWin":
-                _logger.LogWarning("Autenticação ADWin ainda não implementada (FASE 3).");
-                return false;
+                // ✅ FASE 3: Autenticação Active Directory
+                _logger.LogInformation("🔐 ADWIN: Iniciando autenticação Active Directory");
+
+                // Verificar se AD está disponível
+                if (!_activeDirectoryService.IsAvailable())
+                {
+                    _logger.LogWarning("⚠️ ADWIN: AD não está disponível, tentando fallback para senha local");
+
+                    // Fallback 1: Tentar SaaS
+                    if (userSecurity != null && !string.IsNullOrWhiteSpace(userSecurity.PasswordHash))
+                    {
+                        _logger.LogInformation("🔄 ADWIN: Tentando fallback para SAAS");
+                        return ValidatePassword(usuario, userSecurity, senha, "SaaS");
+                    }
+
+                    // Fallback 2: Tentar Legacy
+                    if (!string.IsNullOrWhiteSpace(usuario.PasswordHash))
+                    {
+                        _logger.LogInformation("🔄 ADWIN: Tentando fallback para LEGACY (PasswordHash)");
+                        return BCryptNet.Verify(senha, usuario.PasswordHash);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(usuario.SenhaUser))
+                    {
+                        _logger.LogInformation("🔄 ADWIN: Tentando fallback para LEGACY (SenhaUser)");
+                        return ConstantTimeEquals(senha, usuario.SenhaUser);
+                    }
+
+                    _logger.LogError("❌ ADWIN: AD indisponível e sem fallback configurado");
+                    return false;
+                }
+
+                // Autenticar no AD usando cdusuario (síncrono pois ValidatePassword é síncrono)
+                try
+                {
+                    var isAdValid = _activeDirectoryService.AuthenticateAsync(
+                        usuario.CdUsuario,
+                        senha,
+                        domain: null,
+                        CancellationToken.None).GetAwaiter().GetResult();
+
+                    if (isAdValid)
+                    {
+                        _logger.LogInformation("✅ ADWIN: Autenticação AD bem-sucedida para {CdUsuario}", usuario.CdUsuario);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("❌ ADWIN: Autenticação AD falhou para {CdUsuario}", usuario.CdUsuario);
+                    }
+
+                    return isAdValid;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ ADWIN: Erro ao autenticar no AD");
+                    return false;
+                }
 
             default:
                 return false;
