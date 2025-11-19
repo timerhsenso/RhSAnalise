@@ -10,6 +10,7 @@ using RhSensoERP.Identity.Infrastructure.Services; // ✅ NOVO - FASE 3
 using RhSensoERP.Shared.Core.Abstractions;
 using RhSensoERP.Shared.Infrastructure.Persistence.Interceptors;
 
+
 namespace RhSensoERP.Identity.Infrastructure;
 
 public static class DependencyInjection

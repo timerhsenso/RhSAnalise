@@ -4,6 +4,24 @@
         <name>RhSensoERP.API</name>
     </assembly>
     <members>
+        <member name="T:RhSensoERP.API.Authorization.RequirePermissionAttribute">
+            <summary>
+            Atributo de autorização customizado para verificar permissões legadas.
+            Verifica se o usuário tem permissão para executar uma ação em uma função.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Authorization.RequirePermissionAttribute.#ctor(System.String,System.Char)">
+            <summary>
+            Construtor do atributo de permissão.
+            </summary>
+            <param name="cdFuncao">Código da função (ex: "CADUSER")</param>
+            <param name="acao">Ação requerida: I=Incluir, A=Alterar, E=Excluir, C=Consultar</param>
+        </member>
+        <member name="T:RhSensoERP.API.Authorization.RequireIncluirAttribute">
+            <summary>
+            Atributos de atalho para ações comuns.
+            </summary>
+        </member>
         <member name="T:RhSensoERP.API.Configuration.ModuleGroupConvention">
             <summary>
             Define o ApiExplorer.GroupName automaticamente a partir do namespace do controller.
@@ -224,13 +242,13 @@
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.PermissoesController.GetPermissoes(System.String,System.String,System.Threading.CancellationToken)">
             <summary>
-            Obtém permissões efetivas (funções + botões) do usuário.
-            Permite filtrar opcionalmente por sistema específico.
+            Retorna todas as permissões (funções e botões) de um usuário,
+            opcionalmente filtrando por sistema.
             </summary>
-            <param name="cdUsuario">Código do usuário</param>
+            <param name="cdUsuario">Código do usuário legado (tuse1.cdusuario)</param>
             <param name="cdSistema">Código do sistema (opcional)</param>
             <param name="ct">Token de cancelamento</param>
-            <returns>Lista de permissões do usuário</returns>
+            <returns>DTO com permissões do usuário</returns>
         </member>
         <member name="T:RhSensoERP.API.Controllers.Identity.SistemasController">
             <summary>

@@ -15,16 +15,19 @@ public sealed class PermissoesController : ControllerBase
 {
     private readonly IPermissaoService _service;
 
-    public PermissoesController(IPermissaoService service) => _service = service;
+    public PermissoesController(IPermissaoService service)
+    {
+        _service = service;
+    }
 
     /// <summary>
-    /// Obtém permissões efetivas (funções + botões) do usuário.
-    /// Permite filtrar opcionalmente por sistema específico.
+    /// Retorna todas as permissões (funções e botões) de um usuário,
+    /// opcionalmente filtrando por sistema.
     /// </summary>
-    /// <param name="cdUsuario">Código do usuário</param>
+    /// <param name="cdUsuario">Código do usuário legado (tuse1.cdusuario)</param>
     /// <param name="cdSistema">Código do sistema (opcional)</param>
     /// <param name="ct">Token de cancelamento</param>
-    /// <returns>Lista de permissões do usuário</returns>
+    /// <returns>DTO com permissões do usuário</returns>
     [HttpGet("{cdUsuario}")]
     public async Task<IActionResult> GetPermissoes(
         [FromRoute] string cdUsuario,
@@ -34,7 +37,7 @@ public sealed class PermissoesController : ControllerBase
         if (string.IsNullOrWhiteSpace(cdUsuario))
             return BadRequest(new { error = "cdUsuario obrigatório." });
 
-        var result = await _service.GetPermissoesAsync(cdUsuario, cdSistema, ct);
+        var result = await _service.CarregarPermissoesAsync(cdUsuario, cdSistema, ct);
         return Ok(result);
     }
 }
