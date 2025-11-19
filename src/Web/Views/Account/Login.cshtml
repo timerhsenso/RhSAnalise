@@ -72,19 +72,6 @@
                     <span asp-validation-for="Senha" class="text-danger small"></span>
                 </div>
 
-                <!-- Estratégia de Autenticação (Opcional) -->
-                <div class="mb-3">
-                    <label asp-for="AuthStrategy" class="form-label">
-                        <i class="fas fa-shield-alt me-2"></i>Modo de Autenticação
-                    </label>
-                    <select asp-for="AuthStrategy" class="form-select">
-                        <option value="">Padrão (OnPrem)</option>
-                        <option value="OnPrem">OnPrem</option>
-                        <option value="SaaS">SaaS</option>
-                        <option value="WindowsAD">Windows AD</option>
-                    </select>
-                </div>
-
                 <!-- Manter Conectado -->
                 <div class="form-check mb-3">
                     <input asp-for="RememberMe" class="form-check-input" type="checkbox" />

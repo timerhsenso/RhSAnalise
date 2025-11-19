@@ -7,16 +7,17 @@ using RhSensoERP.Web.Models.Account;
 namespace RhSensoERP.Web.Services;
 
 /// <summary>
-/// Implementação do serviço de autenticação via API (VERSÃO MELHORADA COM LOGS DETALHADOS).
+/// Implementação do serviço de autenticação via API.
 /// </summary>
 public sealed class AuthApiService : IAuthApiService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<AuthApiService> _logger;
+
+    // ✅ FIX: Removido camelCase - API usa PascalCase
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNameCaseInsensitive = true
     };
 
     public AuthApiService(HttpClient httpClient, ILogger<AuthApiService> logger)
@@ -33,29 +34,29 @@ public sealed class AuthApiService : IAuthApiService
         try
         {
             _logger.LogInformation(
-                "🔐 [LOGIN] Iniciando autenticação para usuário: {CdUsuario} | Estratégia: {AuthStrategy}",
-                model.CdUsuario,
-                model.AuthStrategy ?? "Padrão");
+                "🔐 [LOGIN] Iniciando autenticação para usuário: {CdUsuario}",
+                model.CdUsuario);
 
+            // ✅ FIX: Removido AuthStrategy - API determina automaticamente
             var loginRequest = new
             {
-                cdUsuario = model.CdUsuario,
-                senha = model.Senha,
-                authStrategy = model.AuthStrategy
+                LoginIdentifier = model.CdUsuario,
+                Senha = model.Senha,
+                RememberMe = model.RememberMe
             };
 
             var jsonPayload = JsonSerializer.Serialize(loginRequest, JsonOptions);
+            _logger.LogDebug("📤 [LOGIN] Payload JSON: {Json}", jsonPayload);
+
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             var requestUrl = $"{_httpClient.BaseAddress}/api/identity/auth/login";
             _logger.LogInformation("📤 [LOGIN] Enviando requisição para: {Url}", requestUrl);
 
-            // Marca o tempo antes de enviar a requisição
             var requestStopwatch = Stopwatch.StartNew();
-
             var response = await _httpClient.PostAsync("/api/identity/auth/login", content, ct);
-
             requestStopwatch.Stop();
+
             _logger.LogInformation(
                 "⏱️ [LOGIN] Tempo de resposta da API: {ElapsedMs}ms | Status: {StatusCode}",
                 requestStopwatch.ElapsedMilliseconds,
@@ -135,10 +136,11 @@ public sealed class AuthApiService : IAuthApiService
         {
             _logger.LogInformation("🔄 [REFRESH] Iniciando renovação de tokens");
 
+            // ✅ FIX: PascalCase
             var refreshRequest = new
             {
-                accessToken,
-                refreshToken
+                AccessToken = accessToken,
+                RefreshToken = refreshToken
             };
 
             var content = new StringContent(
@@ -189,7 +191,8 @@ public sealed class AuthApiService : IAuthApiService
         {
             _logger.LogInformation("🚪 [LOGOUT] Iniciando logout");
 
-            var logoutRequest = new { refreshToken };
+            // ✅ FIX: PascalCase
+            var logoutRequest = new { RefreshToken = refreshToken };
 
             var content = new StringContent(
                 JsonSerializer.Serialize(logoutRequest, JsonOptions),
@@ -311,9 +314,9 @@ public sealed class AuthApiService : IAuthApiService
 
             _logger.LogInformation(
                 "✅ [PERMISSIONS] Permissões obtidas | Grupos: {GruposCount} | Funções: {FuncoesCount} | Botões: {BotoesCount}",
-                permissions?.Grupos.Count ?? 0,
-                permissions?.Funcoes.Count ?? 0,
-                permissions?.Botoes.Count ?? 0);
+                permissions?.Grupos?.Count ?? 0,
+                permissions?.Funcoes?.Count ?? 0,
+                permissions?.Botoes?.Count ?? 0);
 
             return permissions;
         }

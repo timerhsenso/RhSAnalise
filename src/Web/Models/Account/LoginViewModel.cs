@@ -23,12 +23,6 @@ public sealed class LoginViewModel
     public string Senha { get; set; } = string.Empty;
 
     /// <summary>
-    /// Estratégia de autenticação (OnPrem, SaaS, WindowsAD).
-    /// </summary>
-    [Display(Name = "Modo de Autenticação")]
-    public string? AuthStrategy { get; set; }
-
-    /// <summary>
     /// Manter conectado.
     /// </summary>
     [Display(Name = "Manter conectado")]
