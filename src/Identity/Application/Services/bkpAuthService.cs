@@ -29,7 +29,7 @@ namespace RhSensoERP.Identity.Application.Services;
 /// Implementação do serviço de autenticação com suporte a múltiplas estratégias.
 /// Responsável por login, refresh token, logout e validação de senhas.
 /// </summary>
-public sealed class AuthService : IAuthService
+public sealed class bkpAuthService : IAuthService
 {
     private readonly IdentityDbContext _db;
     private readonly IJwtService _jwtService;
@@ -38,11 +38,11 @@ public sealed class AuthService : IAuthService
     private readonly ITenantContext _tenantContext; // ✅ NOVO - FASE 1
     private readonly IPermissaoService _permissaoService; // ✅ NOVO - FASE 2
     private readonly IActiveDirectoryService _activeDirectoryService; // ✅ NOVO - FASE 3
-    private readonly ILogger<AuthService> _logger;
+    private readonly ILogger<bkpAuthService> _logger;
     private readonly AuthSettings _authSettings;
     private readonly SecurityPolicySettings _securityPolicy;
 
-    public AuthService(
+    public bkpAuthService(
         IdentityDbContext db,
         IJwtService jwtService,
         IMapper mapper,
@@ -50,7 +50,7 @@ public sealed class AuthService : IAuthService
         ITenantContext tenantContext, // ✅ NOVO - FASE 1
         IPermissaoService permissaoService, // ✅ NOVO - FASE 2
         IActiveDirectoryService activeDirectoryService, // ✅ NOVO - FASE 3
-        ILogger<AuthService> logger,
+        ILogger<bkpAuthService> logger,
         IOptions<AuthSettings> authSettings,
         IOptions<SecurityPolicySettings> securityPolicy)
     {
@@ -78,7 +78,7 @@ public sealed class AuthService : IAuthService
             _logger.LogWarning(
                 "⚠️ INICIALIZAÇÃO: AuthSettings.Strategies vazio. Criando configurações padrão.");
 
-            _authSettings.Strategies["Legacy"] = new StrategyConfig
+            _authSettings.Strategies["Legado"] = new StrategyConfig
             {
                 Enabled = true,
                 UseBCrypt = false,
@@ -118,7 +118,7 @@ public sealed class AuthService : IAuthService
 
         if (string.IsNullOrWhiteSpace(_authSettings.DefaultStrategy))
         {
-            _authSettings.DefaultStrategy = "Legacy";
+            _authSettings.DefaultStrategy = "Legado";
             _logger.LogWarning(
                 "⚠️ INICIALIZAÇÃO: DefaultStrategy vazio. Definido como '{DefaultStrategy}'",
                 _authSettings.DefaultStrategy);
@@ -127,7 +127,7 @@ public sealed class AuthService : IAuthService
         if (!_authSettings.Strategies.ContainsKey(_authSettings.DefaultStrategy))
         {
             var firstEnabled = _authSettings.Strategies
-                .FirstOrDefault(s => s.Value.Enabled).Key ?? "Legacy";
+                .FirstOrDefault(s => s.Value.Enabled).Key ?? "Legado";
 
             _logger.LogWarning(
                 "⚠️ INICIALIZAÇÃO: DefaultStrategy '{DefaultStrategy}' não encontrada. Usando '{Fallback}'",
@@ -466,9 +466,9 @@ public sealed class AuthService : IAuthService
                     .FirstOrDefaultAsync(u => u.Email_Usuario == loginIdentifier, ct);
                 break;
 
-            case "Legacy":
+            case "Legado":
                 // Legacy: buscar por cdusuario OU email
-                _logger.LogDebug("🔍 Buscando usuário por CDUSUARIO ou EMAIL (modo Legacy): {Identifier}", loginIdentifier);
+                _logger.LogDebug("🔍 Buscando usuário por CDUSUARIO ou EMAIL (modo Legado): {Identifier}", loginIdentifier);
                 usuario = await _db.Usuarios
                     .AsNoTracking()
                     .FirstOrDefaultAsync(u =>
@@ -525,6 +525,8 @@ public sealed class AuthService : IAuthService
             var userSecurity = await _db.Set<UserSecurity>()
                 // Usuario será buscado separadamente
                 .FirstOrDefaultAsync(us => us.RefreshTokens.Any(rt => rt.TokenHash == request.RefreshToken), ct);
+
+
 
             // Buscar usuário associado ao UserSecurity
             if (userSecurity == null)
@@ -684,111 +686,41 @@ public sealed class AuthService : IAuthService
         string senha,
         string strategy)
     {
-        // ✅ NOVO: Flag para desenvolvimento
-        bool isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
-
-        if (isDevelopment)
-        {
-            _logger.LogDebug("🔐 [DEBUG] ValidatePassword INICIADO");
-            _logger.LogDebug("🔐 [DEBUG] Strategy: {Strategy}, User: {Usuario}", strategy, usuario.CdUsuario);
-            _logger.LogDebug("🔐 [DEBUG] Campos senha - PasswordHash: {PasswordHash}, SenhaUser: {SenhaUser}",
-                !string.IsNullOrEmpty(usuario.PasswordHash) ? "PRESENTE" : "AUSENTE",
-                !string.IsNullOrEmpty(usuario.SenhaUser) ? "PRESENTE" : "AUSENTE");
-        }
-
         if (!_authSettings.Strategies.TryGetValue(strategy, out var strategyConfig))
         {
             _logger.LogError(
                 "Estratégia '{Strategy}' não encontrada em ValidatePassword. Usando Legacy como fallback.",
                 strategy);
-            strategy = "Legacy";
+            strategy = "Legado";
             strategyConfig = _authSettings.Strategies[strategy];
         }
 
         switch (strategy)
         {
-            case "Legacy":
-                if (isDevelopment)
-                {
-                    _logger.LogDebug("🔐 [DEBUG] Modo Legacy - Iniciando validação");
-                }
-
+            case "Legado":
                 // 1) Se já existe PasswordHash no usuário → SEMPRE usa BCrypt
                 if (!string.IsNullOrWhiteSpace(usuario.PasswordHash))
                 {
-                    if (isDevelopment)
-                    {
-                        _logger.LogDebug("🔐 [DEBUG] Usando PasswordHash (BCrypt)");
-                        _logger.LogDebug("🔐 [DEBUG] Senha fornecida: {SenhaFornecida}", senha);
-                        _logger.LogDebug("🔐 [DEBUG] Hash armazenado: {Hash}", usuario.PasswordHash);
-                    }
-
-                    var result = BCryptNet.Verify(senha, usuario.PasswordHash);
-
-                    if (isDevelopment)
-                    {
-                        _logger.LogDebug("🔐 [DEBUG] Resultado BCrypt: {Resultado}", result ? "VÁLIDO" : "INVÁLIDO");
-                    }
-
-                    return result;
+                    return BCryptNet.Verify(senha, usuario.PasswordHash);
                 }
 
                 // 2) Se ainda está no modo legado (SenhaUser em texto)
                 if (!string.IsNullOrWhiteSpace(usuario.SenhaUser))
                 {
-                    if (isDevelopment)
-                    {
-                        _logger.LogDebug("🔐 [DEBUG] Usando SenhaUser (texto plano)");
-                        _logger.LogDebug("🔐 [DEBUG] Senha fornecida: {SenhaFornecida}", senha);
-                        _logger.LogDebug("🔐 [DEBUG] Senha armazenada: {SenhaArmazenada}", usuario.SenhaUser);
-                        _logger.LogDebug("🔐 [DEBUG] Comparação em tempo constante");
-                    }
-
-                    var result = ConstantTimeEquals(senha, usuario.SenhaUser);
-
-                    if (isDevelopment)
-                    {
-                        _logger.LogDebug("🔐 [DEBUG] Resultado comparação: {Resultado}", result ? "VÁLIDO" : "INVÁLIDO");
-                    }
-
-                    return result;
+                    // Provisório: comparação em tempo constante para reduzir superfície de ataque
+                    // Ideal: migrar para BCrypt no primeiro login bem-sucedido
+                    return ConstantTimeEquals(senha, usuario.SenhaUser);
                 }
 
-                if (isDevelopment)
-                {
-                    _logger.LogDebug("🔐 [DEBUG] NENHUM método de senha disponível");
-                }
                 return false;
 
             case "SaaS":
-                if (isDevelopment)
-                {
-                    _logger.LogDebug("🔐 [DEBUG] Modo SaaS - Validando com UserSecurity.PasswordHash");
-                }
-
                 if (userSecurity == null || string.IsNullOrWhiteSpace(userSecurity.PasswordHash))
                 {
-                    if (isDevelopment)
-                    {
-                        _logger.LogDebug("🔐 [DEBUG] UserSecurity ou PasswordHash não encontrado");
-                    }
                     return false;
                 }
 
-                if (isDevelopment)
-                {
-                    _logger.LogDebug("🔐 [DEBUG] Senha fornecida: {SenhaFornecida}", senha);
-                    _logger.LogDebug("🔐 [DEBUG] Hash UserSecurity: {Hash}", userSecurity.PasswordHash);
-                }
-
-                var resultSaaS = BCryptNet.Verify(senha, userSecurity.PasswordHash);
-
-                if (isDevelopment)
-                {
-                    _logger.LogDebug("🔐 [DEBUG] Resultado SaaS BCrypt: {Resultado}", resultSaaS ? "VÁLIDO" : "INVÁLIDO");
-                }
-
-                return resultSaaS;
+                return BCryptNet.Verify(senha, userSecurity.PasswordHash);
 
             case "ADWin":
                 // ✅ FASE 3: Autenticação Active Directory

@@ -37,7 +37,7 @@ public static class DependencyInjection
         // ==================== APPLICATION SERVICES ====================
         services.AddScoped<IUsuarioService, UsuarioService>();
         services.AddScoped<IPermissaoService, PermissaoService>();
-        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IAuthService, bkpAuthService>();
         services.AddScoped<IJwtService, JwtService>();
 
         return services;
