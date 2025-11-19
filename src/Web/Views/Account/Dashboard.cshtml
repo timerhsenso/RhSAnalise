@@ -1,0 +1,338 @@
+@model RhSensoERP.Web.Models.Account.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard - Permissões do Usuário";
+}
+
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-tachometer-alt me-2 text-primary"></i>
+                        Dashboard de Permissões
+                    </h2>
+                    <p class="text-muted mb-0">Visualize suas informações e habilitações no sistema</p>
+                </div>
+                <div>
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-home me-2"></i>Voltar ao Início
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerta de Erro -->
+    @if (Model.HasPermissionsError)
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Atenção:</strong> @Model.ErrorMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Seção 1: Informações do Usuário -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-circle me-2"></i>
+                        Informações do Usuário
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <label class="text-muted small fw-bold">Código do Usuário</label>
+                            <p class="mb-0">@Model.UserInfo.CdUsuario</p>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <label class="text-muted small fw-bold">Nome/Descrição</label>
+                            <p class="mb-0">@Model.UserInfo.DcUsuario</p>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <label class="text-muted small fw-bold">Email</label>
+                            <p class="mb-0">@(Model.UserInfo.Email ?? "-")</p>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <label class="text-muted small fw-bold">Matrícula</label>
+                            <p class="mb-0">@(Model.UserInfo.NoMatric ?? "-")</p>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <label class="text-muted small fw-bold">Código da Empresa</label>
+                            <p class="mb-0">@(Model.UserInfo.CdEmpresa?.ToString() ?? "-")</p>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <label class="text-muted small fw-bold">Código da Filial</label>
+                            <p class="mb-0">@(Model.UserInfo.CdFilial?.ToString() ?? "-")</p>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <label class="text-muted small fw-bold">Autenticação 2FA</label>
+                            <p class="mb-0">
+                                @if (Model.UserInfo.TwoFactorEnabled)
+                                {
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle me-1"></i>Ativado
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-times-circle me-1"></i>Desativado
+                                    </span>
+                                }
+                            </p>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <label class="text-muted small fw-bold">Alterar Senha</label>
+                            <p class="mb-0">
+                                @if (Model.UserInfo.MustChangePassword)
+                                {
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Obrigatório
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle me-1"></i>Não Obrigatório
+                                    </span>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção 2: Grupos do Usuário -->
+    @if (Model.Permissions.Grupos.Any())
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>
+                            Grupos de Usuário
+                            <span class="badge bg-light text-dark ms-2">@Model.Permissions.Grupos.Count</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Código do Grupo</th>
+                                        <th>Descrição</th>
+                                        <th>Sistema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var grupo in Model.Permissions.Grupos)
+                                    {
+                                        <tr>
+                                            <td><strong>@grupo.CdGrUser</strong></td>
+                                            <td>@(grupo.DcGrUser ?? "-")</td>
+                                            <td>
+                                                <span class="badge bg-secondary">@grupo.CdSistema</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Seção 3: Funções e Permissões -->
+    @if (Model.Permissions.Funcoes.Any())
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-key me-2"></i>
+                            Funções e Permissões
+                            <span class="badge bg-light text-dark ms-2">@Model.Permissions.Funcoes.Count</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <input type="text" id="searchFuncao" class="form-control" placeholder="🔍 Buscar função ou descrição...">
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0" id="funcoesTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Descrição</th>
+                                        <th>Sistema</th>
+                                        <th class="text-center">Incluir</th>
+                                        <th class="text-center">Alterar</th>
+                                        <th class="text-center">Excluir</th>
+                                        <th class="text-center">Consultar</th>
+                                        <th class="text-center">Restrição</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var funcao in Model.Permissions.Funcoes.OrderBy(f => f.CdSistema).ThenBy(f => f.CdFuncao))
+                                    {
+                                        <tr>
+                                            <td><strong>@funcao.CdFuncao</strong></td>
+                                            <td>@(funcao.DcFuncao ?? "-")</td>
+                                            <td>
+                                                <span class="badge bg-secondary">@funcao.CdSistema</span>
+                                            </td>
+                                            <td class="text-center">
+                                                @if (funcao.PodeIncluir)
+                                                {
+                                                    <i class="fas fa-check-circle text-success" title="Permitido"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fas fa-times-circle text-danger" title="Negado"></i>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                @if (funcao.PodeAlterar)
+                                                {
+                                                    <i class="fas fa-check-circle text-success" title="Permitido"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fas fa-times-circle text-danger" title="Negado"></i>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                @if (funcao.PodeExcluir)
+                                                {
+                                                    <i class="fas fa-check-circle text-success" title="Permitido"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fas fa-times-circle text-danger" title="Negado"></i>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                @if (funcao.PodeConsultar)
+                                                {
+                                                    <i class="fas fa-check-circle text-success" title="Permitido"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fas fa-times-circle text-danger" title="Negado"></i>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-warning text-dark">@funcao.CdRestric</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Seção 4: Botões Permitidos -->
+    @if (Model.Permissions.Botoes.Any())
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="fas fa-mouse-pointer me-2"></i>
+                            Botões Permitidos
+                            <span class="badge bg-dark ms-2">@Model.Permissions.Botoes.Count</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Função</th>
+                                        <th>Código do Botão</th>
+                                        <th>Descrição</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var botao in Model.Permissions.Botoes.OrderBy(b => b.CdFuncao).ThenBy(b => b.CdBotao))
+                                    {
+                                        <tr>
+                                            <td><strong>@botao.CdFuncao</strong></td>
+                                            <td><code>@botao.CdBotao</code></td>
+                                            <td>@(botao.DcBotao ?? "-")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Mensagem quando não há permissões -->
+    @if (!Model.Permissions.Grupos.Any() && !Model.Permissions.Funcoes.Any() && !Model.Permissions.Botoes.Any() && !Model.HasPermissionsError)
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info text-center" role="alert">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <h5>Nenhuma permissão encontrada</h5>
+                    <p class="mb-0">Este usuário ainda não possui grupos, funções ou botões atribuídos.</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Busca em tempo real na tabela de funções
+        document.getElementById('searchFuncao')?.addEventListener('keyup', function() {
+            const filter = this.value.toLowerCase();
+            const table = document.getElementById('funcoesTable');
+            const rows = table?.getElementsByTagName('tr');
+
+            if (!rows) return;
+
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                let found = false;
+
+                for (let j = 0; j < 3; j++) { // Busca nas 3 primeiras colunas (Código, Descrição, Sistema)
+                    if (cells[j]) {
+                        const text = cells[j].textContent || cells[j].innerText;
+                        if (text.toLowerCase().indexOf(filter) > -1) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                rows[i].style.display = found ? '' : 'none';
+            }
+        });
+    </script>
+}

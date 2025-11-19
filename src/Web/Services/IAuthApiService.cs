@@ -26,6 +26,11 @@ public interface IAuthApiService
     /// Obtém informações do usuário autenticado.
     /// </summary>
     Task<UserInfoViewModel?> GetCurrentUserAsync(string accessToken, CancellationToken ct = default);
+
+    /// <summary>
+    /// Obtém permissões do usuário.
+    /// </summary>
+    Task<UserPermissionsViewModel?> GetUserPermissionsAsync(string cdUsuario, string? cdSistema = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -40,12 +45,18 @@ public sealed class AuthApiResponse
 }
 
 /// <summary>
-/// Dados do usuário na resposta de login.
+/// Dados do usuário na resposta de login (mapeado do UserInfoDto da API).
 /// </summary>
 public sealed class UserInfoData
 {
+    public Guid Id { get; set; }
     public string CdUsuario { get; set; } = string.Empty;
-    public string NmUsuario { get; set; } = string.Empty;
+    public string DcUsuario { get; set; } = string.Empty;
     public string? Email { get; set; }
-    public string? NmFuncionario { get; set; }
+    public string? NoMatric { get; set; }
+    public int? CdEmpresa { get; set; }
+    public int? CdFilial { get; set; }
+    public Guid? TenantId { get; set; }
+    public bool TwoFactorEnabled { get; set; }
+    public bool MustChangePassword { get; set; }
 }

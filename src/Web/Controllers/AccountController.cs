@@ -69,13 +69,35 @@ public sealed class AccountController : Controller
             // Cria as claims do usuário
             var claims = new List<Claim>
             {
-                new(ClaimTypes.NameIdentifier, authResponse.User?.CdUsuario ?? model.CdUsuario),
-                new(ClaimTypes.Name, authResponse.User?.NmUsuario ?? model.CdUsuario),
+                new(ClaimTypes.NameIdentifier, authResponse.User?.Id.ToString() ?? Guid.Empty.ToString()),
+                new(ClaimTypes.Name, authResponse.User?.DcUsuario ?? model.CdUsuario),
                 new("cdusuario", authResponse.User?.CdUsuario ?? model.CdUsuario),
+                new("dcusuario", authResponse.User?.DcUsuario ?? model.CdUsuario),
                 new("AccessToken", authResponse.AccessToken),
                 new("RefreshToken", authResponse.RefreshToken),
                 new("TokenExpiry", authResponse.ExpiresAt.ToString("O"))
             };
+
+            // Adiciona claims opcionais
+            if (authResponse.User?.NoMatric != null)
+            {
+                claims.Add(new Claim("nomatric", authResponse.User.NoMatric));
+            }
+
+            if (authResponse.User?.CdEmpresa != null)
+            {
+                claims.Add(new Claim("cdempresa", authResponse.User.CdEmpresa.ToString()!));
+            }
+
+            if (authResponse.User?.CdFilial != null)
+            {
+                claims.Add(new Claim("cdfilial", authResponse.User.CdFilial.ToString()!));
+            }
+
+            if (authResponse.User?.TenantId != null)
+            {
+                claims.Add(new Claim("tenantid", authResponse.User.TenantId.ToString()!));
+            }
 
             if (!string.IsNullOrWhiteSpace(authResponse.User?.Email))
             {
@@ -149,6 +171,53 @@ public sealed class AccountController : Controller
     {
         ViewData["ReturnUrl"] = returnUrl;
         return View();
+    }
+
+    /// <summary>
+    /// Dashboard com informações e permissões do usuário.
+    /// </summary>
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> Dashboard(CancellationToken ct)
+    {
+        try
+        {
+            var accessToken = User.FindFirstValue("AccessToken");
+            var cdUsuario = User.FindFirstValue("cdusuario");
+
+            if (string.IsNullOrWhiteSpace(accessToken) || string.IsNullOrWhiteSpace(cdUsuario))
+            {
+                _logger.LogWarning("Token ou código de usuário não encontrado nas claims");
+                return RedirectToAction(nameof(Login));
+            }
+
+            // Busca informações do usuário
+            var userInfo = await _authApiService.GetCurrentUserAsync(accessToken, ct);
+
+            if (userInfo == null)
+            {
+                _logger.LogWarning("Não foi possível obter informações do usuário: {CdUsuario}", cdUsuario);
+                return RedirectToAction(nameof(Login));
+            }
+
+            // Busca permissões do usuário
+            var permissions = await _authApiService.GetUserPermissionsAsync(cdUsuario, null, ct);
+
+            var viewModel = new DashboardViewModel
+            {
+                UserInfo = userInfo,
+                Permissions = permissions ?? new UserPermissionsViewModel(),
+                HasPermissionsError = permissions == null,
+                ErrorMessage = permissions == null ? "Não foi possível carregar as permissões do usuário." : null
+            };
+
+            return View(viewModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao carregar dashboard do usuário");
+            return RedirectToAction("Error", "Home");
+        }
     }
 
     // ========================================
