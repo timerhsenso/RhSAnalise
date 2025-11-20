@@ -47,36 +47,42 @@
             <summary>
             Controller para diagnósticos e testes do sistema.
             ✅ FASE 1: Protegido com [Authorize(Roles = "Admin")] e oculto do Swagger em Release
+            ✅ FASE 2: Adicionado rate limiting específico
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestDatabaseAsync(System.Threading.CancellationToken)">
             <summary>
             Testa a conexão com o banco de dados.
             ✅ FASE 1: Desabilitado em produção por segurança
+            ✅ FASE 2: Rate limiting aplicado
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestSqlLogging(System.Threading.CancellationToken)">
             <summary>
             Testa o SqlLoggingInterceptor com queries variadas.
             ✅ FASE 1: Desabilitado em produção por segurança
+            ✅ FASE 2: Rate limiting aplicado
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestSlowQuery(System.Threading.CancellationToken)">
             <summary>
             Testa query lenta (vai gerar warning de performance).
             ✅ FASE 1: Substituído WAITFOR DELAY por Task.Delay (boa prática)
+            ✅ FASE 2: Rate limiting aplicado
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestWriteOperations(System.Threading.CancellationToken)">
             <summary>
             Testa INSERT/UPDATE/DELETE (non-query commands).
             ✅ FASE 1: Desabilitado em produção por segurança
+            ✅ FASE 2: Rate limiting aplicado
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.GetSqlLoggingConfig">
             <summary>
             Retorna a configuração atual do SqlLogging.
             ✅ FASE 1: Desabilitado em produção por segurança
+            ✅ FASE 2: Rate limiting aplicado
             </summary>
         </member>
         <member name="T:RhSensoERP.API.Controllers.SqlLoggingOptions">
@@ -308,6 +314,29 @@
             <param name="ct">Token de cancelamento</param>
             <returns>Lista de usuários encontrados</returns>
         </member>
+        <member name="T:RhSensoERP.API.Controllers.SecurityMetricsController">
+            <summary>
+            Controller para métricas de segurança do sistema.
+            ✅ FASE 2: Protegido com rate limiting e desabilitado em produção
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.SecurityMetricsController.GetMetrics(System.Threading.CancellationToken)">
+            <summary>
+            Retorna métricas de segurança do sistema.
+            ✅ FASE 2: Desabilitado em produção por segurança
+            </summary>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Métricas de segurança</returns>
+            <response code="200">Métricas retornadas com sucesso</response>
+            <response code="401">Não autorizado</response>
+            <response code="403">Acesso negado ou desabilitado em produção</response>
+            <response code="429">Limite de requisições excedido</response>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.SecurityMetricsController.CalculateSuccessRate(System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Calcula a taxa de sucesso de login.
+            </summary>
+        </member>
         <member name="T:RhSensoERP.API.Controllers.SwaggerTestController">
             <summary>
             Controller de teste para validar configuração do Swagger e detectar problemas.
@@ -384,6 +413,12 @@
         <member name="T:RhSensoERP.API.SecretsConfig">
             <summary>
             Classe marcadora para User Secrets
+            </summary>
+        </member>
+        <member name="T:RateLimitingConfiguration">
+            <summary>
+            Configuração de Rate Limiting para proteção contra abuse.
+            ✅ FASE 2: Adicionada política específica para diagnósticos
             </summary>
         </member>
     </members>

@@ -1,7 +1,8 @@
-﻿// src/API/Controllers/DiagnosticsController.cs
+// src/API/Controllers/DiagnosticsController.cs
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using RhSensoERP.Identity.Domain.Entities;
 using RhSensoERP.Identity.Infrastructure.Persistence;
@@ -11,10 +12,12 @@ namespace RhSensoERP.API.Controllers;
 /// <summary>
 /// Controller para diagnósticos e testes do sistema.
 /// ✅ FASE 1: Protegido com [Authorize(Roles = "Admin")] e oculto do Swagger em Release
+/// ✅ FASE 2: Adicionado rate limiting específico
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "Admin")] // ✅ FASE 1: Apenas administradores podem acessar
+[EnableRateLimiting("diagnostics")] // ✅ FASE 2: Rate limiting específico
 #if !DEBUG
 [ApiExplorerSettings(IgnoreApi = true)] // ✅ FASE 1: Oculta do Swagger em Release
 #endif
@@ -40,8 +43,13 @@ public class DiagnosticsController : ControllerBase
     /// <summary>
     /// Testa a conexão com o banco de dados.
     /// ✅ FASE 1: Desabilitado em produção por segurança
+    /// ✅ FASE 2: Rate limiting aplicado
     /// </summary>
     [HttpGet("database")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> TestDatabaseAsync(CancellationToken ct)
     {
         // ✅ FASE 1: Desabilitar em produção
@@ -92,8 +100,13 @@ public class DiagnosticsController : ControllerBase
     /// <summary>
     /// Testa o SqlLoggingInterceptor com queries variadas.
     /// ✅ FASE 1: Desabilitado em produção por segurança
+    /// ✅ FASE 2: Rate limiting aplicado
     /// </summary>
     [HttpGet("test-sql-logging")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> TestSqlLogging(CancellationToken ct)
     {
         // ✅ FASE 1: Desabilitar em produção
@@ -182,8 +195,13 @@ public class DiagnosticsController : ControllerBase
     /// <summary>
     /// Testa query lenta (vai gerar warning de performance).
     /// ✅ FASE 1: Substituído WAITFOR DELAY por Task.Delay (boa prática)
+    /// ✅ FASE 2: Rate limiting aplicado
     /// </summary>
     [HttpGet("test-slow-query")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> TestSlowQuery(CancellationToken ct)
     {
         // ✅ FASE 1: Desabilitar em produção
@@ -229,8 +247,14 @@ public class DiagnosticsController : ControllerBase
     /// <summary>
     /// Testa INSERT/UPDATE/DELETE (non-query commands).
     /// ✅ FASE 1: Desabilitado em produção por segurança
+    /// ✅ FASE 2: Rate limiting aplicado
     /// </summary>
     [HttpPost("test-write-operations")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> TestWriteOperations(CancellationToken ct)
     {
         // ✅ FASE 1: Desabilitar em produção
@@ -328,8 +352,12 @@ public class DiagnosticsController : ControllerBase
     /// <summary>
     /// Retorna a configuração atual do SqlLogging.
     /// ✅ FASE 1: Desabilitado em produção por segurança
+    /// ✅ FASE 2: Rate limiting aplicado
     /// </summary>
     [HttpGet("sql-logging-config")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public IActionResult GetSqlLoggingConfig()
     {
         // ✅ FASE 1: Desabilitar em produção
