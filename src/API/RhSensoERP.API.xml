@@ -46,31 +46,37 @@
         <member name="T:RhSensoERP.API.Controllers.DiagnosticsController">
             <summary>
             Controller para diagnósticos e testes do sistema.
+            ✅ FASE 1: Protegido com [Authorize(Roles = "Admin")] e oculto do Swagger em Release
             </summary>
         </member>
-        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestDatabaseAsync">
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestDatabaseAsync(System.Threading.CancellationToken)">
             <summary>
             Testa a conexão com o banco de dados.
+            ✅ FASE 1: Desabilitado em produção por segurança
             </summary>
         </member>
-        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestSqlLogging">
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestSqlLogging(System.Threading.CancellationToken)">
             <summary>
             Testa o SqlLoggingInterceptor com queries variadas.
+            ✅ FASE 1: Desabilitado em produção por segurança
             </summary>
         </member>
-        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestSlowQuery">
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestSlowQuery(System.Threading.CancellationToken)">
             <summary>
             Testa query lenta (vai gerar warning de performance).
+            ✅ FASE 1: Substituído WAITFOR DELAY por Task.Delay (boa prática)
             </summary>
         </member>
-        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestWriteOperations">
+        <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.TestWriteOperations(System.Threading.CancellationToken)">
             <summary>
             Testa INSERT/UPDATE/DELETE (non-query commands).
+            ✅ FASE 1: Desabilitado em produção por segurança
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.DiagnosticsController.GetSqlLoggingConfig">
             <summary>
             Retorna a configuração atual do SqlLogging.
+            ✅ FASE 1: Desabilitado em produção por segurança
             </summary>
         </member>
         <member name="T:RhSensoERP.API.Controllers.SqlLoggingOptions">

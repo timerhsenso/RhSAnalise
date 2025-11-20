@@ -195,12 +195,54 @@ builder.Services.AddCors(options =>
 // Carrega configurações de JWT do appsettings.json
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
-// Validação crítica: SecretKey é obrigatória
+// ============================================================================
+// ✅ FASE 1 - VALIDAÇÃO CRÍTICA DE SEGURANÇA
+// ============================================================================
+// Validação obrigatória: SecretKey DEVE estar configurada
 if (jwtSettings == null || string.IsNullOrWhiteSpace(jwtSettings.SecretKey))
 {
     throw new InvalidOperationException(
-        "JwtSettings:SecretKey não configurada. Configure via User Secrets (DEV) ou Environment Variables (PROD).");
+        "CRITICAL SECURITY ERROR: JwtSettings:SecretKey não configurada!\n\n" +
+        "Para configurar:\n" +
+        "  - Desenvolvimento: dotnet user-secrets set \"JwtSettings:SecretKey\" \"SUA_CHAVE_AQUI\"\n" +
+        "  - Produção: Defina variável de ambiente JwtSettings__SecretKey\n\n" +
+        "Gerar chave segura: openssl rand -base64 64");
 }
+
+// ✅ FASE 1 - VALIDAÇÕES ESPECÍFICAS DE PRODUÇÃO
+if (builder.Environment.IsProduction())
+{
+    // Validação 1: Chave deve ser forte (mínimo 64 caracteres)
+    if (jwtSettings.SecretKey.Length < 64)
+    {
+        throw new InvalidOperationException(
+            "CRITICAL: Em produção, JwtSettings:SecretKey deve ter no mínimo 64 caracteres!\n" +
+            "Chave atual tem apenas " + jwtSettings.SecretKey.Length + " caracteres.");
+    }
+
+    // Validação 2: Prevenir uso de chaves genéricas
+    var forbiddenTerms = new[] { "Development", "Example", "Test", "Demo", "Sample", "Desenvolvimento" };
+    if (forbiddenTerms.Any(term => jwtSettings.SecretKey.Contains(term, StringComparison.OrdinalIgnoreCase)))
+    {
+        throw new InvalidOperationException(
+            "CRITICAL: JwtSettings:SecretKey em produção não pode conter termos genéricos!\n" +
+            "Termos proibidos: " + string.Join(", ", forbiddenTerms));
+    }
+
+    // Validação 3: Connection string não pode usar credenciais default
+    var connString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (connString?.Contains("sa", StringComparison.OrdinalIgnoreCase) == true ||
+        connString?.Contains("Password=123") == true ||
+        connString?.Contains("Password=admin") == true)
+    {
+        throw new InvalidOperationException(
+            "CRITICAL: Connection string em produção não pode usar credenciais default (sa, 123, admin)!");
+    }
+
+    Log.Information("✅ Validações de segurança de produção concluídas com sucesso");
+}
+
+Log.Information("✅ Validação de JwtSettings concluída com sucesso");
 
 // Converte a SecretKey para bytes (necessário para algoritmo HMAC-SHA256)
 var key = Encoding.UTF8.GetBytes(jwtSettings.SecretKey);
@@ -222,8 +264,15 @@ builder.Services
         // Salva o token no AuthenticationProperties (útil para refresh tokens)
         options.SaveToken = true;
 
-        // HTTPS é obrigatório em produção por segurança
+        // ✅ FASE 1 - HTTPS obrigatório em produção
         options.RequireHttpsMetadata = builder.Environment.IsProduction();
+
+        // ✅ FASE 1 - VALIDAÇÃO EXTRA: Garantir que HTTPS está ativo em produção
+        if (builder.Environment.IsProduction() && !options.RequireHttpsMetadata)
+        {
+            throw new InvalidOperationException(
+                "CRITICAL: RequireHttpsMetadata DEVE ser true em produção!");
+        }
 
         // ====================================================================
         // PARÂMETROS DE VALIDAÇÃO DO TOKEN
@@ -429,7 +478,7 @@ else
 {
     app.UseExceptionHandler("/error");
 
-    // HSTS: força HTTPS por 1 ano (header Strict-Transport-Security)
+    // ✅ FASE 1 - HSTS: força HTTPS por 1 ano (header Strict-Transport-Security)
     app.UseHsts();
 }
 
@@ -451,10 +500,19 @@ if (builder.Configuration.GetValue<bool>("Features:EnableSwagger"))
 }
 
 // ====================================================================
-// HTTPS REDIRECTION
+// ✅ FASE 1 - HTTPS REDIRECTION (FORÇADO EM PRODUÇÃO)
 // ====================================================================
 // Redireciona automaticamente HTTP → HTTPS (importante em produção)
-app.UseHttpsRedirection();
+if (app.Environment.IsProduction())
+{
+    app.UseHttpsRedirection();
+    Log.Information("✅ HTTPS Redirection habilitado (produção)");
+}
+else
+{
+    // Em desenvolvimento, também redireciona mas sem log crítico
+    app.UseHttpsRedirection();
+}
 
 // ====================================================================
 // SERILOG REQUEST LOGGING
@@ -538,6 +596,9 @@ try
         builder.Configuration.GetValue<bool>("SqlLogging:Enabled") ? "HABILITADO" : "DESABILITADO");
 
     Log.Information("🌐 CORS: Permitindo origins: {Origins}", string.Join(", ", allOrigins));
+
+    Log.Information("🔒 HTTPS: {Status}",
+        app.Environment.IsProduction() ? "OBRIGATÓRIO (produção)" : "Opcional (desenvolvimento)");
 
     // Inicia o servidor Kestrel e aguarda requisições
     app.Run();

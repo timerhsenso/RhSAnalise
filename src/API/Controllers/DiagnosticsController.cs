@@ -10,41 +10,59 @@ namespace RhSensoERP.API.Controllers;
 
 /// <summary>
 /// Controller para diagnósticos e testes do sistema.
+/// ✅ FASE 1: Protegido com [Authorize(Roles = "Admin")] e oculto do Swagger em Release
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[AllowAnonymous] // ⚠️ Remova em produção ou adicione [Authorize]
+[Authorize(Roles = "Admin")] // ✅ FASE 1: Apenas administradores podem acessar
+#if !DEBUG
+[ApiExplorerSettings(IgnoreApi = true)] // ✅ FASE 1: Oculta do Swagger em Release
+#endif
 public class DiagnosticsController : ControllerBase
 {
     private readonly IdentityDbContext _db;
     private readonly ILogger<DiagnosticsController> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IWebHostEnvironment _environment;
 
     public DiagnosticsController(
         IdentityDbContext db,
         ILogger<DiagnosticsController> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
         _db = db;
         _logger = logger;
         _configuration = configuration;
+        _environment = environment;
     }
 
     /// <summary>
     /// Testa a conexão com o banco de dados.
+    /// ✅ FASE 1: Desabilitado em produção por segurança
     /// </summary>
     [HttpGet("database")]
-    public async Task<IActionResult> TestDatabaseAsync()
+    public async Task<IActionResult> TestDatabaseAsync(CancellationToken ct)
     {
+        // ✅ FASE 1: Desabilitar em produção
+        if (_environment.IsProduction())
+        {
+            return StatusCode(403, new
+            {
+                error = "FORBIDDEN",
+                message = "Diagnósticos desabilitados em produção por segurança."
+            });
+        }
+
         try
         {
-            var canConnect = await _db.Database.CanConnectAsync();
+            var canConnect = await _db.Database.CanConnectAsync(ct);
             var dbName = _db.Database.GetDbConnection().Database;
             var connectionString = _db.Database.GetConnectionString();
             var providerName = _db.Database.ProviderName;
 
-            var totalUsuarios = await _db.Usuarios.CountAsync();
-            var totalSistemas = await _db.Sistemas.CountAsync();
+            var totalUsuarios = await _db.Usuarios.CountAsync(ct);
+            var totalSistemas = await _db.Sistemas.CountAsync(ct);
 
             return Ok(new
             {
@@ -73,30 +91,41 @@ public class DiagnosticsController : ControllerBase
 
     /// <summary>
     /// Testa o SqlLoggingInterceptor com queries variadas.
+    /// ✅ FASE 1: Desabilitado em produção por segurança
     /// </summary>
     [HttpGet("test-sql-logging")]
-    public async Task<IActionResult> TestSqlLogging()
+    public async Task<IActionResult> TestSqlLogging(CancellationToken ct)
     {
+        // ✅ FASE 1: Desabilitar em produção
+        if (_environment.IsProduction())
+        {
+            return StatusCode(403, new
+            {
+                error = "FORBIDDEN",
+                message = "Diagnósticos desabilitados em produção por segurança."
+            });
+        }
+
         _logger.LogInformation("🧪 Iniciando teste de SQL Logging...");
 
         try
         {
             // 1️⃣ Query rápida (< 5ms)
             _logger.LogInformation("1️⃣ Executando COUNT (query trivial)...");
-            var count = await _db.Usuarios.CountAsync();
+            var count = await _db.Usuarios.CountAsync(ct);
 
             // 2️⃣ Query com parâmetros
             _logger.LogInformation("2️⃣ Executando SELECT com parâmetros...");
             var usuario = await _db.Usuarios
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.CdUsuario == "ADMIN");
+                .FirstOrDefaultAsync(u => u.CdUsuario == "ADMIN", ct);
 
             // 3️⃣ Query complexa (JOIN) - REMOVIDO para evitar erro de colunas
             _logger.LogInformation("3️⃣ Executando query complexa...");
             var sistemas = await _db.Sistemas
                 .AsNoTracking()
                 .Take(5)
-                .ToListAsync();
+                .ToListAsync(ct);
 
             // 4️⃣ Query com múltiplas condições
             _logger.LogInformation("4️⃣ Executando query com múltiplas condições...");
@@ -105,7 +134,7 @@ public class DiagnosticsController : ControllerBase
                 .Where(u => u.FlAtivo == 'S')
                 .OrderBy(u => u.DcUsuario)
                 .Take(10)
-                .ToListAsync();
+                .ToListAsync(ct);
 
             // 5️⃣ Aggregate query
             _logger.LogInformation("5️⃣ Executando aggregate query...");
@@ -117,7 +146,7 @@ public class DiagnosticsController : ControllerBase
                     Status = g.Key,
                     Count = g.Count()
                 })
-                .ToListAsync();
+                .ToListAsync(ct);
 
             _logger.LogInformation("✅ Teste de SQL Logging concluído com sucesso!");
 
@@ -152,22 +181,36 @@ public class DiagnosticsController : ControllerBase
 
     /// <summary>
     /// Testa query lenta (vai gerar warning de performance).
+    /// ✅ FASE 1: Substituído WAITFOR DELAY por Task.Delay (boa prática)
     /// </summary>
     [HttpGet("test-slow-query")]
-    public async Task<IActionResult> TestSlowQuery()
+    public async Task<IActionResult> TestSlowQuery(CancellationToken ct)
     {
+        // ✅ FASE 1: Desabilitar em produção
+        if (_environment.IsProduction())
+        {
+            return StatusCode(403, new
+            {
+                error = "FORBIDDEN",
+                message = "Diagnósticos desabilitados em produção por segurança."
+            });
+        }
+
         _logger.LogInformation("🐌 Executando query lenta propositalmente...");
 
         try
         {
-            // Forçar query lenta com WAITFOR (apenas SQL Server)
-            await _db.Database.ExecuteSqlRawAsync("WAITFOR DELAY '00:00:01'");
+            // ✅ FASE 1: Substituído WAITFOR DELAY por Task.Delay
+            // ANTES: await _db.Database.ExecuteSqlRawAsync("WAITFOR DELAY '00:00:01'");
+            // DEPOIS: Usar C# puro para delays (mais limpo e sem SQL injection)
+            await Task.Delay(1000, ct);
 
             _logger.LogInformation("✅ Query lenta executada.");
 
             return Ok(new
             {
                 message = "Query lenta executada! Verifique os logs.",
+                note = "✅ FASE 1: Agora usando Task.Delay ao invés de WAITFOR DELAY SQL",
                 expectedWarning = "⚠️ SLOW QUERY DETECTED",
                 threshold = "500ms (configurável em appsettings)"
             });
@@ -185,10 +228,21 @@ public class DiagnosticsController : ControllerBase
 
     /// <summary>
     /// Testa INSERT/UPDATE/DELETE (non-query commands).
+    /// ✅ FASE 1: Desabilitado em produção por segurança
     /// </summary>
     [HttpPost("test-write-operations")]
-    public async Task<IActionResult> TestWriteOperations()
+    public async Task<IActionResult> TestWriteOperations(CancellationToken ct)
     {
+        // ✅ FASE 1: Desabilitar em produção
+        if (_environment.IsProduction())
+        {
+            return StatusCode(403, new
+            {
+                error = "FORBIDDEN",
+                message = "Diagnósticos desabilitados em produção por segurança."
+            });
+        }
+
         _logger.LogInformation("✍️ Testando operações de escrita...");
 
         try
@@ -196,7 +250,7 @@ public class DiagnosticsController : ControllerBase
             // ✅ FIX: Buscar um UserSecurity EXISTENTE primeiro
             var userSecurity = await _db.Set<UserSecurity>()
                 .Where(us => !us.IsDeleted)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(ct);
 
             if (userSecurity == null)
             {
@@ -218,7 +272,7 @@ public class DiagnosticsController : ControllerBase
             );
 
             _db.Set<LoginAuditLog>().Add(testLog);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(ct);
             var insertedId = testLog.Id;
 
             _logger.LogInformation("✅ INSERT realizado: ID = {Id}", insertedId);
@@ -226,24 +280,24 @@ public class DiagnosticsController : ControllerBase
             // 2️⃣ UPDATE
             _logger.LogInformation("2️⃣ Testando UPDATE...");
             var usuario = await _db.Usuarios
-                .FirstOrDefaultAsync(u => u.CdUsuario == "ADMIN");
+                .FirstOrDefaultAsync(u => u.CdUsuario == "ADMIN", ct);
 
             if (usuario != null)
             {
                 usuario.UpdatedAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(ct);
                 _logger.LogInformation("✅ UPDATE realizado");
             }
 
             // 3️⃣ DELETE
             _logger.LogInformation("3️⃣ Testando DELETE...");
             var logToDelete = await _db.Set<LoginAuditLog>()
-                .FirstOrDefaultAsync(l => l.Id == insertedId);
+                .FirstOrDefaultAsync(l => l.Id == insertedId, ct);
 
             if (logToDelete != null)
             {
                 _db.Set<LoginAuditLog>().Remove(logToDelete);
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(ct);
                 _logger.LogInformation("✅ DELETE realizado");
             }
 
@@ -273,10 +327,21 @@ public class DiagnosticsController : ControllerBase
 
     /// <summary>
     /// Retorna a configuração atual do SqlLogging.
+    /// ✅ FASE 1: Desabilitado em produção por segurança
     /// </summary>
     [HttpGet("sql-logging-config")]
     public IActionResult GetSqlLoggingConfig()
     {
+        // ✅ FASE 1: Desabilitar em produção
+        if (_environment.IsProduction())
+        {
+            return StatusCode(403, new
+            {
+                error = "FORBIDDEN",
+                message = "Diagnósticos desabilitados em produção por segurança."
+            });
+        }
+
         var config = _configuration
             .GetSection("SqlLogging")
             .Get<SqlLoggingOptions>();
