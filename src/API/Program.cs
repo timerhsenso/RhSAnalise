@@ -1,7 +1,44 @@
+// ============================================================================
+// RHSENSOERP API - PROGRAM.CS
+// ============================================================================
+// Arquivo: src/API/Program.cs
+// Projeto: RhSensoERP - Sistema de Gestão de Recursos Humanos
+// Versão: 1.0.0
+// Última atualização: Novembro 2025
+//
+// DESCRIÇÃO:
+// Ponto de entrada da aplicação ASP.NET Core Web API.
+// Configura toda a infraestrutura, middlewares, serviços e pipeline HTTP.
+//
+// PRINCIPAIS CONFIGURAÇÕES:
+// 1. Logging estruturado (Serilog)
+// 2. Injeção de Dependência (DI) de todos os módulos
+// 3. Autenticação JWT com validações de segurança
+// 4. CORS para permitir requisições cross-origin
+// 5. Swagger/OpenAPI para documentação interativa
+// 6. Rate Limiting configurável por ambiente
+// 7. Middlewares customizados de segurança
+// 8. Background Services para tarefas agendadas
+//
+// ✅ CORREÇÕES DE SEGURANÇA APLICADAS:
+// - Validações rigorosas de JWT (SecretKey, comprimento, termos proibidos)
+// - Rate Limiting configurável via appsettings.json (linha 122)
+// - HTTPS obrigatório em produção
+// - Security Headers (X-Content-Type-Options, X-Frame-Options, etc)
+// - Auditoria de segurança com limpeza automática
+//
+// ARQUITETURA:
+// - Modular: cada módulo (Identity, GestaoDePessoas) é isolado
+// - Clean Architecture: separação clara entre camadas
+// - Options Pattern: configurações tipadas e testáveis
+// - Dependency Injection: baixo acoplamento e alta testabilidade
+// ============================================================================
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RhSensoERP.API.BackgroundServices;
+using RhSensoERP.API.Configuration;
 using RhSensoERP.API.Middleware;
 using RhSensoERP.Identity.Application;
 using RhSensoERP.Identity.Application.Configuration;
@@ -91,6 +128,50 @@ Log.Information("⚙️ Ambiente: {Environment}", builder.Environment.Environmen
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("AuthSettings"));
 builder.Services.Configure<SecurityPolicySettings>(builder.Configuration.GetSection("SecurityPolicy"));
+
+
+// ============================================================================
+// ✅ FASE 2: CONFIGURAÇÃO DE RATE LIMITING (Options Pattern)
+// ============================================================================
+// Registra as configurações de Rate Limiting do appsettings.json no DI container.
+// Permite que RateLimitingConfiguration.cs leia as configurações via IOptions<T>.
+//
+// Estrutura esperada no appsettings.json:
+// {
+//   "RateLimit": {
+//     "Global": {
+//       "PermitLimit": 100,
+//       "WindowMinutes": 1,
+//       "WindowType": "Fixed"
+//     },
+//     "Policies": {
+//       "login": { ... },
+//       "refresh": { ... },
+//       "diagnostics": { ... }
+//     }
+//   }
+// }
+//
+// BENEFÍCIO: Permite configuração diferente por ambiente (dev/staging/prod)
+// sem necessidade de recompilação.
+// ============================================================================
+builder.Services.Configure<RateLimitSettings>(builder.Configuration.GetSection("RateLimit"));
+
+// ============================================================================
+// ✅ VALIDAÇÃO: Verificar se RateLimitSettings foi carregado
+// ============================================================================
+// Garante que a seção "RateLimit" existe no appsettings.json.
+// Se não existir, a aplicação usará valores default do RateLimitingConfiguration.
+// ============================================================================
+var rateLimitConfig = builder.Configuration.GetSection("RateLimit");
+if (!rateLimitConfig.Exists())
+{
+    Log.Warning("⚠️ Seção 'RateLimit' não encontrada no appsettings.json. Usando valores default.");
+}
+else
+{
+    Log.Information("✅ Configuração de Rate Limiting carregada do appsettings.json");
+}
 
 // ============================================================================
 // 3. REGISTRO DE DEPENDÊNCIAS (DEPENDENCY INJECTION)
@@ -352,10 +433,19 @@ builder.Services
 // Habilita o sistema de autorização (valida atributos [Authorize])
 builder.Services.AddAuthorization();
 
-// 1. Serviço de auditoria
+// ============================================================================
+// SERVIÇOS DE SEGURANÇA E AUDITORIA
+// ============================================================================
+// Registro de serviços relacionados a segurança e auditoria de operações.
+// ============================================================================
+
+// 1. Serviço de auditoria de segurança
+// Responsável por registrar eventos de segurança (login, falhas, etc)
 builder.Services.AddScoped<ISecurityAuditService, SecurityAuditService>();
 
-// 2. ✅ NOVO: Background Service para limpeza automática
+// 2. Background Service para limpeza automática de logs de auditoria
+// Executa periodicamente para remover logs antigos conforme configuração
+// em "AuditCleanup:RetentionDays" do appsettings.json
 builder.Services.AddHostedService<AuditCleanupBackgroundService>();
 
 // ============================================================================
@@ -441,11 +531,25 @@ if (builder.Configuration.GetValue<bool>("Features:EnableSwagger"))
 // 8. RATE LIMITING (PROTEÇÃO CONTRA ABUSE)
 // ============================================================================
 // Limita o número de requisições por IP/usuário para prevenir:
-// - Ataques DDoS
+// - Ataques DDoS (Distributed Denial of Service)
 // - Brute force em endpoints de login
 // - Abuse de APIs públicas
+// - Scraping automatizado
 //
-// Configurações estão no middleware RateLimitingExtensions
+// ✅ CONFIGURAÇÃO FLEXÍVEL:
+// As regras de rate limiting são carregadas do appsettings.json via
+// RateLimitSettings (registrado na linha 122). Isso permite:
+// - Ajustar limites sem recompilar
+// - Configuração diferente por ambiente (dev/staging/prod)
+// - Resposta rápida a ataques
+//
+// POLÍTICAS CONFIGURADAS:
+// - Global: limite geral para todos os endpoints
+// - login: proteção contra brute force (5-20 tentativas/5min)
+// - refresh: renovação de tokens (20-30 req/min)
+// - diagnostics: endpoints administrativos (10-20 req/5min)
+//
+// Implementação: RateLimitingConfiguration.cs
 // ============================================================================
 builder.Services.AddRateLimiting();
 
@@ -539,11 +643,33 @@ app.UseCors("DefaultCorsPolicy");
 // ====================================================================
 // RATE LIMITING
 // ====================================================================
-// Aplica as regras de limitação de taxa configuradas
-// Deve vir antes de Authentication para proteger o próprio endpoint de login
+// Aplica as regras de limitação de taxa configuradas via RateLimitSettings.
+// 
+// ⚠️ ORDEM IMPORTANTE: Deve vir ANTES de Authentication para proteger
+// o próprio endpoint de login contra brute force.
+//
+// Comportamento:
+// - Requisições dentro do limite: passam normalmente
+// - Requisições acima do limite: retornam 429 (Too Many Requests)
+// - Resposta inclui JSON com erro e tempo de retry
+// ====================================================================
 app.UseRateLimiter();
 
-
+// ====================================================================
+// TENANT RESOLUTION (MULTI-TENANCY)
+// ====================================================================
+// Middleware customizado para resolução de tenant (empresa/organização).
+// 
+// Funcionalidade:
+// - Identifica qual tenant está fazendo a requisição
+// - Pode usar header, subdomain, ou claim do JWT
+// - Popula ITenantContext para uso nos repositories
+//
+// Benefícios:
+// - Isola dados entre diferentes empresas/organizações
+// - Permite SaaS multi-tenant
+// - Segurança: previne acesso cruzado entre tenants
+// ====================================================================
 app.UseTenantResolution();
 
 // ====================================================================
@@ -599,12 +725,33 @@ try
 {
     Log.Information("✅ Aplicação RhSensoERP API iniciada com sucesso");
 
-    // Log de configurações importantes para troubleshooting
+    // ========================================================================
+    // LOGS DE CONFIGURAÇÕES IMPORTANTES (TROUBLESHOOTING)
+    // ========================================================================
+    // Exibe status de configurações críticas para facilitar diagnóstico.
+    // ========================================================================
+
+    // SQL Logging
     Log.Information("📊 SQL Logging: {Status}",
         builder.Configuration.GetValue<bool>("SqlLogging:Enabled") ? "HABILITADO" : "DESABILITADO");
 
+    // Rate Limiting
+    var rateLimitEnabled = rateLimitConfig.Exists();
+    Log.Information("⏱️ Rate Limiting: {Status}",
+        rateLimitEnabled ? "CONFIGURADO (appsettings.json)" : "DEFAULT (hardcoded)");
+    
+    if (rateLimitEnabled)
+    {
+        var globalLimit = builder.Configuration.GetValue<int>("RateLimit:Global:PermitLimit");
+        var loginLimit = builder.Configuration.GetValue<int>("RateLimit:Policies:login:PermitLimit");
+        Log.Information("🛡️ Limites: Global={GlobalLimit} req/min, Login={LoginLimit} tentativas",
+            globalLimit, loginLimit);
+    }
+
+    // CORS
     Log.Information("🌐 CORS: Permitindo origins: {Origins}", string.Join(", ", allOrigins));
 
+    // HTTPS
     Log.Information("🔒 HTTPS: {Status}",
         app.Environment.IsProduction() ? "OBRIGATÓRIO (produção)" : "Opcional (desenvolvimento)");
 

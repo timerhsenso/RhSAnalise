@@ -49,6 +49,116 @@
             3. Controllers em RhSensoERP.API.Controllers → "API" (fallback)
             </summary>
         </member>
+        <member name="T:RhSensoERP.API.Configuration.RateLimitingConfiguration">
+            <summary>
+            Extensão para configuração de Rate Limiting da aplicação.
+            Protege contra DDoS, brute force e abuse de endpoints críticos.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Configuration.RateLimitingConfiguration.AddRateLimiting(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+            <summary>
+            Adiciona e configura o Rate Limiting na aplicação.
+            Lê configurações do appsettings.json via Options Pattern.
+            </summary>
+            <param name="services">Coleção de serviços do DI container</param>
+            <returns>Coleção de serviços para encadeamento</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Configuration.RateLimitingConfiguration.CreateLimiter(System.String,System.Int32,System.Int32,System.String,System.Int32)">
+            <summary>
+            Cria um limitador de taxa baseado nos parâmetros fornecidos.
+            Suporta janelas fixas (Fixed) e deslizantes (Sliding).
+            </summary>
+            <param name="partitionKey">Chave de partição (geralmente IP do cliente)</param>
+            <param name="permitLimit">Número máximo de requisições permitidas</param>
+            <param name="windowMinutes">Duração da janela em minutos</param>
+            <param name="windowType">Tipo de janela: "Fixed" ou "Sliding"</param>
+            <param name="segmentsPerWindow">Número de segmentos (apenas para Sliding)</param>
+            <returns>Partição de rate limiter configurada</returns>
+        </member>
+        <member name="T:RhSensoERP.API.Configuration.RateLimitSettings">
+            <summary>
+            Configurações de Rate Limiting extraídas do appsettings.json.
+            Mapeia a seção "RateLimit" do arquivo de configuração.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Configuration.RateLimitSettings.Global">
+            <summary>
+            Configuração do limite global aplicado a todas as requisições
+            que não possuem política específica.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Configuration.RateLimitSettings.Policies">
+            <summary>
+            Dicionário de políticas específicas por nome.
+            Chave: nome da política (ex: "login", "refresh", "diagnostics")
+            Valor: configuração da política
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Configuration.GlobalRateLimitRule">
+            <summary>
+            Configuração do limite global de requisições.
+            Aplica-se a todos os endpoints que não têm política específica.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Configuration.GlobalRateLimitRule.PermitLimit">
+            <summary>
+            Número máximo de requisições permitidas na janela de tempo.
+            Exemplo: 100 requisições por minuto
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Configuration.GlobalRateLimitRule.WindowMinutes">
+            <summary>
+            Duração da janela de tempo em minutos.
+            Exemplo: 1 = janela de 1 minuto
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Configuration.GlobalRateLimitRule.WindowType">
+            <summary>
+            Tipo de janela de tempo:
+            - "Fixed": janela fixa (reseta completamente a cada período)
+            - "Sliding": janela deslizante (mais preciso, considera histórico)
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Configuration.RateLimitPolicy">
+            <summary>
+            Configuração de uma política de rate limiting específica.
+            Usada para endpoints críticos que precisam de limites customizados.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Configuration.RateLimitPolicy.PermitLimit">
+            <summary>
+            Número máximo de requisições permitidas na janela de tempo.
+            Exemplo: 5 tentativas de login a cada 5 minutos
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Configuration.RateLimitPolicy.WindowMinutes">
+            <summary>
+            Duração da janela de tempo em minutos.
+            Exemplo: 5 = janela de 5 minutos
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Configuration.RateLimitPolicy.WindowType">
+            <summary>
+            Tipo de janela de tempo:
+            - "Fixed": janela fixa (reseta completamente a cada período)
+            - "Sliding": janela deslizante (mais preciso, considera histórico)
+            
+            Recomendação:
+            - Use "Sliding" para proteção contra brute force (mais preciso)
+            - Use "Fixed" para limites gerais (mais performático)
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Configuration.RateLimitPolicy.SegmentsPerWindow">
+            <summary>
+            Número de segmentos da janela deslizante (apenas para WindowType = "Sliding").
+            Define a granularidade da janela deslizante.
+            
+            Exemplo: WindowMinutes = 5, SegmentsPerWindow = 5
+            Cada segmento representa 1 minuto, permitindo controle mais fino.
+            
+            Padrão: 5 segmentos
+            </summary>
+        </member>
         <member name="T:RhSensoERP.API.Configuration.SwaggerDefaultValuesFilter">
             <summary>
             Filtro para adicionar valores padrão aos parâmetros do Swagger
@@ -527,12 +637,6 @@
         <member name="T:RhSensoERP.API.SecretsConfig">
             <summary>
             Classe marcadora para User Secrets
-            </summary>
-        </member>
-        <member name="T:RateLimitingConfiguration">
-            <summary>
-            Configuração de Rate Limiting para proteção contra abuse.
-            ✅ FASE 2: Adicionada política específica para diagnósticos
             </summary>
         </member>
         <member name="T:SecurityHeadersMiddleware">
