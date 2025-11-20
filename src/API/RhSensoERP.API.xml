@@ -22,6 +22,22 @@
             Atributos de atalho para ações comuns.
             </summary>
         </member>
+        <member name="T:RhSensoERP.API.BackgroundServices.AuditCleanupBackgroundService">
+            <summary>
+            Serviço background para limpeza automática de logs de auditoria antigos.
+            ✅ FASE 5: Job agendado para manter tabela de auditoria gerenciável
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.BackgroundServices.AuditCleanupBackgroundService.ExecuteCleanupAsync(System.Threading.CancellationToken)">
+            <summary>
+            Executa a limpeza de logs antigos.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.BackgroundServices.AuditCleanupBackgroundService.CalculateNextRunTime">
+            <summary>
+            Calcula o próximo horário de execução baseado na frequência configurada.
+            </summary>
+        </member>
         <member name="T:RhSensoERP.API.Configuration.ModuleGroupConvention">
             <summary>
             Define o ApiExplorer.GroupName automaticamente a partir do namespace do controller.
@@ -42,6 +58,42 @@
             <summary>
             Filtro para converter paths do Swagger para lowercase
             </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.AuditReportsController">
+            <summary>
+            Controller para relatórios de auditoria de segurança.
+            ✅ FASE 5: Relatórios completos de eventos de segurança
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.AuditReportsController.GetRecentEvents(System.Int32,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Retorna eventos recentes de segurança.
+            </summary>
+            <param name="count">Número de eventos a retornar (padrão: 100, máx: 1000)</param>
+            <param name="eventType">Filtrar por tipo de evento</param>
+            <param name="severity">Filtrar por severidade</param>
+            <param name="ct">Token de cancelamento</param>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.AuditReportsController.GetStatistics(System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Retorna estatísticas de eventos de segurança.
+            </summary>
+            <param name="hours">Período em horas (padrão: 24)</param>
+            <param name="ct">Token de cancelamento</param>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.AuditReportsController.GetLoginReport(System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Retorna relatório de tentativas de login.
+            </summary>
+            <param name="hours">Período em horas (padrão: 24)</param>
+            <param name="ct">Token de cancelamento</param>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.AuditReportsController.GetSuspiciousActivities(System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Retorna relatório de atividades suspeitas.
+            </summary>
+            <param name="hours">Período em horas (padrão: 24)</param>
+            <param name="ct">Token de cancelamento</param>
         </member>
         <member name="T:RhSensoERP.API.Controllers.DiagnosticsController">
             <summary>
@@ -254,6 +306,7 @@
         <member name="T:RhSensoERP.API.Controllers.Identity.AuthController">
             <summary>
             Controller para autenticação e gestão de tokens.
+            ✅ FASE 5: Auditoria completa implementada
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.AuthController.Login(RhSensoERP.Identity.Application.DTOs.Auth.LoginRequest,System.Threading.CancellationToken)">

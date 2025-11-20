@@ -1,4 +1,4 @@
-﻿//C:\Users\eduardo\source\repos\RhSAnalise\src\API\Controllers\Identity
+﻿// C:\Users\eduardo\source\repos\RhSAnalise\src\API\Controllers\Identity\AuthController.cs
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,12 +6,15 @@ using Microsoft.AspNetCore.RateLimiting;
 using RhSensoERP.Identity.Application.DTOs.Auth;
 using RhSensoERP.Identity.Application.Features.Auth.Commands;
 using RhSensoERP.Identity.Application.Features.Auth.Queries;
+using RhSensoERP.Identity.Application.Services; // ✅ FASE 5: Adicionar
+using RhSensoERP.Identity.Domain.Entities; // ✅ FASE 5: Adicionar
 using System.Security.Claims;
 
 namespace RhSensoERP.API.Controllers.Identity;
 
 /// <summary>
 /// Controller para autenticação e gestão de tokens.
+/// ✅ FASE 5: Auditoria completa implementada
 /// </summary>
 [ApiController]
 [Route("api/identity/auth")]
@@ -20,11 +23,16 @@ public sealed class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
+    private readonly ISecurityAuditService _auditService; // ✅ FASE 5: Adicionar
 
-    public AuthController(IMediator mediator, ILogger<AuthController> logger)
+    public AuthController(
+        IMediator mediator,
+        ILogger<AuthController> logger,
+        ISecurityAuditService auditService) // ✅ FASE 5: Adicionar
     {
         _mediator = mediator;
         _logger = logger;
+        _auditService = auditService; // ✅ FASE 5: Adicionar
     }
 
     /// <summary>
@@ -69,6 +77,21 @@ public sealed class AuthController : ControllerBase
                     result.Error.Code,
                     result.Error.Message);
 
+                // ✅ FASE 5: Auditar falha de login
+                await _auditService.LogAsync(
+                    eventType: SecurityEventType.LoginFailed,
+                    eventCategory: SecurityEventCategory.Authentication,
+                    severity: result.Error.Code == "ACCOUNT_LOCKED"
+                        ? SecuritySeverity.Critical
+                        : SecuritySeverity.Warning,
+                    description: $"Falha de login para '{request.LoginIdentifier}'",
+                    httpContext: HttpContext,
+                    isSuccess: false,
+                    username: request.LoginIdentifier,
+                    errorMessage: $"{result.Error.Code}: {result.Error.Message}",
+                    ct: ct
+                );
+
                 return result.Error.Code switch
                 {
                     "TIMEOUT" => StatusCode(504, new { error = result.Error.Code, message = result.Error.Message }),
@@ -84,6 +107,20 @@ public sealed class AuthController : ControllerBase
 
             _logger.LogInformation("✅ Login bem-sucedido: {LoginIdentifier}", request.LoginIdentifier);
 
+            // ✅ FASE 5: Auditar login bem-sucedido
+            // Extrair IdUserSecurity do resultado (assumindo que está disponível)
+            var authResponse = result.Value;
+            await _auditService.LogAsync(
+                eventType: SecurityEventType.Login,
+                eventCategory: SecurityEventCategory.Authentication,
+                severity: SecuritySeverity.Info,
+                description: $"Login bem-sucedido para '{request.LoginIdentifier}'",
+                httpContext: HttpContext,
+                isSuccess: true,
+                username: request.LoginIdentifier,
+                ct: ct
+            );
+
             return Ok(result.Value);
         }
         catch (OperationCanceledException)
@@ -92,6 +129,19 @@ public sealed class AuthController : ControllerBase
                 "⏱️ Timeout/Cancelamento na requisição de login: {LoginIdentifier} | IP: {IpAddress}",
                 request.LoginIdentifier,
                 ipAddress);
+
+            // ✅ FASE 5: Auditar timeout
+            await _auditService.LogAsync(
+                eventType: SecurityEventType.LoginFailed,
+                eventCategory: SecurityEventCategory.Authentication,
+                severity: SecuritySeverity.Warning,
+                description: $"Timeout na tentativa de login para '{request.LoginIdentifier}'",
+                httpContext: HttpContext,
+                isSuccess: false,
+                username: request.LoginIdentifier,
+                errorMessage: "TIMEOUT: Requisição cancelada ou excedeu tempo limite",
+                ct: ct
+            );
 
             return StatusCode(504, new
             {
@@ -106,6 +156,19 @@ public sealed class AuthController : ControllerBase
                 "💥 Erro inesperado no login: {LoginIdentifier} | IP: {IpAddress}",
                 request.LoginIdentifier,
                 ipAddress);
+
+            // ✅ FASE 5: Auditar erro interno
+            await _auditService.LogAsync(
+                eventType: SecurityEventType.LoginFailed,
+                eventCategory: SecurityEventCategory.Authentication,
+                severity: SecuritySeverity.Error,
+                description: $"Erro interno na tentativa de login para '{request.LoginIdentifier}'",
+                httpContext: HttpContext,
+                isSuccess: false,
+                username: request.LoginIdentifier,
+                errorMessage: $"INTERNAL_ERROR: {ex.Message}",
+                ct: ct
+            );
 
             return StatusCode(500, new
             {
@@ -126,7 +189,7 @@ public sealed class AuthController : ControllerBase
     /// <response code="401">Refresh token inválido ou expirado</response>
     [HttpPost("refresh-token")]
     [AllowAnonymous]
-    [EnableRateLimiting("refresh")] // ✅ ADICIONAR
+    [EnableRateLimiting("refresh")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -148,6 +211,18 @@ public sealed class AuthController : ControllerBase
                     result.Error.Code,
                     result.Error.Message);
 
+                // ✅ FASE 5: Auditar falha no refresh token
+                await _auditService.LogAsync(
+                    eventType: SecurityEventType.TokenRefreshed,
+                    eventCategory: SecurityEventCategory.TokenManagement,
+                    severity: SecuritySeverity.Warning,
+                    description: "Falha ao renovar token",
+                    httpContext: HttpContext,
+                    isSuccess: false,
+                    errorMessage: $"{result.Error.Code}: {result.Error.Message}",
+                    ct: ct
+                );
+
                 return result.Error.Code switch
                 {
                     "INVALID_REFRESH_TOKEN" => Unauthorized(new { error = result.Error.Code, message = result.Error.Message }),
@@ -160,16 +235,53 @@ public sealed class AuthController : ControllerBase
 
             _logger.LogInformation("✅ Tokens renovados com sucesso");
 
+            // ✅ FASE 5: Auditar refresh token bem-sucedido
+            await _auditService.LogAsync(
+                eventType: SecurityEventType.TokenRefreshed,
+                eventCategory: SecurityEventCategory.TokenManagement,
+                severity: SecuritySeverity.Info,
+                description: "Token renovado com sucesso",
+                httpContext: HttpContext,
+                isSuccess: true,
+                ct: ct
+            );
+
             return Ok(result.Value);
         }
         catch (OperationCanceledException)
         {
             _logger.LogWarning("⏱️ Timeout na renovação de tokens | IP: {IpAddress}", ipAddress);
+
+            // ✅ FASE 5: Auditar timeout no refresh
+            await _auditService.LogAsync(
+                eventType: SecurityEventType.TokenRefreshed,
+                eventCategory: SecurityEventCategory.TokenManagement,
+                severity: SecuritySeverity.Warning,
+                description: "Timeout ao renovar token",
+                httpContext: HttpContext,
+                isSuccess: false,
+                errorMessage: "TIMEOUT: Requisição cancelada",
+                ct: ct
+            );
+
             return StatusCode(504, new { error = "TIMEOUT", message = "A requisição foi cancelada." });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "💥 Erro inesperado no refresh token | IP: {IpAddress}", ipAddress);
+
+            // ✅ FASE 5: Auditar erro interno no refresh
+            await _auditService.LogAsync(
+                eventType: SecurityEventType.TokenRefreshed,
+                eventCategory: SecurityEventCategory.TokenManagement,
+                severity: SecuritySeverity.Error,
+                description: "Erro interno ao renovar token",
+                httpContext: HttpContext,
+                isSuccess: false,
+                errorMessage: $"INTERNAL_ERROR: {ex.Message}",
+                ct: ct
+            );
+
             return StatusCode(500, new { error = "INTERNAL_ERROR", message = "Erro ao renovar tokens." });
         }
     }
@@ -188,7 +300,6 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken ct)
     {
-        // ✅ FIX: Usar claim customizado "cdusuario" em vez de ClaimTypes.NameIdentifier
         var cdUsuario = User.FindFirstValue("cdusuario");
 
         if (string.IsNullOrWhiteSpace(cdUsuario))
@@ -211,16 +322,55 @@ public sealed class AuthController : ControllerBase
                     result.Error.Code,
                     result.Error.Message);
 
+                // ✅ FASE 5: Auditar falha no logout
+                await _auditService.LogAsync(
+                    eventType: SecurityEventType.Logout,
+                    eventCategory: SecurityEventCategory.Authentication,
+                    severity: SecuritySeverity.Warning,
+                    description: $"Falha no logout para '{cdUsuario}'",
+                    httpContext: HttpContext,
+                    isSuccess: false,
+                    username: cdUsuario,
+                    errorMessage: $"{result.Error.Code}: {result.Error.Message}",
+                    ct: ct
+                );
+
                 return BadRequest(new { error = result.Error.Code, message = result.Error.Message });
             }
 
             _logger.LogInformation("✅ Logout realizado com sucesso: {CdUsuario}", cdUsuario);
+
+            // ✅ FASE 5: Auditar logout bem-sucedido
+            await _auditService.LogAsync(
+                eventType: SecurityEventType.Logout,
+                eventCategory: SecurityEventCategory.Authentication,
+                severity: SecuritySeverity.Info,
+                description: $"Logout realizado para '{cdUsuario}'",
+                httpContext: HttpContext,
+                isSuccess: true,
+                username: cdUsuario,
+                ct: ct
+            );
 
             return Ok(new { message = "Logout realizado com sucesso." });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "💥 Erro inesperado no logout: {CdUsuario}", cdUsuario);
+
+            // ✅ FASE 5: Auditar erro interno no logout
+            await _auditService.LogAsync(
+                eventType: SecurityEventType.Logout,
+                eventCategory: SecurityEventCategory.Authentication,
+                severity: SecuritySeverity.Error,
+                description: $"Erro interno no logout para '{cdUsuario}'",
+                httpContext: HttpContext,
+                isSuccess: false,
+                username: cdUsuario,
+                errorMessage: $"INTERNAL_ERROR: {ex.Message}",
+                ct: ct
+            );
+
             return StatusCode(500, new { error = "INTERNAL_ERROR", message = "Erro ao processar logout." });
         }
     }
@@ -240,8 +390,6 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCurrentUser(CancellationToken ct)
     {
-        // ✅ FIX: Usar claim customizado "cdusuario" em vez de ClaimTypes.NameIdentifier
-        // ClaimTypes.NameIdentifier pode retornar o GUID do Sub, mas precisamos do CdUsuario
         var cdUsuario = User.FindFirstValue("cdusuario");
 
         if (string.IsNullOrWhiteSpace(cdUsuario))

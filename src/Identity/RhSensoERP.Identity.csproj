@@ -16,6 +16,8 @@
 		<!-- ✅ NOVO - FASE 3: Active Directory -->
 		<PackageReference Include="System.DirectoryServices" />
 		<PackageReference Include="System.DirectoryServices.AccountManagement" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+
 	</ItemGroup>
 
 	<PropertyGroup>

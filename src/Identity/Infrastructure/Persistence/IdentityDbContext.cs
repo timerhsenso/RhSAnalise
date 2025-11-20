@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RhSensoERP.Identity.Domain.Entities;
+using RhSensoERP.Identity.Infrastructure.Persistence.Configurations;
 using RhSensoERP.Shared.Core.Abstractions;
 using RhSensoERP.Shared.Infrastructure.Persistence.Interceptors;
 
@@ -24,6 +25,9 @@ public sealed class IdentityDbContext : DbContext, IUnitOfWork
     public DbSet<GrupoFuncao> GruposFuncoes => Set<GrupoFuncao>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
 
+    // ✅ FASE 5: Adicionar DbSet
+    public DbSet<SecurityAuditLog> SecurityAuditLogs => Set<SecurityAuditLog>();
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // Adicionar o interceptor de auditoria
@@ -35,6 +39,10 @@ public sealed class IdentityDbContext : DbContext, IUnitOfWork
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(IdentityDbContext).Assembly);
+
+        // ✅ FASE 5: Aplicar configuração (com prefixo SEG_)
+        modelBuilder.ApplyConfiguration(new SecurityAuditLogConfiguration());
+
     }
 
     async Task<int> IUnitOfWork.SaveChangesAsync(CancellationToken ct)

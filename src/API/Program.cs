@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RhSensoERP.API.BackgroundServices;
 using RhSensoERP.API.Middleware;
 using RhSensoERP.Identity.Application;
 using RhSensoERP.Identity.Application.Configuration;
+using RhSensoERP.Identity.Application.Services;
 using RhSensoERP.Identity.Infrastructure;
 using RhSensoERP.Modules.GestaoDePessoas;
 using RhSensoERP.Shared.Core.Abstractions;
@@ -349,6 +351,12 @@ builder.Services
 
 // Habilita o sistema de autorização (valida atributos [Authorize])
 builder.Services.AddAuthorization();
+
+// 1. Serviço de auditoria
+builder.Services.AddScoped<ISecurityAuditService, SecurityAuditService>();
+
+// 2. ✅ NOVO: Background Service para limpeza automática
+builder.Services.AddHostedService<AuditCleanupBackgroundService>();
 
 // ============================================================================
 // 7. CONFIGURAÇÃO DO SWAGGER (DOCUMENTAÇÃO INTERATIVA DA API)
