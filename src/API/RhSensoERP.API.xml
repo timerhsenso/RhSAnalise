@@ -190,6 +190,67 @@
             Remove sindicato.
             </summary>
         </member>
+        <member name="T:RhSensoERP.API.Controllers.HealthCheckController">
+            <summary>
+            Controller para health checks detalhados do sistema.
+            ✅ FASE 4: Health checks completos com status de dependências
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.HealthCheckController.Liveness">
+            <summary>
+            Health check básico (público, sem autenticação).
+            Usado por load balancers e monitoramento externo.
+            </summary>
+            <returns>Status básico da aplicação</returns>
+            <response code="200">Aplicação está saudável</response>
+            <response code="503">Aplicação está com problemas</response>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.HealthCheckController.Readiness(System.Threading.CancellationToken)">
+            <summary>
+            Health check completo (requer autenticação de admin).
+            Verifica status de todas as dependências.
+            </summary>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Status detalhado da aplicação e dependências</returns>
+            <response code="200">Todos os componentes estão saudáveis</response>
+            <response code="401">Não autorizado</response>
+            <response code="503">Um ou mais componentes estão com problemas</response>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.HealthCheckController.CheckDatabaseAsync(System.Threading.CancellationToken)">
+            <summary>
+            Verifica conectividade com o banco de dados.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.HealthCheckController.CheckConfiguration">
+            <summary>
+            Verifica se configurações críticas estão presentes.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.HealthCheckController.CheckMemoryUsage">
+            <summary>
+            Verifica uso de memória da aplicação.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.HealthCheckController.CheckDiskSpace">
+            <summary>
+            Verifica espaço em disco disponível.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.HealthCheckController.GetApplicationVersion">
+            <summary>
+            Retorna a versão da aplicação.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.HealthCheckController.GetUptime">
+            <summary>
+            Retorna o tempo de uptime da aplicação.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.HealthCheckResult">
+            <summary>
+            Resultado de um health check individual.
+            </summary>
+        </member>
         <member name="T:RhSensoERP.API.Controllers.Identity.AuthController">
             <summary>
             Controller para autenticação e gestão de tokens.
@@ -419,6 +480,29 @@
             <summary>
             Configuração de Rate Limiting para proteção contra abuse.
             ✅ FASE 2: Adicionada política específica para diagnósticos
+            </summary>
+        </member>
+        <member name="T:SecurityHeadersMiddleware">
+            <summary>
+            Middleware para adicionar headers de segurança HTTP.
+            ✅ FASE 4: Aprimorado com CSP mais restritiva e headers adicionais
+            </summary>
+        </member>
+        <member name="M:SecurityHeadersMiddleware.BuildDevelopmentCSP">
+            <summary>
+            Constrói CSP para ambiente de desenvolvimento.
+            Mais permissiva para permitir Swagger, hot reload, etc.
+            </summary>
+        </member>
+        <member name="M:SecurityHeadersMiddleware.BuildProductionCSP">
+            <summary>
+            Constrói CSP para ambiente de produção.
+            Mais restritiva para máxima segurança.
+            </summary>
+        </member>
+        <member name="M:SecurityHeadersMiddleware.LogSuspiciousRequests(Microsoft.AspNetCore.Http.HttpContext)">
+            <summary>
+            Loga requisições suspeitas para análise de segurança.
             </summary>
         </member>
     </members>
