@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using RhSensoERP.Web.Services;
+using RhSensoERP.Web.Services.Bancos;
+using RhSensoERP.Web.Filters;
 using Serilog;
 
 namespace RhSensoERP.Web;
@@ -35,8 +37,18 @@ public static class Program
         // CONFIGURAÇÃO DE SERVIÇOS
         // ========================================
 
-        // Controllers e Views
-        builder.Services.AddControllersWithViews();
+        // Controllers e Views com filtros globais
+        builder.Services.AddControllersWithViews(options =>
+        {
+            // Adiciona filtro global de exceções
+            options.Filters.Add<GlobalExceptionFilter>();
+            
+            // Adiciona filtro global de validação de ModelState
+            options.Filters.Add<ValidateModelStateFilter>();
+        });
+
+        // HttpContextAccessor (necessário para BaseApiService e TagHelpers)
+        builder.Services.AddHttpContextAccessor();
 
         // HttpClient para comunicação com a API
         var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"]
@@ -47,6 +59,24 @@ public static class Program
             client.BaseAddress = new Uri(apiBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(
                 builder.Configuration.GetValue<int>("ApiSettings:Timeout", 30));
+        });
+
+        // Registra o HttpClient genérico para os serviços de API
+        builder.Services.AddHttpClient("ApiClient", client =>
+        {
+            client.BaseAddress = new Uri(apiBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(
+                builder.Configuration.GetValue<int>("ApiSettings:Timeout", 30));
+        });
+
+        // Registra os serviços de API
+        builder.Services.AddScoped<IBancoApiService>(sp =>
+        {
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient("ApiClient");
+            var logger = sp.GetRequiredService<ILogger<BancoApiService>>();
+            var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+            return new BancoApiService(httpClient, logger, httpContextAccessor);
         });
 
         // Autenticação com Cookies

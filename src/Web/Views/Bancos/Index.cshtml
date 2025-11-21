@@ -1,0 +1,344 @@
+@model RhSensoERP.Web.Models.Bancos.BancosListViewModel
+@{
+    ViewData["Title"] = Model.PageTitle;
+    Layout = "_CrudLayout";
+}
+
+<!-- Container Principal -->
+<div class="crud-container">
+    <!-- Header -->
+    <div class="crud-header">
+        <div class="crud-header-title">
+            <i class="@Model.PageIcon"></i>
+            <div>
+                <h2>@Model.PageTitle</h2>
+                @if (!string.IsNullOrEmpty(Model.PageSubtitle))
+                {
+                    <p>@Model.PageSubtitle</p>
+                }
+            </div>
+        </div>
+        <div class="crud-header-actions">
+            @if (Model.ShowCreateButton && Model.CanCreate)
+            {
+                <button type="button" class="btn btn-crud btn-crud-success" id="btnCreate">
+                    <i class="fas fa-plus"></i> Novo Banco
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="crud-toolbar">
+        <div class="crud-toolbar-left">
+            @if (Model.ShowDeleteMultipleButton && Model.CanDelete)
+            {
+                <button type="button" class="btn btn-danger btn-toolbar-action" id="btnDeleteSelected" disabled>
+                    <i class="fas fa-trash"></i> Excluir Selecionados
+                    <span class="badge bg-white text-danger" id="selectedCount">0</span>
+                </button>
+            }
+            @if (Model.ShowRefreshButton)
+            {
+                <button type="button" class="btn btn-info btn-toolbar-action" id="btnRefresh">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+            }
+        </div>
+        <div class="crud-toolbar-right">
+            <div class="crud-search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" class="form-control" id="searchBox" placeholder="Pesquisar...">
+            </div>
+        </div>
+    </div>
+
+    <!-- Body com DataTable -->
+    <div class="crud-body">
+        <table id="tableCrud" class="table table-crud table-striped table-hover">
+            <thead>
+                <tr>
+                    @if (Model.ShowSelectColumn)
+                    {
+                        <th style="width: 40px;"></th>
+                    }
+                    <th>Código</th>
+                    <th>Nome</th>
+                    <th>Status</th>
+                    <th>Data Criação</th>
+                    @if (Model.ShowActionsColumn)
+                    {
+                        <th style="width: 150px; text-align: right;">Ações</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dados carregados via AJAX -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal para Criar/Editar -->
+<div class="modal fade" id="modalCrud" tabindex="-1" aria-labelledby="modalCrudLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header modal-header-crud">
+                <h5 class="modal-title" id="modalCrudLabel">
+                    <i class="fas fa-university me-2"></i>
+                    <span id="modalTitle">Novo Banco</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formCrud">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <input type="hidden" id="Id" name="Id" />
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="CodigoBanco" class="form-label">
+                                <i class="fas fa-barcode me-1"></i>
+                                Código do Banco <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="CodigoBanco" name="CodigoBanco" 
+                                   maxlength="3" required placeholder="Ex: 001">
+                            <small class="text-muted">Código de 3 dígitos</small>
+                        </div>
+
+                        <div class="col-md-8 mb-3">
+                            <label for="Nome" class="form-label">
+                                <i class="fas fa-building me-1"></i>
+                                Nome do Banco <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="Nome" name="Nome" 
+                                   maxlength="100" required placeholder="Ex: Banco do Brasil">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="Ativo" name="Ativo" 
+                                       checked role="switch">
+                                <label class="form-check-label" for="Ativo">
+                                    <i class="fas fa-toggle-on me-1"></i> Banco Ativo
+                                </label>
+                            </div>
+                            <small class="text-muted">Desmarque para inativar o banco sem excluí-lo</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-crud">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-crud btn-crud-primary">
+                        <i class="fas fa-save me-2"></i>Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Visualizar -->
+<div class="modal fade" id="modalView" tabindex="-1" aria-labelledby="modalViewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header modal-header-crud">
+                <h5 class="modal-title" id="modalViewLabel">
+                    <i class="fas fa-eye me-2"></i>
+                    Detalhes do Banco
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="viewContent">
+                <!-- Conteúdo carregado via AJAX -->
+            </div>
+            <div class="modal-footer modal-footer-crud">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section PageScripts {
+    <script>
+        $(document).ready(function () {
+            // Configuração das colunas do DataTables
+            const columns = [
+                @if (Model.ShowSelectColumn)
+                {
+                    @:{ data: null, orderable: false, searchable: false, className: 'dt-checkboxes-cell', render: function () { return '<input type="checkbox" class="dt-checkboxes">'; } },
+                }
+                { data: 'codigoBanco', name: 'CodigoBanco' },
+                { data: 'nome', name: 'Nome' },
+                {
+                    data: 'ativo',
+                    name: 'Ativo',
+                    render: function (data) {
+                        return data
+                            ? '<span class="badge-status active"><i class="fas fa-check-circle"></i> Ativo</span>'
+                            : '<span class="badge-status inactive"><i class="fas fa-times-circle"></i> Inativo</span>';
+                    }
+                },
+                {
+                    data: 'dataCriacao',
+                    name: 'DataCriacao',
+                    render: function (data) {
+                        return data ? new Date(data).toLocaleDateString('pt-BR') : '-';
+                    }
+                }
+                @if (Model.ShowActionsColumn)
+                {
+                    @:,{
+                        @:data: null,
+                        @:orderable: false,
+                        @:searchable: false,
+                        @:className: 'text-end',
+                        @:render: function (data, type, row) {
+                            @:let actions = '<div class="action-buttons">';
+                            
+                            @if (Model.CanView)
+                            {
+                                @:actions += '<button type="button" class="btn btn-sm btn-info btn-view" data-id="' + row.codigoBanco + '" data-bs-toggle="tooltip" title="Visualizar"><i class="fas fa-eye"></i></button>';
+                            }
+                            
+                            @if (Model.CanEdit)
+                            {
+                                @:actions += '<button type="button" class="btn btn-sm btn-warning btn-edit" data-id="' + row.codigoBanco + '" data-bs-toggle="tooltip" title="Editar"><i class="fas fa-edit"></i></button>';
+                            }
+                            
+                            @if (Model.CanDelete)
+                            {
+                                @:actions += '<button type="button" class="btn btn-sm btn-danger btn-delete" data-id="' + row.codigoBanco + '" data-bs-toggle="tooltip" title="Excluir"><i class="fas fa-trash"></i></button>';
+                            }
+                            
+                            @:actions += '</div>';
+                            @:return actions;
+                        @:}
+                    @:}
+                }
+            ];
+
+            // Inicializa o CRUD Base
+            const bancoCrud = new BancoCrud({
+                controllerName: '@Model.ControllerName',
+                tableSelector: '#tableCrud',
+                columns: columns,
+                permissions: {
+                    canCreate: @Model.CanCreate.ToString().ToLower(),
+                    canEdit: @Model.CanEdit.ToString().ToLower(),
+                    canDelete: @Model.CanDelete.ToString().ToLower(),
+                    canView: @Model.CanView.ToString().ToLower()
+                }
+            });
+        });
+
+        // Classe específica para Bancos (estende CrudBase)
+        class BancoCrud extends CrudBase {
+            openCreateModal() {
+                $('#modalTitle').text('Novo Banco');
+                $('#formCrud')[0].reset();
+                $('#Id').val('');
+                $('#CodigoBanco').prop('readonly', false);
+                $('.is-invalid').removeClass('is-invalid');
+                $('.invalid-feedback').remove();
+                $('#modalCrud').modal('show');
+            }
+
+            openEditModal(id) {
+                const self = this;
+                
+                $.ajax({
+                    url: `/${self.config.controllerName}/${self.config.actions.view}/${id}`,
+                    type: 'GET',
+                    beforeSend: function () {
+                        self.showLoading();
+                    },
+                    success: function (response) {
+                        self.hideLoading();
+                        
+                        if (response.success && response.data) {
+                            $('#modalTitle').text('Editar Banco');
+                            $('#Id').val(response.data.codigoBanco);
+                            $('#CodigoBanco').val(response.data.codigoBanco).prop('readonly', true);
+                            $('#Nome').val(response.data.nome);
+                            $('#Ativo').prop('checked', response.data.ativo);
+                            $('.is-invalid').removeClass('is-invalid');
+                            $('.invalid-feedback').remove();
+                            $('#modalCrud').modal('show');
+                        } else {
+                            self.showError(response.message || 'Erro ao buscar dados do banco.');
+                        }
+                    },
+                    error: function () {
+                        self.hideLoading();
+                        self.showError('Erro ao buscar dados do banco.');
+                    }
+                });
+            }
+
+            openViewModal(id) {
+                const self = this;
+                
+                $.ajax({
+                    url: `/${self.config.controllerName}/${self.config.actions.view}/${id}`,
+                    type: 'GET',
+                    beforeSend: function () {
+                        self.showLoading();
+                    },
+                    success: function (response) {
+                        self.hideLoading();
+                        
+                        if (response.success && response.data) {
+                            const banco = response.data;
+                            const statusBadge = banco.ativo
+                                ? '<span class="badge-status active"><i class="fas fa-check-circle me-1"></i>Ativo</span>'
+                                : '<span class="badge-status inactive"><i class="fas fa-times-circle me-1"></i>Inativo</span>';
+                            
+                            const html = `
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="text-muted small fw-bold">Código</label>
+                                        <p class="mb-0 fs-5">
+                                            <i class="fas fa-barcode me-2 text-primary"></i>
+                                            ${banco.codigoBanco}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="text-muted small fw-bold">Status</label>
+                                        <p class="mb-0">${statusBadge}</p>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="text-muted small fw-bold">Data de Criação</label>
+                                        <p class="mb-0">
+                                            <i class="fas fa-calendar me-2 text-info"></i>
+                                            ${new Date(banco.dataCriacao).toLocaleDateString('pt-BR')}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label class="text-muted small fw-bold">Nome</label>
+                                        <p class="mb-0 fs-5">${banco.nome}</p>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            $('#viewContent').html(html);
+                            $('#modalView').modal('show');
+                        } else {
+                            self.showError(response.message || 'Erro ao buscar dados do banco.');
+                        }
+                    },
+                    error: function () {
+                        self.hideLoading();
+                        self.showError('Erro ao buscar dados do banco.');
+                    }
+                });
+            }
+        }
+    </script>
+}
