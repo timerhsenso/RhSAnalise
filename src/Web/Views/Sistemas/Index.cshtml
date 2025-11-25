@@ -1,0 +1,67 @@
+@model RhSensoERP.Web.Models.Sistemas.SistemasListViewModel
+@{
+    ViewData["Title"] = Model.PageTitle;
+    Layout = "_CrudLayout";
+    ViewData["EntityName"] = "Sistema";
+    ViewData["IconClass"] = "fas fa-server";
+}
+
+@*
+    ============================================================================
+    INDEX SIMPLIFICADO - Sistemas
+    ============================================================================
+    Arquivo: Views/Sistemas/Index.cshtml
+    
+    Esta view usa as partial views reutilizáveis para eliminar duplicação.
+    O JavaScript está externalizado em /wwwroot/js/pages/sistemas.js
+    
+    ============================================================================
+*@
+
+@* Renderiza a tabela CRUD (container, header, toolbar, datatable) *@
+@await Html.PartialAsync("_CrudTable", Model)
+
+@* Renderiza os modals (criar/editar/visualizar) *@
+@await Html.PartialAsync("_CrudModal")
+
+@* Conteúdo específico do modal de Sistemas *@
+@section ModalContent {
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label for="CdSistema" class="form-label">
+                <i class="fas fa-barcode me-1"></i>
+                Código do Sistema <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control" id="CdSistema" name="CdSistema"
+                   maxlength="10" required placeholder="Ex: RH001">
+            <small class="text-muted">Código único do sistema (até 10 caracteres)</small>
+        </div>
+
+        <div class="col-md-8 mb-3">
+            <label for="DcSistema" class="form-label">
+                <i class="fas fa-file-alt me-1"></i>
+                Descrição do Sistema <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control" id="DcSistema" name="DcSistema"
+                   maxlength="100" required placeholder="Ex: Sistema de Gestão de RH">
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="Ativo" name="Ativo"
+                       checked role="switch">
+                <label class="form-check-label" for="Ativo">
+                    <i class="fas fa-toggle-on me-1"></i> Sistema Ativo
+                </label>
+            </div>
+            <small class="text-muted">Desmarque para inativar o sistema sem excluí-lo</small>
+        </div>
+    </div>
+}
+
+@* Scripts específicos da página *@
+@section PageScripts {
+    <script src="~/js/pages/sistemas.js" asp-append-version="true"></script>
+}

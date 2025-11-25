@@ -2,6 +2,24 @@
     Layout = "_Layout";
 }
 
+@*
+    ============================================================================
+    CRUD LAYOUT - Layout Intermediário para Páginas CRUD
+    ============================================================================
+    Arquivo: Views/Shared/_CrudLayout.cshtml
+    
+    Layout intermediário que adiciona os recursos necessários para páginas CRUD:
+    - DataTables (tabelas interativas com paginação, busca, ordenação)
+    - SweetAlert2 (alertas e confirmações elegantes)
+    - jQuery Validation (validação de formulários)
+    - Script base reutilizável (crud-base.js)
+    
+    Hierarquia de Layouts:
+    _Layout.cshtml (base) → _CrudLayout.cshtml (intermediário) → Index.cshtml (página)
+    
+    ============================================================================
+*@
+
 @* Adiciona os estilos específicos do CRUD *@
 @section Styles {
     <!-- DataTables CSS -->
@@ -52,3 +70,6 @@
     @* Permite que as páginas filhas adicionem scripts adicionais *@
     @RenderSection("PageScripts", required: false)
 }
+
+@* Permite que as páginas filhas definam o conteúdo do modal *@
+@RenderSection("ModalContent", required: false)

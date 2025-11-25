@@ -86,16 +86,16 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
             if (response.IsSuccessStatusCode)
             {
                 var result = JsonSerializer.Deserialize<ApiResponse<PagedResult<TDto>>>(content, _jsonOptions);
-                return result ?? new ApiResponse<PagedResult<TDto>> { Success = false, Message = "Erro ao deserializar resposta" };
+                return result ?? new ApiResponse<PagedResult<TDto>> { Success = false, Error = new ApiError { Message = "Erro ao deserializar resposta" } };
             }
 
             _logger.LogWarning("Erro ao buscar dados paginados: {StatusCode} - {Content}", response.StatusCode, content);
-            return new ApiResponse<PagedResult<TDto>> { Success = false, Message = "Erro ao buscar dados" };
+            return new ApiResponse<PagedResult<TDto>> { Success = false, Error = new ApiError { Message = "Erro ao buscar dados" } };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao buscar dados paginados");
-            return new ApiResponse<PagedResult<TDto>> { Success = false, Message = "Erro ao buscar dados" };
+            return new ApiResponse<PagedResult<TDto>> { Success = false, Error = new ApiError { Message = "Erro ao buscar dados" } };
         }
     }
 
@@ -112,16 +112,16 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
             if (response.IsSuccessStatusCode)
             {
                 var result = JsonSerializer.Deserialize<ApiResponse<IEnumerable<TDto>>>(content, _jsonOptions);
-                return result ?? new ApiResponse<IEnumerable<TDto>> { Success = false, Message = "Erro ao deserializar resposta" };
+                return result ?? new ApiResponse<IEnumerable<TDto>> { Success = false, Error = new ApiError { Message = "Erro ao deserializar resposta" } };
             }
 
             _logger.LogWarning("Erro ao buscar todos os registros: {StatusCode} - {Content}", response.StatusCode, content);
-            return new ApiResponse<IEnumerable<TDto>> { Success = false, Message = "Erro ao buscar registros" };
+            return new ApiResponse<IEnumerable<TDto>> { Success = false, Error = new ApiError { Message = "Erro ao buscar registros" } };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao buscar todos os registros");
-            return new ApiResponse<IEnumerable<TDto>> { Success = false, Message = "Erro ao buscar registros" };
+            return new ApiResponse<IEnumerable<TDto>> { Success = false, Error = new ApiError { Message = "Erro ao buscar registros" } };
         }
     }
 
@@ -138,16 +138,16 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
             if (response.IsSuccessStatusCode)
             {
                 var result = JsonSerializer.Deserialize<ApiResponse<TDto>>(content, _jsonOptions);
-                return result ?? new ApiResponse<TDto> { Success = false, Message = "Erro ao deserializar resposta" };
+                return result ?? new ApiResponse<TDto> { Success = false, Error = new ApiError { Message = "Erro ao deserializar resposta" } };
             }
 
             _logger.LogWarning("Erro ao buscar registro {Id}: {StatusCode} - {Content}", id, response.StatusCode, content);
-            return new ApiResponse<TDto> { Success = false, Message = "Registro não encontrado" };
+            return new ApiResponse<TDto> { Success = false, Error = new ApiError { Message = "Registro não encontrado" } };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao buscar registro {Id}", id);
-            return new ApiResponse<TDto> { Success = false, Message = "Erro ao buscar registro" };
+            return new ApiResponse<TDto> { Success = false, Error = new ApiError { Message = "Erro ao buscar registro" } };
         }
     }
 
@@ -167,11 +167,11 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
             if (response.IsSuccessStatusCode)
             {
                 var result = JsonSerializer.Deserialize<ApiResponse<TDto>>(content, _jsonOptions);
-                return result ?? new ApiResponse<TDto> { Success = false, Message = "Erro ao deserializar resposta" };
+                return result ?? new ApiResponse<TDto> { Success = false, Error = new ApiError { Message = "Erro ao deserializar resposta" } };
             }
 
             _logger.LogWarning("Erro ao criar registro: {StatusCode} - {Content}", response.StatusCode, content);
-            
+
             // Tenta deserializar a resposta de erro
             try
             {
@@ -186,12 +186,12 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
                 // Ignora erro de deserialização
             }
 
-            return new ApiResponse<TDto> { Success = false, Message = "Erro ao criar registro" };
+            return new ApiResponse<TDto> { Success = false, Error = new ApiError { Message = "Erro ao criar registro" } };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao criar registro");
-            return new ApiResponse<TDto> { Success = false, Message = "Erro ao criar registro" };
+            return new ApiResponse<TDto> { Success = false, Error = new ApiError { Message = "Erro ao criar registro" } };
         }
     }
 
@@ -211,11 +211,11 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
             if (response.IsSuccessStatusCode)
             {
                 var result = JsonSerializer.Deserialize<ApiResponse<TDto>>(content, _jsonOptions);
-                return result ?? new ApiResponse<TDto> { Success = false, Message = "Erro ao deserializar resposta" };
+                return result ?? new ApiResponse<TDto> { Success = false, Error = new ApiError { Message = "Erro ao deserializar resposta" } };
             }
 
             _logger.LogWarning("Erro ao atualizar registro {Id}: {StatusCode} - {Content}", id, response.StatusCode, content);
-            
+
             // Tenta deserializar a resposta de erro
             try
             {
@@ -230,12 +230,12 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
                 // Ignora erro de deserialização
             }
 
-            return new ApiResponse<TDto> { Success = false, Message = "Erro ao atualizar registro" };
+            return new ApiResponse<TDto> { Success = false, Error = new ApiError { Message = "Erro ao atualizar registro" } };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao atualizar registro {Id}", id);
-            return new ApiResponse<TDto> { Success = false, Message = "Erro ao atualizar registro" };
+            return new ApiResponse<TDto> { Success = false, Error = new ApiError { Message = "Erro ao atualizar registro" } };
         }
     }
 
@@ -250,7 +250,7 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
 
             if (response.IsSuccessStatusCode)
             {
-                return new ApiResponse<bool> { Success = true, Message = "Registro excluído com sucesso", Data = true };
+                return new ApiResponse<bool> { Success = true, Error = new ApiError { Message = "Registro excluído com sucesso" }, Data = true };
             }
 
             var content = await response.Content.ReadAsStringAsync();
@@ -270,12 +270,12 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
                 // Ignora erro de deserialização
             }
 
-            return new ApiResponse<bool> { Success = false, Message = "Erro ao excluir registro" };
+            return new ApiResponse<bool> { Success = false, Error = new ApiError { Message = "Erro ao excluir registro" } };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao excluir registro {Id}", id);
-            return new ApiResponse<bool> { Success = false, Message = "Erro ao excluir registro" };
+            return new ApiResponse<bool> { Success = false, Error = new ApiError { Message = "Erro ao excluir registro" } };
         }
     }
 
@@ -298,7 +298,7 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
 
             if (response.IsSuccessStatusCode)
             {
-                return new ApiResponse<bool> { Success = true, Message = "Registros excluídos com sucesso", Data = true };
+                return new ApiResponse<bool> { Success = true, Error = new ApiError { Message = "Registros excluídos com sucesso" }, Data = true };
             }
 
             var content = await response.Content.ReadAsStringAsync();
@@ -318,12 +318,12 @@ public abstract class BaseApiService<TDto, TCreateDto, TUpdateDto, TKey> : IApiS
                 // Ignora erro de deserialização
             }
 
-            return new ApiResponse<bool> { Success = false, Message = "Erro ao excluir registros" };
+            return new ApiResponse<bool> { Success = false, Error = new ApiError { Message = "Erro ao excluir registros" } };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao excluir múltiplos registros");
-            return new ApiResponse<bool> { Success = false, Message = "Erro ao excluir registros" };
+            return new ApiResponse<bool> { Success = false, Error = new ApiError { Message = "Erro ao excluir registros" } };
         }
     }
 }

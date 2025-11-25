@@ -44,7 +44,9 @@ using RhSensoERP.Identity.Application;
 using RhSensoERP.Identity.Application.Configuration;
 using RhSensoERP.Identity.Application.Services;
 using RhSensoERP.Identity.Infrastructure;
-using RhSensoERP.Modules.GestaoDePessoas;
+
+// ❌ COMENTADO TEMPORARIAMENTE - Erro no EF mapeamento
+/////using RhSensoERP.Modules.GestaoDePessoas;
 using RhSensoERP.Shared.Core.Abstractions;
 using RhSensoERP.Shared.Infrastructure;
 using RhSensoERP.Shared.Infrastructure.Services;
@@ -201,7 +203,9 @@ builder.Services.AddIdentityInfrastructure(builder.Configuration);
 builder.Services.AddIdentityApplication();
 
 // Módulo de Gestão de Pessoas (RHU)
-builder.Services.AddGestaoDePessoasModule(builder.Configuration);
+
+// ❌ COMENTADO TEMPORARIAMENTE - Erro no EF mapeamento
+//builder.Services.AddGestaoDePessoasModule(builder.Configuration);
 
 // ============================================================================
 // 4. CONFIGURAÇÃO DE CONTROLLERS E API EXPLORER

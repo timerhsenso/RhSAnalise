@@ -42,10 +42,10 @@ public static class DependencyInjection
         });
 
         // ==================== Repositórios ====================
-        services.AddScoped<IMunicipioRepository, MunicipioRepository>();
+      //  services.AddScoped<IMunicipioRepository, MunicipioRepository>();
 
         // ==================== Services - Cadastros Auxiliares ====================
-        services.AddScoped<IBancoService, BancoService>();
+     //   services.AddScoped<IBancoService, BancoService>();
         // services.AddScoped<IAgenciaService, AgenciaService>();
         // services.AddScoped<IMunicipioService, MunicipioService>();
         // services.AddScoped<ICargoService, CargoService>();
