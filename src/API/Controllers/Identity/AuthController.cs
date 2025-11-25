@@ -300,18 +300,23 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken ct)
     {
-        var cdUsuario = User.FindFirstValue("cdusuario");
+        // ✅ CORREÇÃO: Usar o claim "sub" ou "Id" que contém o GUID do usuário
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? User.FindFirstValue("Id");
 
-        if (string.IsNullOrWhiteSpace(cdUsuario))
+        var cdUsuario = User.FindFirstValue("cdusuario"); // Para logs e auditoria
+
+        if (string.IsNullOrWhiteSpace(userId))
         {
             return Unauthorized(new { error = "INVALID_TOKEN", message = "Token inválido." });
         }
 
-        _logger.LogInformation("🚪 Logout iniciado: {CdUsuario}", cdUsuario);
+        _logger.LogInformation("🚪 Logout iniciado: {CdUsuario} (Id: {UserId})", cdUsuario, userId);
 
         try
         {
-            var command = new LogoutCommand(cdUsuario, request);
+            var command = new LogoutCommand(userId, request); // ✅ Passa o GUID
             var result = await _mediator.Send(command, ct);
 
             if (!result.IsSuccess)
