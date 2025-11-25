@@ -3,6 +3,7 @@
  * SISTEMAS - JavaScript Específico
  * ============================================================================
  * Arquivo: wwwroot/js/pages/sistemas.js
+ * Versão: 2.0 (Corrigido)
  * 
  * Implementação específica do CRUD de Sistemas.
  * Estende a classe CrudBase com customizações necessárias.
@@ -21,28 +22,43 @@ class SistemaCrud extends CrudBase {
      */
     enablePrimaryKeyFields(enable) {
         $('#CdSistema').prop('readonly', !enable);
+
+        // Em modo edição, também adiciona estilo visual
+        if (!enable) {
+            $('#CdSistema').addClass('bg-light');
+        } else {
+            $('#CdSistema').removeClass('bg-light');
+        }
     }
 
     /**
-     * Customização antes de submeter (opcional).
+     * Customização antes de submeter.
+     * Converte código para maiúsculas.
      */
     beforeSubmit(formData, isEdit) {
-        // Exemplo: transformar dados antes de enviar
-        // formData.CdSistema = formData.CdSistema.toUpperCase();
+        // Converte código para maiúsculas
+        if (formData.CdSistema) {
+            formData.CdSistema = formData.CdSistema.toUpperCase().trim();
+        }
+
+        // Garante que o campo Ativo seja booleano
+        formData.Ativo = formData.Ativo === true || formData.Ativo === 'true' || formData.Ativo === 'on';
+
+        console.log('📤 Dados a enviar:', formData);
         return formData;
     }
 
     /**
-     * Customização após submeter (opcional).
+     * Customização após submeter.
      */
     afterSubmit(data, isEdit) {
-        // Exemplo: ações após salvar com sucesso
-        console.log('Sistema salvo:', data);
+        console.log('✅ Sistema salvo:', data);
     }
 }
 
 // Inicialização quando o documento estiver pronto
 $(document).ready(function () {
+
     // Configuração das colunas do DataTables
     const columns = [
         // Coluna de seleção (checkbox)
@@ -51,31 +67,38 @@ $(document).ready(function () {
             orderable: false,
             searchable: false,
             className: 'dt-checkboxes-cell',
+            width: '40px',
             render: function () {
-                return '<input type="checkbox" class="dt-checkboxes">';
+                return '<input type="checkbox" class="dt-checkboxes form-check-input">';
             }
         },
         // Código do Sistema
         {
-            data: 'cdSistema',
+            data: 'cdSistema',  // camelCase - como vem da API
             name: 'CdSistema',
-            title: 'Código'
+            title: 'Código',
+            width: '120px',
+            render: function (data) {
+                return `<strong>${data}</strong>`;
+            }
         },
         // Descrição do Sistema
         {
-            data: 'dcSistema',
+            data: 'dcSistema',  // camelCase - como vem da API
             name: 'DcSistema',
             title: 'Descrição'
         },
         // Status (Ativo/Inativo)
         {
-            data: 'ativo',
+            data: 'ativo',  // camelCase - como vem da API
             name: 'Ativo',
             title: 'Status',
+            width: '100px',
+            className: 'text-center',
             render: function (data) {
                 return data
-                    ? '<span class="badge-status active"><i class="fas fa-check-circle"></i> Ativo</span>'
-                    : '<span class="badge-status inactive"><i class="fas fa-times-circle"></i> Inativo</span>';
+                    ? '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Ativo</span>'
+                    : '<span class="badge bg-secondary"><i class="fas fa-times-circle me-1"></i>Inativo</span>';
             }
         },
         // Coluna de ações
@@ -85,24 +108,40 @@ $(document).ready(function () {
             searchable: false,
             className: 'text-end no-export',
             title: 'Ações',
+            width: '130px',
             render: function (data, type, row) {
-                let actions = '<div class="action-buttons">';
-                
+                let actions = '<div class="btn-group btn-group-sm" role="group">';
+
                 // Botão Visualizar
-                actions += `<button type="button" class="btn btn-sm btn-info btn-view" data-id="${row.cdSistema}" data-bs-toggle="tooltip" title="Visualizar">
-                    <i class="fas fa-eye"></i>
-                </button>`;
-                
+                if (window.crudPermissions?.canView !== false) {
+                    actions += `<button type="button" class="btn btn-info btn-view" 
+                        data-id="${row.cdSistema}" 
+                        data-bs-toggle="tooltip" 
+                        title="Visualizar">
+                        <i class="fas fa-eye"></i>
+                    </button>`;
+                }
+
                 // Botão Editar
-                actions += `<button type="button" class="btn btn-sm btn-warning btn-edit" data-id="${row.cdSistema}" data-bs-toggle="tooltip" title="Editar">
-                    <i class="fas fa-edit"></i>
-                </button>`;
-                
+                if (window.crudPermissions?.canEdit !== false) {
+                    actions += `<button type="button" class="btn btn-warning btn-edit" 
+                        data-id="${row.cdSistema}" 
+                        data-bs-toggle="tooltip" 
+                        title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>`;
+                }
+
                 // Botão Excluir
-                actions += `<button type="button" class="btn btn-sm btn-danger btn-delete" data-id="${row.cdSistema}" data-bs-toggle="tooltip" title="Excluir">
-                    <i class="fas fa-trash"></i>
-                </button>`;
-                
+                if (window.crudPermissions?.canDelete !== false) {
+                    actions += `<button type="button" class="btn btn-danger btn-delete" 
+                        data-id="${row.cdSistema}" 
+                        data-bs-toggle="tooltip" 
+                        title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>`;
+                }
+
                 actions += '</div>';
                 return actions;
             }
@@ -114,14 +153,14 @@ $(document).ready(function () {
         controllerName: 'Sistemas',
         entityName: 'Sistema',
         entityNamePlural: 'Sistemas',
-        idField: 'cdSistema',
+        idField: 'cdSistema',  // camelCase - como vem da API
         tableSelector: '#tableCrud',
         columns: columns,
         permissions: {
-            canCreate: window.crudPermissions?.canCreate || false,
-            canEdit: window.crudPermissions?.canEdit || false,
-            canDelete: window.crudPermissions?.canDelete || false,
-            canView: window.crudPermissions?.canView || false
+            canCreate: window.crudPermissions?.canCreate !== false,
+            canEdit: window.crudPermissions?.canEdit !== false,
+            canDelete: window.crudPermissions?.canDelete !== false,
+            canView: window.crudPermissions?.canView !== false
         },
         exportConfig: {
             enabled: true,
@@ -132,4 +171,11 @@ $(document).ready(function () {
             filename: 'Sistemas'
         }
     });
+
+    // Máscara para código (apenas maiúsculas e números)
+    $('#CdSistema').on('input', function () {
+        this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    });
+
+    console.log('✅ CRUD de Sistemas inicializado');
 });

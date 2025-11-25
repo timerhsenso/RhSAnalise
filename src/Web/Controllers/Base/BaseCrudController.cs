@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RhSensoERP.Web.Models.Base;
+using RhSensoERP.Web.Models.Common;
 using RhSensoERP.Web.Services.Base;
 
 namespace RhSensoERP.Web.Controllers.Base;
@@ -276,6 +277,7 @@ public abstract class BaseCrudController<TDto, TCreateDto, TUpdateDto, TKey> : C
 
     /// <summary>
     /// Action para excluir múltiplos registros (AJAX).
+    /// Suporta exclusão em lote com resultado detalhado quando o serviço implementa IBatchDeleteService.
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -288,14 +290,72 @@ public abstract class BaseCrudController<TDto, TCreateDto, TUpdateDto, TKey> : C
                 return JsonError("Nenhum registro selecionado");
             }
 
-            var result = await _apiService.DeleteMultipleAsync(ids);
+            var idsList = ids.ToList();
+            _logger.LogInformation("Excluindo {Count} registros", idsList.Count);
 
-            if (!result.Success)
+            // Verifica se o serviço implementa IBatchDeleteService para suporte a exclusão detalhada
+            if (_apiService is IBatchDeleteService<TKey> batchDeleteService)
             {
-                return JsonError(result.Message ?? "Erro ao excluir registros");
-            }
+                _logger.LogDebug("Serviço implementa IBatchDeleteService - usando exclusão em lote detalhada");
 
-            return JsonSuccess(result.Message ?? "Registros excluídos com sucesso");
+                // Usa o método com resultado detalhado
+                var batchResult = await batchDeleteService.DeleteBatchAsync(idsList);
+
+                if (batchResult.Success && batchResult.Data != null)
+                {
+                    var data = batchResult.Data;
+                    var successCount = data.SuccessCount;
+                    var failureCount = data.FailureCount;
+
+                    // Converte erros para lista de objetos serializáveis
+                    var errorsList = new List<object>();
+                    if (data.Errors != null && data.Errors.Any())
+                    {
+                        foreach (var error in data.Errors)
+                        {
+                            errorsList.Add(new
+                            {
+                                code = error.Code,
+                                message = error.Message
+                            });
+                        }
+                    }
+
+                    _logger.LogInformation(
+                        "Exclusão em lote concluída: {Success} sucesso(s), {Failure} falha(s)",
+                        successCount, failureCount);
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = batchResult.Error?.Message ?? $"{successCount} registro(s) excluído(s) com sucesso.",
+                        data = new
+                        {
+                            successCount = successCount,
+                            failureCount = failureCount,
+                            errors = errorsList
+                        }
+                    });
+                }
+
+                return JsonError(
+                    batchResult.Error?.Message ?? "Erro ao excluir registros em lote");
+            }
+            else
+            {
+                _logger.LogDebug("Serviço NÃO implementa IBatchDeleteService - usando exclusão múltipla simples");
+
+                // Fallback: usa o método simples sem detalhes
+                var result = await _apiService.DeleteMultipleAsync(idsList);
+
+                if (!result.Success)
+                {
+                    return JsonError(result.Message ?? "Erro ao excluir registros");
+                }
+
+                return JsonSuccess(
+                    result.Message ?? $"{idsList.Count} registro(s) excluído(s) com sucesso");
+            }
         }
         catch (Exception ex)
         {

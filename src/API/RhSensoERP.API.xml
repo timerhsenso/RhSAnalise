@@ -493,12 +493,12 @@
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.GetById(System.String,System.Threading.CancellationToken)">
             <summary>
-            Obtém um sistema pelo código.
+            Obtem um sistema pelo codigo.
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.GetPaged(RhSensoERP.Shared.Contracts.Common.PagedRequest,System.Threading.CancellationToken)">
             <summary>
-            Lista sistemas com paginação.
+            Lista sistemas com paginacao.
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Create(RhSensoERP.Identity.Application.Requests.Sistema.CreateSistemaRequest,System.Threading.CancellationToken)">
@@ -514,6 +514,11 @@
         <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Delete(System.String,System.Threading.CancellationToken)">
             <summary>
             Remove sistema.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.DeleteMultiple(System.Collections.Generic.List{System.String},System.Threading.CancellationToken)">
+            <summary>
+            Remove multiplos sistemas em lote.
             </summary>
         </member>
         <member name="T:RhSensoERP.API.Controllers.Identity.UsuariosController">

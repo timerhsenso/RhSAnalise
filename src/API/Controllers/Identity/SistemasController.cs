@@ -1,7 +1,7 @@
 ﻿// src/API/Controllers/Identity/SistemasController.cs
-
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using RhSensoERP.Identity.Application.DTOs.Common;
 using RhSensoERP.Identity.Application.DTOs.Sistema;
 using RhSensoERP.Identity.Application.Features.Sistema.Commands;
 using RhSensoERP.Identity.Application.Features.Sistema.Queries;
@@ -24,7 +24,7 @@ public sealed class SistemasController : ControllerBase
     public SistemasController(IMediator mediator) => _mediator = mediator;
 
     /// <summary>
-    /// Obtém um sistema pelo código.
+    /// Obtem um sistema pelo codigo.
     /// </summary>
     [HttpGet("{cdSistema}")]
     public async Task<ActionResult<Result<SistemaDto>>> GetById(
@@ -33,7 +33,7 @@ public sealed class SistemasController : ControllerBase
         => Ok(await _mediator.Send(new GetSistemaByIdQuery(cdSistema), ct));
 
     /// <summary>
-    /// Lista sistemas com paginação.
+    /// Lista sistemas com paginacao.
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<Result<PagedResult<SistemaDto>>>> GetPaged(
@@ -68,4 +68,13 @@ public sealed class SistemasController : ControllerBase
         [FromRoute] string cdSistema,
         CancellationToken ct)
         => Ok(await _mediator.Send(new DeleteSistemaCommand(cdSistema), ct));
+
+    /// <summary>
+    /// Remove multiplos sistemas em lote.
+    /// </summary>
+    [HttpDelete("batch")]
+    public async Task<ActionResult<Result<BatchDeleteResult>>> DeleteMultiple(
+        [FromBody] List<string> codigos,
+        CancellationToken ct)
+        => Ok(await _mediator.Send(new DeleteSistemasCommand(codigos), ct));
 }

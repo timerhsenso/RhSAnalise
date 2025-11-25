@@ -1,46 +1,18 @@
 /**
  * ============================================================================
- * CRUD BASE V2 - JavaScript Reutilizável Aprimorado
+ * CRUD BASE - JavaScript Reutilizável para Operações CRUD
  * ============================================================================
  * Arquivo: wwwroot/js/crud-base.js
- * Versão: 2.0
- * Data: 24/11/2025
+ * Versão: 3.0 (Corrigido - Case-insensitive field mapping)
  * 
- * Classe base para gerenciar operações CRUD com DataTables.
- * Inclui suporte completo para exportação, validação client-side,
- * e loading states consistentes.
- * 
- * ============================================================================
- * USO:
- * ============================================================================
- * 
- * // Em um arquivo JS específico (ex: sistemas.js)
- * class SistemaCrud extends CrudBase {
- *     constructor(config) {
- *         super(config);
- *     }
- * 
- *     // Sobrescrever métodos conforme necessário
- *     buildFormData($form) {
- *         const data = super.buildFormData($form);
- *         // Customizações específicas
- *         return data;
- *     }
- * }
- * 
- * // Inicialização
- * $(document).ready(function() {
- *     window.crudInstance = new SistemaCrud({
- *         controllerName: 'Sistemas',
- *         entityName: 'Sistema',
- *         entityNamePlural: 'Sistemas',
- *         idField: 'cdSistema',
- *         columns: [ ... ],
- *         formFields: [ ... ],
- *         permissions: { ... },
- *         exportConfig: { ... }
- *     });
- * });
+ * Classe base para implementação de CRUDs com DataTables.
+ * Fornece funcionalidades reutilizáveis como:
+ * - Inicialização e configuração do DataTables
+ * - Operações CRUD (Create, Read, Update, Delete)
+ * - Exportação (Excel, PDF, CSV, Print)
+ * - Seleção múltipla e exclusão em lote
+ * - Validação de formulários
+ * - Feedback visual com SweetAlert2
  * 
  * ============================================================================
  */
@@ -49,476 +21,600 @@ class CrudBase {
     /**
      * Construtor da classe CrudBase.
      * @param {Object} config - Configurações do CRUD
-     * @param {string} config.controllerName - Nome do controller (ex: 'Sistemas')
-     * @param {string} config.entityName - Nome da entidade no singular (ex: 'Sistema')
-     * @param {string} config.entityNamePlural - Nome da entidade no plural (ex: 'Sistemas')
-     * @param {string} config.idField - Nome do campo ID (ex: 'cdSistema')
-     * @param {string} [config.tableSelector='#tableCrud'] - Seletor da tabela
-     * @param {Array} config.columns - Definição das colunas do DataTables
-     * @param {Array} [config.formFields=[]] - Definição dos campos do formulário para validação
-     * @param {Object} config.permissions - Permissões do usuário {canCreate, canEdit, canDelete, canView}
-     * @param {Object} [config.actions] - Nomes das actions customizadas
-     * @param {Object} [config.exportConfig] - Configurações de exportação
-     * @param {Object} [config.additionalConfig] - Configurações adicionais do DataTables
-     * @param {Function} [config.onRowClick] - Callback ao clicar em uma linha
-     * @param {Function} [config.beforeSubmit] - Callback antes de submeter formulário
-     * @param {Function} [config.afterSubmit] - Callback após submeter formulário
      */
     constructor(config) {
-        // Validação de configurações obrigatórias
-        this.validateConfig(config);
+        // Configurações obrigatórias
+        this.controllerName = config.controllerName;
+        this.entityName = config.entityName || 'Registro';
+        this.entityNamePlural = config.entityNamePlural || 'Registros';
+        this.idField = config.idField || 'id';
+        this.tableSelector = config.tableSelector || '#tableCrud';
+        this.columns = config.columns || [];
 
-        this.config = {
-            controllerName: config.controllerName,
-            entityName: config.entityName,
-            entityNamePlural: config.entityNamePlural,
-            idField: config.idField,
-            tableSelector: config.tableSelector || '#tableCrud',
-            columns: config.columns || [],
-            formFields: config.formFields || [],
-            permissions: config.permissions || {},
-            actions: {
-                list: config.actions?.list || 'List',
-                create: config.actions?.create || 'Create',
-                edit: config.actions?.edit || 'Edit',
-                view: config.actions?.view || 'GetById',
-                delete: config.actions?.delete || 'Delete',
-                deleteMultiple: config.actions?.deleteMultiple || 'DeleteMultiple'
-            },
-            exportConfig: {
-                enabled: config.exportConfig?.enabled !== false,
-                excel: config.exportConfig?.excel !== false,
-                pdf: config.exportConfig?.pdf !== false,
-                csv: config.exportConfig?.csv !== false,
-                print: config.exportConfig?.print !== false,
-                filename: config.exportConfig?.filename || config.entityNamePlural
-            },
-            additionalConfig: config.additionalConfig || {},
-            onRowClick: config.onRowClick,
-            beforeSubmit: config.beforeSubmit,
-            afterSubmit: config.afterSubmit
+        // Configurações opcionais
+        this.modalSelector = config.modalSelector || '#modalCrud';
+        this.formSelector = config.formSelector || '#formCrud';
+        this.permissions = config.permissions || {
+            canCreate: true,
+            canEdit: true,
+            canDelete: true,
+            canView: true
+        };
+        this.exportConfig = config.exportConfig || {
+            enabled: true,
+            excel: true,
+            pdf: true,
+            csv: true,
+            print: true,
+            filename: this.entityNamePlural
         };
 
-        this.table = null;
-        this.currentMode = null; // 'create' | 'edit' | 'view'
+        // Estado interno
+        this.dataTable = null;
+        this.isEditMode = false;
         this.currentId = null;
+        this.selectedIds = [];
 
+        // Inicialização
         this.init();
     }
 
     /**
-     * Valida configurações obrigatórias.
+     * Inicializa o CRUD.
      */
-    validateConfig(config) {
-        const required = ['controllerName', 'entityName', 'entityNamePlural', 'idField', 'columns'];
-        const missing = required.filter(key => !config[key]);
-
-        if (missing.length > 0) {
-            throw new Error(`CrudBase: Configurações obrigatórias ausentes: ${missing.join(', ')}`);
-        }
+    init() {
+        this.initDataTable();
+        this.bindEvents();
+        this.initValidation();
     }
 
     /**
-     * Inicializa o DataTables e eventos.
+     * Inicializa o DataTables.
      */
-    init() {
+    initDataTable() {
         const self = this;
+        const token = $('input[name="__RequestVerificationToken"]').val();
 
-        // Configuração de botões de exportação
+        // Configuração dos botões de exportação
         const buttons = [];
-        if (self.config.exportConfig.enabled) {
-            if (self.config.exportConfig.excel) {
+        if (this.exportConfig.enabled) {
+            if (this.exportConfig.excel) {
                 buttons.push({
                     extend: 'excel',
-                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                    text: '<i class="fas fa-file-excel"></i> Excel',
                     className: 'btn btn-success btn-sm',
                     exportOptions: {
-                        columns: ':visible:not(.no-export)'
+                        columns: ':not(.no-export)'
                     },
-                    filename: self.config.exportConfig.filename
+                    filename: this.exportConfig.filename
                 });
             }
-            if (self.config.exportConfig.pdf) {
+            if (this.exportConfig.pdf) {
                 buttons.push({
                     extend: 'pdf',
-                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                    text: '<i class="fas fa-file-pdf"></i> PDF',
                     className: 'btn btn-danger btn-sm',
                     exportOptions: {
-                        columns: ':visible:not(.no-export)'
+                        columns: ':not(.no-export)'
                     },
-                    filename: self.config.exportConfig.filename,
-                    orientation: 'landscape',
-                    pageSize: 'A4'
+                    filename: this.exportConfig.filename
                 });
             }
-            if (self.config.exportConfig.csv) {
+            if (this.exportConfig.csv) {
                 buttons.push({
                     extend: 'csv',
-                    text: '<i class="fas fa-file-csv me-1"></i> CSV',
-                    className: 'btn btn-info btn-sm',
-                    exportOptions: {
-                        columns: ':visible:not(.no-export)'
-                    },
-                    filename: self.config.exportConfig.filename
-                });
-            }
-            if (self.config.exportConfig.print) {
-                buttons.push({
-                    extend: 'print',
-                    text: '<i class="fas fa-print me-1"></i> Imprimir',
+                    text: '<i class="fas fa-file-csv"></i> CSV',
                     className: 'btn btn-secondary btn-sm',
                     exportOptions: {
-                        columns: ':visible:not(.no-export)'
+                        columns: ':not(.no-export)'
+                    },
+                    filename: this.exportConfig.filename
+                });
+            }
+            if (this.exportConfig.print) {
+                buttons.push({
+                    extend: 'print',
+                    text: '<i class="fas fa-print"></i> Imprimir',
+                    className: 'btn btn-info btn-sm',
+                    exportOptions: {
+                        columns: ':not(.no-export)'
                     }
                 });
             }
         }
 
-        // Configuração base do DataTables
-        const dataTablesConfig = {
+        // Inicializa DataTable
+        this.dataTable = $(this.tableSelector).DataTable({
             processing: true,
             serverSide: true,
+            responsive: true,
             ajax: {
-                url: `/${self.config.controllerName}/${self.config.actions.list}`,
+                url: `/${this.controllerName}/List`,
                 type: 'POST',
                 contentType: 'application/json',
+                headers: {
+                    'RequestVerificationToken': token
+                },
                 data: function (d) {
                     return JSON.stringify(d);
                 },
-                headers: {
-                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                dataSrc: function (json) {
+                    return json.data || [];
                 },
                 error: function (xhr, error, thrown) {
-                    console.error('Erro ao carregar dados:', error, xhr);
-                    self.showError('Erro ao carregar dados da tabela. Verifique sua conexão.');
+                    console.error('Erro ao carregar dados:', error, thrown);
+                    self.showError('Erro ao carregar dados. Verifique sua conexão.');
                 }
             },
-            columns: self.config.columns,
-            language: self.getPortugueseLanguage(),
-            responsive: true,
-            select: {
-                style: 'multi',
-                selector: 'td:first-child'
-            },
+            columns: this.columns,
             order: [[1, 'asc']],
             pageLength: 10,
-            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'Todos']],
-            dom: buttons.length > 0
-                ? '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>><"row"<"col-sm-12"B>>rtip'
-                : '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+            dom: '<"row"<"col-md-6"l><"col-md-6"<"d-flex justify-content-end"B>>>rt<"row"<"col-md-6"i><"col-md-6"p>>',
             buttons: buttons,
-            drawCallback: function () {
-                self.setupTooltips();
-                self.updateSelectedCount();
+            language: {
+                processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div>',
+                lengthMenu: 'Mostrar _MENU_ registros',
+                zeroRecords: 'Nenhum registro encontrado',
+                info: 'Mostrando de _START_ até _END_ de _TOTAL_ registros',
+                infoEmpty: 'Mostrando 0 até 0 de 0 registros',
+                infoFiltered: '(filtrado de _MAX_ registros no total)',
+                search: 'Pesquisar:',
+                paginate: {
+                    first: 'Primeiro',
+                    last: 'Último',
+                    next: 'Próximo',
+                    previous: 'Anterior'
+                },
+                select: {
+                    rows: {
+                        _: 'Selecionado %d linhas',
+                        0: '',
+                        1: 'Selecionado 1 linha'
+                    }
+                }
             },
-            ...self.config.additionalConfig
-        };
-
-        // Inicializa o DataTables
-        this.table = $(self.config.tableSelector).DataTable(dataTablesConfig);
-
-        // Eventos de seleção
-        this.table.on('select deselect', function () {
-            self.updateSelectedCount();
+            drawCallback: function () {
+                // Reinicializa tooltips após cada draw
+                $('[data-bs-toggle="tooltip"]').tooltip();
+                self.updateSelectedCount();
+            }
         });
 
-        // Evento de clique em linha (se configurado)
-        if (self.config.onRowClick) {
-            $(self.config.tableSelector).on('click', 'tbody tr', function () {
-                const data = self.table.row(this).data();
-                if (data) {
-                    self.config.onRowClick(data);
-                }
-            });
-        }
-
-        // Eventos dos botões
-        this.setupEventHandlers();
-
-        // Inicializa validação de formulários
-        this.setupFormValidation();
+        // Evento de seleção de linha
+        $(this.tableSelector).on('change', '.dt-checkboxes', function () {
+            self.updateSelectedCount();
+        });
     }
 
     /**
-     * Configura os event handlers dos botões.
+     * Vincula eventos aos elementos da página.
      */
-    setupEventHandlers() {
+    bindEvents() {
         const self = this;
 
-        // Botão de criar
-        $(document).on('click', '#btnCreate', function () {
+        // Botão Novo
+        $('#btnCreate').on('click', function () {
             self.openCreateModal();
         });
 
-        // Botão de visualizar
-        $(document).on('click', '.btn-view', function (e) {
-            e.stopPropagation();
-            const id = $(this).data('id');
-            self.openViewModal(id);
-        });
-
-        // Botão de editar
-        $(document).on('click', '.btn-edit', function (e) {
-            e.stopPropagation();
-            const id = $(this).data('id');
-            self.openEditModal(id);
-        });
-
-        // Botão de excluir
-        $(document).on('click', '.btn-delete', function (e) {
-            e.stopPropagation();
-            const id = $(this).data('id');
-            self.deleteSingle(id);
-        });
-
-        // Botão de excluir selecionados
-        $(document).on('click', '#btnDeleteSelected', function () {
-            self.deleteSelected();
-        });
-
-        // Botão de atualizar
-        $(document).on('click', '#btnRefresh', function () {
+        // Botão Atualizar
+        $('#btnRefresh').on('click', function () {
             self.refresh();
         });
 
-        // Submissão de formulário
-        $(document).on('submit', '#formCrud', function (e) {
+        // Botão Excluir Selecionados
+        $('#btnDeleteSelected').on('click', function () {
+            self.deleteSelected();
+        });
+
+        // Busca
+        $('#searchBox').on('keyup', function () {
+            self.dataTable.search($(this).val()).draw();
+        });
+
+        // Botões de ação na tabela (delegação de eventos)
+        $(this.tableSelector).on('click', '.btn-view', function () {
+            const id = $(this).data('id');
+            self.view(id);
+        });
+
+        $(this.tableSelector).on('click', '.btn-edit', function () {
+            const id = $(this).data('id');
+            self.edit(id);
+        });
+
+        $(this.tableSelector).on('click', '.btn-delete', function () {
+            const id = $(this).data('id');
+            self.delete(id);
+        });
+
+        // Submit do formulário
+        $(this.formSelector).on('submit', function (e) {
             e.preventDefault();
-            self.submitForm($(this));
+            if ($(this).valid()) {
+                self.save();
+            }
         });
 
-        // Limpeza ao fechar modal
-        $('#modalCrud').on('hidden.bs.modal', function () {
-            self.resetForm();
+        // Selecionar/Deselecionar todos
+        $(this.tableSelector).on('click', 'thead .dt-checkboxes', function () {
+            const checked = $(this).prop('checked');
+            $(self.tableSelector + ' tbody .dt-checkboxes').prop('checked', checked);
+            self.updateSelectedCount();
         });
     }
 
     /**
-     * Configura validação de formulários.
+     * Inicializa validação do formulário.
      */
-    setupFormValidation() {
-        const self = this;
-
-        if ($('#formCrud').length > 0) {
-            $('#formCrud').validate({
-                errorClass: 'is-invalid',
-                validClass: 'is-valid',
-                errorElement: 'div',
-                errorPlacement: function (error, element) {
-                    error.addClass('invalid-feedback');
-                    element.closest('.mb-3').append(error);
-                },
-                highlight: function (element) {
-                    $(element).addClass('is-invalid').removeClass('is-valid');
-                },
-                unhighlight: function (element) {
-                    $(element).removeClass('is-invalid').addClass('is-valid');
-                },
-                submitHandler: function (form) {
-                    self.submitForm($(form));
-                }
-            });
-        }
+    initValidation() {
+        $(this.formSelector).validate({
+            errorClass: 'is-invalid',
+            validClass: 'is-valid',
+            errorElement: 'div',
+            errorPlacement: function (error, element) {
+                error.addClass('invalid-feedback');
+                element.closest('.mb-3').append(error);
+            },
+            highlight: function (element) {
+                $(element).addClass('is-invalid').removeClass('is-valid');
+            },
+            unhighlight: function (element) {
+                $(element).removeClass('is-invalid').addClass('is-valid');
+            }
+        });
     }
 
     /**
-     * Abre modal de criação.
+     * Abre modal para criar novo registro.
      */
     openCreateModal() {
-        this.currentMode = 'create';
+        this.isEditMode = false;
         this.currentId = null;
-
-        $('#modalTitle').text(`Novo ${this.config.entityName}`);
-        $('#formCrud')[0].reset();
-        $('#Id').val('');
-
-        // Habilita campos de chave primária
+        this.clearForm();
         this.enablePrimaryKeyFields(true);
-
-        this.resetValidation();
-        $('#modalCrud').modal('show');
+        $('#modalTitle').text(`Novo ${this.entityName}`);
+        $(this.modalSelector).modal('show');
     }
 
     /**
-     * Abre modal de visualização.
+     * Abre modal para editar registro existente.
+     * @param {string|number} id - ID do registro
      */
-    openViewModal(id) {
+    async edit(id) {
         const self = this;
-        this.currentMode = 'view';
+        this.isEditMode = true;
         this.currentId = id;
 
-        $.ajax({
-            url: `/${self.config.controllerName}/${self.config.actions.view}/${id}`,
-            type: 'GET',
-            beforeSend: function () {
-                self.showLoading();
-            },
-            success: function (response) {
-                self.hideLoading();
+        try {
+            this.showLoading();
 
-                if (response.success && response.data) {
-                    self.populateViewModal(response.data);
-                    $('#modalView').modal('show');
-                } else {
-                    self.showError(response.message || 'Erro ao carregar registro.');
-                }
-            },
-            error: function (xhr) {
-                self.hideLoading();
-                self.showError('Erro ao carregar registro.');
+            const response = await $.ajax({
+                url: `/${this.controllerName}/GetById`,
+                type: 'GET',
+                data: { id: id }
+            });
+
+            this.hideLoading();
+
+            if (response.success && response.data) {
+                this.clearForm();
+                this.populateForm(response.data);
+                this.enablePrimaryKeyFields(false);
+                $('#modalTitle').text(`Editar ${this.entityName}`);
+                $(this.modalSelector).modal('show');
+            } else {
+                this.showError(response.message || 'Erro ao carregar registro.');
             }
-        });
-    }
-
-    /**
-     * Abre modal de edição.
-     */
-    openEditModal(id) {
-        const self = this;
-        this.currentMode = 'edit';
-        this.currentId = id;
-
-        $.ajax({
-            url: `/${self.config.controllerName}/${self.config.actions.view}/${id}`,
-            type: 'GET',
-            beforeSend: function () {
-                self.showLoading();
-            },
-            success: function (response) {
-                self.hideLoading();
-
-                if (response.success && response.data) {
-                    $('#modalTitle').text(`Editar ${self.config.entityName}`);
-                    self.populateForm(response.data);
-
-                    // Desabilita campos de chave primária
-                    self.enablePrimaryKeyFields(false);
-
-                    self.resetValidation();
-                    $('#modalCrud').modal('show');
-                } else {
-                    self.showError(response.message || 'Erro ao carregar registro.');
-                }
-            },
-            error: function (xhr) {
-                self.hideLoading();
-                self.showError('Erro ao carregar registro.');
-            }
-        });
-    }
-
-    /**
-     * Popula o formulário com dados.
-     */
-    populateForm(data) {
-        $('#Id').val(data[this.config.idField]);
-
-        // Popula campos automaticamente baseado nos nomes
-        for (const key in data) {
-            const $field = $(`#${key}`);
-            if ($field.length > 0) {
-                if ($field.is(':checkbox')) {
-                    $field.prop('checked', data[key]);
-                } else {
-                    $field.val(data[key]);
-                }
-            }
+        } catch (error) {
+            this.hideLoading();
+            console.error('Erro ao carregar registro:', error);
+            this.showError('Erro ao carregar registro. Verifique sua conexão.');
         }
     }
 
     /**
-     * Popula o modal de visualização.
+     * Visualiza um registro (somente leitura).
+     * @param {string|number} id - ID do registro
      */
-    populateViewModal(data) {
-        let html = '<div class="row">';
+    async view(id) {
+        try {
+            this.showLoading();
 
-        for (const key in data) {
-            const value = data[key];
-            const displayValue = this.formatDisplayValue(key, value);
+            const response = await $.ajax({
+                url: `/${this.controllerName}/GetById`,
+                type: 'GET',
+                data: { id: id }
+            });
 
-            html += `
-                <div class="col-md-6 mb-3">
-                    <strong>${this.formatFieldName(key)}:</strong><br>
-                    <span class="text-muted">${displayValue}</span>
-                </div>
-            `;
+            this.hideLoading();
+
+            if (response.success && response.data) {
+                this.showViewModal(response.data);
+            } else {
+                this.showError(response.message || 'Erro ao carregar registro.');
+            }
+        } catch (error) {
+            this.hideLoading();
+            console.error('Erro ao visualizar registro:', error);
+            this.showError('Erro ao carregar registro. Verifique sua conexão.');
+        }
+    }
+
+    /**
+     * Exibe modal de visualização.
+     * @param {Object} data - Dados do registro
+     */
+    showViewModal(data) {
+        let html = '<div class="table-responsive"><table class="table table-bordered">';
+
+        for (const [key, value] of Object.entries(data)) {
+            // Ignora campos técnicos
+            if (key.startsWith('_') || key === 'id') continue;
+
+            let displayValue = value;
+
+            // Formata valores booleanos
+            if (typeof value === 'boolean') {
+                displayValue = value
+                    ? '<span class="badge bg-success">Sim</span>'
+                    : '<span class="badge bg-danger">Não</span>';
+            }
+            // Formata datas
+            else if (value && typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+                const date = new Date(value);
+                displayValue = date.toLocaleDateString('pt-BR');
+            }
+            // Formata null/undefined
+            else if (value === null || value === undefined) {
+                displayValue = '<span class="text-muted">-</span>';
+            }
+
+            html += `<tr><th style="width: 30%">${this.formatFieldName(key)}</th><td>${displayValue}</td></tr>`;
         }
 
-        html += '</div>';
+        html += '</table></div>';
+
         $('#viewContent').html(html);
+        $('#modalView').modal('show');
     }
 
     /**
      * Formata nome do campo para exibição.
+     * @param {string} fieldName - Nome do campo
+     * @returns {string} Nome formatado
      */
     formatFieldName(fieldName) {
-        // Remove prefixos comuns (cd, dc, dt, etc)
-        let formatted = fieldName.replace(/^(cd|dc|dt|nr|vl|qt|id)/i, '');
+        // Remove prefixos comuns
+        let name = fieldName.replace(/^(cd|dc|dt|nr|fl|id)/i, '');
 
         // Adiciona espaços antes de maiúsculas
-        formatted = formatted.replace(/([A-Z])/g, ' $1').trim();
+        name = name.replace(/([A-Z])/g, ' $1').trim();
 
         // Capitaliza primeira letra
-        return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+        return name.charAt(0).toUpperCase() + name.slice(1);
     }
 
     /**
-     * Formata valor para exibição.
+     * Salva o registro (cria ou atualiza).
      */
-    formatDisplayValue(key, value) {
-        if (value === null || value === undefined) return '-';
+    async save() {
+        const self = this;
+        const token = $('input[name="__RequestVerificationToken"]').val();
 
-        // Booleanos
-        if (typeof value === 'boolean') {
-            return value
-                ? '<span class="badge bg-success">Sim</span>'
-                : '<span class="badge bg-danger">Não</span>';
+        // Coleta dados do formulário
+        const formData = this.getFormData();
+
+        // Hook para customização antes de enviar
+        const processedData = this.beforeSubmit(formData, this.isEditMode);
+        if (processedData === false) return; // Cancela se retornar false
+
+        const dataToSend = processedData || formData;
+
+        try {
+            this.showLoading();
+
+            const url = this.isEditMode
+                ? `/${this.controllerName}/Edit?id=${encodeURIComponent(this.currentId)}`
+                : `/${this.controllerName}/Create`;
+
+            const response = await $.ajax({
+                url: url,
+                type: 'POST',
+                contentType: 'application/json',
+                headers: {
+                    'RequestVerificationToken': token
+                },
+                data: JSON.stringify(dataToSend)
+            });
+
+            this.hideLoading();
+
+            if (response.success) {
+                $(this.modalSelector).modal('hide');
+                this.showSuccess(response.message || `${this.entityName} salvo com sucesso!`);
+                this.refresh();
+
+                // Hook para customização após salvar
+                this.afterSubmit(response.data, this.isEditMode);
+            } else {
+                this.showError(response.message || 'Erro ao salvar registro.');
+
+                // Exibe erros de validação se houver
+                if (response.errors) {
+                    this.showValidationErrors(response.errors);
+                }
+            }
+        } catch (error) {
+            this.hideLoading();
+            console.error('Erro ao salvar:', error);
+            this.showError('Erro ao salvar registro. Verifique sua conexão.');
         }
+    }
 
-        // Datas
-        if (key.toLowerCase().includes('data') || key.toLowerCase().includes('date')) {
+    /**
+     * Exclui um registro.
+     * @param {string|number} id - ID do registro
+     */
+    async delete(id) {
+        const self = this;
+        const token = $('input[name="__RequestVerificationToken"]').val();
+
+        const result = await Swal.fire({
+            title: 'Confirmar Exclusão',
+            text: `Deseja realmente excluir este ${this.entityName.toLowerCase()}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash"></i> Sim, excluir',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancelar'
+        });
+
+        if (result.isConfirmed) {
             try {
-                return new Date(value).toLocaleDateString('pt-BR');
-            } catch {
-                return value;
+                this.showLoading();
+
+                // ✅ CORREÇÃO: Envia ID como query parameter, não como body
+                const response = await $.ajax({
+                    url: `/${this.controllerName}/Delete?id=${encodeURIComponent(id)}`,
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': token
+                    }
+                });
+
+                this.hideLoading();
+
+                if (response.success) {
+                    this.showSuccess(response.message || `${this.entityName} excluído com sucesso!`);
+                    this.refresh();
+                } else {
+                    this.showError(response.message || 'Erro ao excluir registro.');
+                }
+            } catch (error) {
+                this.hideLoading();
+                console.error('Erro ao excluir:', error);
+                this.showError('Erro ao excluir registro. Verifique sua conexão.');
             }
         }
-
-        return value;
     }
 
     /**
-     * Habilita/desabilita campos de chave primária.
+     * Exclui registros selecionados.
+     * Usa endpoint /DeleteMultiple do Web controller que chama /batch da API.
      */
-    enablePrimaryKeyFields(enable) {
-        // Implementar na classe filha se necessário
-        // Por padrão, desabilita o campo ID principal
-        $(`#${this.config.idField}`).prop('readonly', !enable);
-    }
+    async deleteSelected() {
+        const ids = this.getSelectedIds();
 
-    /**
-     * Constrói dados do formulário.
-     */
-    buildFormData($form) {
-        const formData = {};
+        if (ids.length === 0) {
+            this.showWarning('Selecione pelo menos um registro para excluir.');
+            return;
+        }
 
-        $form.serializeArray().forEach(function (item) {
-            if (item.name !== '__RequestVerificationToken') {
-                // Trata checkboxes
-                const $field = $form.find(`[name="${item.name}"]`);
-                if ($field.is(':checkbox')) {
-                    formData[item.name] = $field.is(':checked');
+        const token = $('input[name="__RequestVerificationToken"]').val();
+
+        const result = await Swal.fire({
+            title: 'Confirmar Exclusão em Lote',
+            text: `Deseja realmente excluir ${ids.length} ${ids.length === 1 ? this.entityName.toLowerCase() : this.entityNamePlural.toLowerCase()}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `<i class="fas fa-trash"></i> Sim, excluir ${ids.length}`,
+            cancelButtonText: '<i class="fas fa-times"></i> Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                this.showLoading();
+
+                const response = await $.ajax({
+                    url: `/${this.controllerName}/DeleteMultiple`,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    headers: {
+                        'RequestVerificationToken': token
+                    },
+                    data: JSON.stringify(ids)
+                });
+
+                this.hideLoading();
+
+                if (response.success) {
+                    // Verifica se há detalhes de exclusão parcial
+                    if (response.data && response.data.failureCount > 0) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Exclusão Parcial',
+                            html: `<p>Excluídos: <strong>${response.data.successCount}</strong></p>
+                                   <p>Falhas: <strong>${response.data.failureCount}</strong></p>`
+                        });
+                    } else {
+                        const count = response.data?.successCount || ids.length;
+                        this.showSuccess(`${count} registro(s) excluído(s) com sucesso!`);
+                    }
+                    this.refresh();
                 } else {
-                    formData[item.name] = item.value;
+                    this.showError(response.message || 'Erro ao excluir registros.');
                 }
+
+            } catch (error) {
+                this.hideLoading();
+                console.error('Erro ao excluir múltiplos:', error);
+                this.showError('Erro ao excluir registros. Verifique sua conexão.');
+            }
+        }
+    }
+
+    /**
+     * Atualiza a tabela.
+     */
+    refresh() {
+        this.dataTable.ajax.reload(null, false);
+    }
+
+    /**
+     * Limpa o formulário.
+     */
+    clearForm() {
+        $(this.formSelector)[0].reset();
+        $(this.formSelector).find('.is-invalid').removeClass('is-invalid');
+        $(this.formSelector).find('.is-valid').removeClass('is-valid');
+        $(this.formSelector).find('.invalid-feedback').remove();
+        $('#Id').val('');
+    }
+
+    /**
+     * Coleta dados do formulário.
+     * @returns {Object} Dados do formulário
+     */
+    getFormData() {
+        const formData = {};
+        const form = $(this.formSelector);
+
+        // Inputs de texto, hidden, etc.
+        form.find('input:not([type="checkbox"]):not([type="radio"]), textarea, select').each(function () {
+            const name = $(this).attr('name');
+            if (name) {
+                formData[name] = $(this).val();
             }
         });
 
-        // Adiciona checkboxes não marcados (não aparecem no serializeArray)
-        $form.find('input[type="checkbox"]').each(function () {
+        // Checkboxes
+        form.find('input[type="checkbox"]').each(function () {
             const name = $(this).attr('name');
-            if (name && !formData.hasOwnProperty(name)) {
-                formData[name] = false;
+            if (name && name !== '__RequestVerificationToken') {
+                formData[name] = $(this).is(':checked');
+            }
+        });
+
+        // Radio buttons
+        form.find('input[type="radio"]:checked').each(function () {
+            const name = $(this).attr('name');
+            if (name) {
+                formData[name] = $(this).val();
             }
         });
 
@@ -526,350 +622,204 @@ class CrudBase {
     }
 
     /**
-     * Submete o formulário.
+     * =========================================================================
+     * MÉTODO CORRIGIDO - Popula formulário com dados (case-insensitive)
+     * =========================================================================
+     * @param {Object} data - Dados para preencher o formulário
      */
-    submitForm($form) {
-        const self = this;
+    populateForm(data) {
+        const form = $(this.formSelector);
 
-        // Valida formulário
-        if (!$form.valid()) {
-            return;
+        // Cria um mapa de nomes de campos em lowercase para os nomes originais
+        const fieldMap = {};
+        for (const key in data) {
+            fieldMap[key.toLowerCase()] = key;
         }
 
-        const isEdit = self.currentMode === 'edit';
-        const id = self.currentId;
-        const action = isEdit ? self.config.actions.edit : self.config.actions.create;
-        const url = isEdit
-            ? `/${self.config.controllerName}/${action}/${id}`
-            : `/${self.config.controllerName}/${action}`;
+        // Preenche cada campo do formulário
+        form.find('input, textarea, select').each(function () {
+            const $field = $(this);
+            const fieldName = $field.attr('name') || $field.attr('id');
 
-        // Coleta os dados do formulário
-        let formData = self.buildFormData($form);
+            if (!fieldName || fieldName === '__RequestVerificationToken') return;
 
-        // Callback antes de submeter
-        if (self.config.beforeSubmit) {
-            formData = self.config.beforeSubmit(formData, isEdit) || formData;
-        }
+            // Busca o valor usando case-insensitive matching
+            const lowerFieldName = fieldName.toLowerCase();
+            const actualKey = fieldMap[lowerFieldName];
 
-        $.ajax({
-            url: url,
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(formData),
-            headers: {
-                'RequestVerificationToken': $form.find('input[name="__RequestVerificationToken"]').val()
-            },
-            beforeSend: function () {
-                $form.find('button[type="submit"]').prop('disabled', true);
-                self.showLoading();
-            },
-            success: function (response) {
-                self.hideLoading();
-                $form.find('button[type="submit"]').prop('disabled', false);
+            if (actualKey && data[actualKey] !== undefined) {
+                const value = data[actualKey];
 
-                if (response.success) {
-                    self.showSuccess(response.message || `${self.config.entityName} salvo com sucesso!`);
-                    $('#modalCrud').modal('hide');
-                    self.refresh();
-
-                    // Callback após submeter
-                    if (self.config.afterSubmit) {
-                        self.config.afterSubmit(response.data, isEdit);
-                    }
+                if ($field.is(':checkbox')) {
+                    // Checkbox - define checked baseado no valor booleano
+                    $field.prop('checked', value === true || value === 'true' || value === 1);
+                } else if ($field.is(':radio')) {
+                    // Radio - seleciona o valor correspondente
+                    $field.prop('checked', $field.val() === String(value));
+                } else if ($field.is('select')) {
+                    // Select - define o valor selecionado
+                    $field.val(value).trigger('change');
                 } else {
-                    if (response.errors) {
-                        self.displayValidationErrors(response.errors);
-                    } else {
-                        self.showError(response.message || 'Erro ao salvar registro.');
-                    }
-                }
-            },
-            error: function (xhr) {
-                self.hideLoading();
-                $form.find('button[type="submit"]').prop('disabled', false);
-
-                if (xhr.status === 400 && xhr.responseJSON && xhr.responseJSON.errors) {
-                    self.displayValidationErrors(xhr.responseJSON.errors);
-                } else {
-                    self.showError('Erro ao salvar registro.');
+                    // Input text, textarea, hidden, etc.
+                    $field.val(value);
                 }
             }
         });
+
+        // Log para debug
+        console.log('📝 Formulário populado com dados:', data);
     }
 
     /**
-     * Exclui um único registro.
+     * Obtém IDs dos registros selecionados.
+     * @returns {Array} Array de IDs selecionados
      */
-    deleteSingle(id) {
-        const self = this;
-
-        this.confirmAction(
-            `Tem certeza que deseja excluir este ${self.config.entityName.toLowerCase()}?`,
-            'Esta ação não pode ser desfeita!',
-            function () {
-                $.ajax({
-                    url: `/${self.config.controllerName}/${self.config.actions.delete}/${id}`,
-                    type: 'POST',
-                    headers: {
-                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
-                    },
-                    beforeSend: function () {
-                        self.showLoading();
-                    },
-                    success: function (response) {
-                        self.hideLoading();
-
-                        if (response.success) {
-                            self.showSuccess(response.message || `${self.config.entityName} excluído com sucesso!`);
-                            self.refresh();
-                        } else {
-                            self.showError(response.message || 'Erro ao excluir registro.');
-                        }
-                    },
-                    error: function (xhr) {
-                        self.hideLoading();
-                        self.showError('Erro ao excluir registro.');
-                    }
-                });
-            }
-        );
-    }
-
-    /**
-     * Exclui múltiplos registros selecionados.
-     */
-    deleteSelected() {
-        const self = this;
-        const selectedRows = this.table.rows({ selected: true }).data();
-
-        if (selectedRows.length === 0) {
-            this.showWarning('Nenhum registro selecionado.');
-            return;
-        }
-
+    getSelectedIds() {
         const ids = [];
-        selectedRows.each(function (row) {
-            ids.push(row[self.config.idField]);
+        const self = this;
+
+        $(this.tableSelector + ' tbody .dt-checkboxes:checked').each(function () {
+            const row = $(this).closest('tr');
+            const rowData = self.dataTable.row(row).data();
+            if (rowData) {
+                // Busca o ID usando case-insensitive
+                const idField = self.idField.toLowerCase();
+                for (const key in rowData) {
+                    if (key.toLowerCase() === idField) {
+                        ids.push(rowData[key]);
+                        break;
+                    }
+                }
+            }
         });
 
-        this.confirmAction(
-            `Tem certeza que deseja excluir ${ids.length} ${ids.length > 1 ? self.config.entityNamePlural.toLowerCase() : self.config.entityName.toLowerCase()}?`,
-            'Esta ação não pode ser desfeita!',
-            function () {
-                $.ajax({
-                    url: `/${self.config.controllerName}/${self.config.actions.deleteMultiple}`,
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(ids),
-                    headers: {
-                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
-                    },
-                    beforeSend: function () {
-                        self.showLoading();
-                    },
-                    success: function (response) {
-                        self.hideLoading();
-
-                        if (response.success) {
-                            self.showSuccess(response.message || `${ids.length} ${ids.length > 1 ? self.config.entityNamePlural.toLowerCase() : self.config.entityName.toLowerCase()} excluídos com sucesso!`);
-                            self.refresh();
-                        } else {
-                            self.showError(response.message || 'Erro ao excluir registros.');
-                        }
-                    },
-                    error: function (xhr) {
-                        self.hideLoading();
-                        self.showError('Erro ao excluir registros.');
-                    }
-                });
-            }
-        );
+        return ids;
     }
 
     /**
-     * Atualiza a tabela.
-     */
-    refresh() {
-        this.table.ajax.reload(null, false);
-        this.showInfo('Tabela atualizada.');
-    }
-
-    /**
-     * Atualiza contador de registros selecionados.
+     * Atualiza contador de selecionados.
      */
     updateSelectedCount() {
-        const count = this.table.rows({ selected: true }).count();
+        const count = $(this.tableSelector + ' tbody .dt-checkboxes:checked').length;
         $('#selectedCount').text(count);
+        $('#btnDeleteSelected').prop('disabled', count === 0);
 
-        if (count > 0) {
-            $('#btnDeleteSelected').prop('disabled', false);
-        } else {
-            $('#btnDeleteSelected').prop('disabled', true);
+        // Atualiza info de seleção
+        const infoText = count > 0 ? `Selecionado ${count} linha${count > 1 ? 's' : ''}` : '';
+        $(this.tableSelector).closest('.dataTables_wrapper').find('.dataTables_info').append(
+            count > 0 ? ` | <strong>${infoText}</strong>` : ''
+        );
+    }
+
+    /**
+     * Exibe erros de validação nos campos.
+     * @param {Object} errors - Objeto com erros por campo
+     */
+    showValidationErrors(errors) {
+        for (const [field, messages] of Object.entries(errors)) {
+            // Busca o campo usando case-insensitive
+            let $field = $(`#${field}`);
+
+            // Se não encontrou, tenta com lowercase
+            if ($field.length === 0) {
+                $field = $(`#${field.charAt(0).toUpperCase() + field.slice(1)}`);
+            }
+            if ($field.length === 0) {
+                $field = $(`#${field.toLowerCase()}`);
+            }
+
+            if ($field.length > 0) {
+                $field.addClass('is-invalid');
+                const errorHtml = `<div class="invalid-feedback">${messages.join('<br>')}</div>`;
+                $field.closest('.mb-3').find('.invalid-feedback').remove();
+                $field.closest('.mb-3').append(errorHtml);
+            }
         }
     }
 
     /**
-     * Exibe erros de validação no formulário.
+     * Habilita/desabilita campos de chave primária.
+     * Deve ser sobrescrito nas classes filhas.
+     * @param {boolean} enable - true para habilitar, false para desabilitar
      */
-    displayValidationErrors(errors) {
-        this.resetValidation();
-
-        $.each(errors, function (field, messages) {
-            const $field = $(`[name="${field}"]`);
-            $field.addClass('is-invalid');
-
-            const errorHtml = `<div class="invalid-feedback d-block">${Array.isArray(messages) ? messages.join('<br>') : messages}</div>`;
-            $field.closest('.mb-3').append(errorHtml);
-        });
+    enablePrimaryKeyFields(enable) {
+        // Implementação padrão - sobrescrever nas classes filhas
+        $('#Id').prop('readonly', !enable);
     }
 
     /**
-     * Reseta validação do formulário.
+     * Hook executado antes de submeter o formulário.
+     * Pode ser sobrescrito nas classes filhas.
+     * @param {Object} formData - Dados do formulário
+     * @param {boolean} isEdit - true se está editando
+     * @returns {Object|false} Dados processados ou false para cancelar
      */
-    resetValidation() {
-        $('.is-invalid').removeClass('is-invalid');
-        $('.is-valid').removeClass('is-valid');
-        $('.invalid-feedback').remove();
-        $('.valid-feedback').remove();
+    beforeSubmit(formData, isEdit) {
+        return formData;
     }
 
     /**
-     * Reseta formulário.
+     * Hook executado após submeter o formulário com sucesso.
+     * Pode ser sobrescrito nas classes filhas.
+     * @param {Object} data - Dados retornados pela API
+     * @param {boolean} isEdit - true se estava editando
      */
-    resetForm() {
-        $('#formCrud')[0].reset();
-        this.resetValidation();
-        this.currentMode = null;
-        this.currentId = null;
+    afterSubmit(data, isEdit) {
+        // Implementação padrão vazia
     }
 
-    /**
-     * Configuração de tooltips Bootstrap.
-     */
-    setupTooltips() {
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-    }
+    // =========================================================================
+    // MÉTODOS DE FEEDBACK (SweetAlert2)
+    // =========================================================================
 
-    /**
-     * Confirmação de ação com SweetAlert2.
-     */
-    confirmAction(title, text, callback) {
-        Swal.fire({
-            title: title,
-            text: text,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#e74a3b',
-            cancelButtonColor: '#858796',
-            confirmButtonText: 'Sim, confirmar!',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                callback();
-            }
-        });
-    }
-
-    /**
-     * Notificações Toast.
-     */
     showSuccess(message) {
-        this.showToast(message, 'success');
+        Swal.fire({
+            icon: 'success',
+            title: 'Sucesso!',
+            text: message,
+            timer: 2000,
+            showConfirmButton: false
+        });
     }
 
     showError(message) {
-        this.showToast(message, 'error');
-    }
-
-    showWarning(message) {
-        this.showToast(message, 'warning');
-    }
-
-    showInfo(message) {
-        this.showToast(message, 'info');
-    }
-
-    showToast(message, type) {
         Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: type,
-            title: message,
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true
+            icon: 'error',
+            title: 'Erro!',
+            text: message
         });
     }
 
-    /**
-     * Loading overlay.
-     */
+    showWarning(message) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Atenção!',
+            text: message
+        });
+    }
+
+    showInfo(message) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Informação',
+            text: message
+        });
+    }
+
     showLoading() {
-        if ($('#crudLoading').length === 0) {
-            const loadingHtml = `
-                <div id="crudLoading" class="crud-loading active">
-                    <div class="crud-loading-spinner"></div>
-                </div>
-            `;
-            $('body').append(loadingHtml);
-        } else {
-            $('#crudLoading').addClass('active');
-        }
+        Swal.fire({
+            title: 'Processando...',
+            html: 'Por favor, aguarde.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
     }
 
     hideLoading() {
-        $('#crudLoading').removeClass('active');
-    }
-
-    /**
-     * Tradução DataTables para português.
-     */
-    getPortugueseLanguage() {
-        return {
-            "sEmptyTable": "Nenhum registro encontrado",
-            "sInfo": "Mostrando de _START_ até _END_ de _TOTAL_ registros",
-            "sInfoEmpty": "Mostrando 0 até 0 de 0 registros",
-            "sInfoFiltered": "(filtrado de _MAX_ registros no total)",
-            "sInfoPostFix": "",
-            "sInfoThousands": ".",
-            "sLengthMenu": "Mostrar _MENU_ registros por página",
-            "sLoadingRecords": "Carregando...",
-            "sProcessing": "Processando...",
-            "sZeroRecords": "Nenhum registro encontrado",
-            "sSearch": "Pesquisar:",
-            "oPaginate": {
-                "sNext": "Próximo",
-                "sPrevious": "Anterior",
-                "sFirst": "Primeiro",
-                "sLast": "Último"
-            },
-            "oAria": {
-                "sSortAscending": ": Ordenar colunas de forma ascendente",
-                "sSortDescending": ": Ordenar colunas de forma descendente"
-            },
-            "select": {
-                "rows": {
-                    "_": "Selecionado %d linhas",
-                    "0": "Nenhuma linha selecionada",
-                    "1": "Selecionado 1 linha"
-                }
-            },
-            "buttons": {
-                "copy": "Copiar",
-                "copyTitle": "Copiado para área de transferência",
-                "copySuccess": {
-                    "_": "%d linhas copiadas",
-                    "1": "1 linha copiada"
-                },
-                "excel": "Excel",
-                "pdf": "PDF",
-                "print": "Imprimir",
-                "csv": "CSV"
-            }
-        };
+        Swal.close();
     }
 }
 
