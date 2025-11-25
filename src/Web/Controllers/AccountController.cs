@@ -3,13 +3,7 @@
 // =============================================================================
 // Arquivo: src/Web/Controllers/AccountController.cs
 // Descrição: Controller para autenticação de usuários
-// Versão: 2.1 (Corrigido - Logout passa AccessToken)
-// Data: 25/11/2025
-//
-// CORREÇÕES APLICADAS:
-// - Logout agora passa AccessToken para autorização na API
-// - Armazena tokens corretamente nos AuthenticationProperties
-// - Melhorado tratamento de erros
+// Versão: 3.0 (Corrigido - Usa AuthResponse do Identity)
 // =============================================================================
 
 using System.Security.Claims;
@@ -43,7 +37,6 @@ public sealed class AccountController : Controller
     [AllowAnonymous]
     public IActionResult Login(string? returnUrl = null)
     {
-        // Se já estiver autenticado, redireciona
         if (User.Identity?.IsAuthenticated == true)
         {
             return RedirectToLocal(returnUrl);
@@ -70,7 +63,6 @@ public sealed class AccountController : Controller
 
         try
         {
-            // Chama a API para autenticar
             var authResponse = await _authApiService.LoginAsync(model, ct);
 
             if (authResponse == null)
@@ -80,7 +72,7 @@ public sealed class AccountController : Controller
                 return View(model);
             }
 
-            // Cria as claims do usuário
+            // Cria as claims do usuário usando os dados do AuthResponse
             var claims = new List<Claim>
             {
                 new(ClaimTypes.NameIdentifier, authResponse.User?.Id.ToString() ?? Guid.Empty.ToString()),
@@ -92,30 +84,33 @@ public sealed class AccountController : Controller
                 new("TokenExpiry", authResponse.ExpiresAt.ToString("O"))
             };
 
-            // Adiciona claims opcionais
-            if (authResponse.User?.NoMatric != null)
+            // Adiciona claims opcionais se existirem no UserInfoDto
+            if (authResponse.User != null)
             {
-                claims.Add(new Claim("nomatric", authResponse.User.NoMatric));
-            }
+                if (!string.IsNullOrWhiteSpace(authResponse.User.NoMatric))
+                {
+                    claims.Add(new Claim("nomatric", authResponse.User.NoMatric));
+                }
 
-            if (authResponse.User?.CdEmpresa != null)
-            {
-                claims.Add(new Claim("cdempresa", authResponse.User.CdEmpresa.ToString()!));
-            }
+                if (authResponse.User.CdEmpresa.HasValue)
+                {
+                    claims.Add(new Claim("cdempresa", authResponse.User.CdEmpresa.Value.ToString()));
+                }
 
-            if (authResponse.User?.CdFilial != null)
-            {
-                claims.Add(new Claim("cdfilial", authResponse.User.CdFilial.ToString()!));
-            }
+                if (authResponse.User.CdFilial.HasValue)
+                {
+                    claims.Add(new Claim("cdfilial", authResponse.User.CdFilial.Value.ToString()));
+                }
 
-            if (authResponse.User?.TenantId != null)
-            {
-                claims.Add(new Claim("tenantid", authResponse.User.TenantId.ToString()!));
-            }
+                if (authResponse.User.TenantId.HasValue)
+                {
+                    claims.Add(new Claim("tenantid", authResponse.User.TenantId.Value.ToString()));
+                }
 
-            if (!string.IsNullOrWhiteSpace(authResponse.User?.Email))
-            {
-                claims.Add(new Claim(ClaimTypes.Email, authResponse.User.Email));
+                if (!string.IsNullOrWhiteSpace(authResponse.User.Email))
+                {
+                    claims.Add(new Claim(ClaimTypes.Email, authResponse.User.Email));
+                }
             }
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -130,8 +125,7 @@ public sealed class AccountController : Controller
                 AllowRefresh = true
             };
 
-            // 🔧 CORREÇÃO: Armazena os tokens nos AuthenticationProperties
-            // Isso permite recuperá-los via GetTokenAsync()
+            // Armazena os tokens nos AuthenticationProperties
             authProperties.StoreTokens(new[]
             {
                 new AuthenticationToken { Name = "access_token", Value = authResponse.AccessToken },
@@ -139,7 +133,6 @@ public sealed class AccountController : Controller
                 new AuthenticationToken { Name = "expires_at", Value = authResponse.ExpiresAt.ToString("O") }
             });
 
-            // Faz o sign in com cookie
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 claimsPrincipal,
@@ -166,11 +159,10 @@ public sealed class AccountController : Controller
     {
         try
         {
-            // 🔧 CORREÇÃO: Obtém AMBOS os tokens para logout
             var accessToken = User.FindFirstValue("AccessToken");
             var refreshToken = User.FindFirstValue("RefreshToken");
 
-            // Tenta também obter dos AuthenticationProperties (método alternativo)
+            // Tenta também obter dos AuthenticationProperties
             if (string.IsNullOrWhiteSpace(accessToken))
             {
                 accessToken = await HttpContext.GetTokenAsync(
@@ -187,7 +179,7 @@ public sealed class AccountController : Controller
 
             var cdUsuario = User.FindFirstValue("cdusuario") ?? "Desconhecido";
 
-            // 🔧 CORREÇÃO: Passa o AccessToken para autorização na API
+            // Passa o AccessToken para autorização na API
             if (!string.IsNullOrWhiteSpace(accessToken) && !string.IsNullOrWhiteSpace(refreshToken))
             {
                 await _authApiService.LogoutAsync(accessToken, refreshToken);
@@ -201,7 +193,6 @@ public sealed class AccountController : Controller
                     !string.IsNullOrWhiteSpace(refreshToken));
             }
 
-            // Faz o sign out do cookie (logout local)
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
             _logger.LogInformation("Logout realizado: {CdUsuario}", cdUsuario);
@@ -212,7 +203,6 @@ public sealed class AccountController : Controller
         {
             _logger.LogError(ex, "Erro ao fazer logout");
             
-            // Mesmo com erro, faz o logout local
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             
             return RedirectToAction(nameof(Login));
@@ -240,7 +230,6 @@ public sealed class AccountController : Controller
         {
             var accessToken = User.FindFirstValue("AccessToken");
             
-            // Tenta obter do AuthenticationProperties se não encontrar nas claims
             if (string.IsNullOrWhiteSpace(accessToken))
             {
                 accessToken = await HttpContext.GetTokenAsync(
@@ -256,7 +245,6 @@ public sealed class AccountController : Controller
                 return RedirectToAction(nameof(Login));
             }
 
-            // Busca informações do usuário
             var userInfo = await _authApiService.GetCurrentUserAsync(accessToken, ct);
 
             if (userInfo == null)
@@ -265,7 +253,6 @@ public sealed class AccountController : Controller
                 return RedirectToAction(nameof(Login));
             }
 
-            // Busca permissões do usuário
             var permissions = await _authApiService.GetUserPermissionsAsync(cdUsuario, null, ct);
 
             var viewModel = new DashboardViewModel
@@ -284,10 +271,6 @@ public sealed class AccountController : Controller
             return RedirectToAction("Error", "Home");
         }
     }
-
-    // ========================================
-    // MÉTODOS AUXILIARES
-    // ========================================
 
     private IActionResult RedirectToLocal(string? returnUrl)
     {

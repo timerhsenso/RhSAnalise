@@ -3,19 +3,14 @@
 // =============================================================================
 // Arquivo: src/Web/Services/AuthApiService.cs
 // Descrição: Implementação do serviço de autenticação via API
-// Versão: 2.1 (Corrigido - LogoutAsync envia token JWT)
-// Data: 25/11/2025
-//
-// CORREÇÕES APLICADAS:
-// - LogoutAsync agora recebe e envia o AccessToken no header Authorization
-// - Logging detalhado para debug
-// - Tratamento adequado de erros HTTP
+// Versão: 3.0 (Corrigido - Using correto do AuthResponse)
 // =============================================================================
 
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using RhSensoERP.Identity.Application.DTOs.Auth;
 using RhSensoERP.Web.Models.Account;
 
 namespace RhSensoERP.Web.Services;
@@ -34,11 +29,6 @@ public sealed class AuthApiService : IAuthApiService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    /// <summary>
-    /// Construtor do serviço de autenticação.
-    /// </summary>
-    /// <param name="httpClientFactory">Factory de HttpClient</param>
-    /// <param name="logger">Logger</param>
     public AuthApiService(
         IHttpClientFactory httpClientFactory,
         ILogger<AuthApiService> logger)
@@ -51,14 +41,13 @@ public sealed class AuthApiService : IAuthApiService
     public async Task<AuthResponse?> LoginAsync(LoginViewModel model, CancellationToken ct = default)
     {
         var stopwatch = Stopwatch.StartNew();
-        
+
         try
         {
             _logger.LogInformation("🔐 [LOGIN] Iniciando autenticação para usuário: {CdUsuario}", model.CdUsuario);
 
             var client = _httpClientFactory.CreateClient("AuthApiClient");
-            
-            // Verifica se BaseAddress está configurado
+
             if (client.BaseAddress == null)
             {
                 _logger.LogError("❌ [LOGIN] BaseAddress não configurado no HttpClient");
@@ -66,16 +55,29 @@ public sealed class AuthApiService : IAuthApiService
             }
 
             var endpoint = "/api/identity/auth/login";
-            _logger.LogInformation("🔐 [LOGIN] Enviando requisição para: {BaseAddress}{Endpoint}", 
+            _logger.LogInformation("🔐 [LOGIN] Enviando requisição para: {BaseAddress}{Endpoint}",
                 client.BaseAddress, endpoint);
 
+            // DEBUG: Logar os valores recebidos do model
+            _logger.LogInformation("🔍 [LOGIN] DEBUG - CdUsuario: '{CdUsuario}', Senha: '{Senha}' (Length: {SenhaLength})",
+                model.CdUsuario,
+                string.IsNullOrEmpty(model.Senha) ? "[VAZIO]" : "***",
+                model.Senha?.Length ?? 0);
+
+            // Monta o payload conforme esperado pela API (LoginRequest)
+            // API espera "senha" (português), não "password" (inglês)
             var loginRequest = new
             {
-                cdUsuario = model.CdUsuario,
-                password = model.Password
+                loginIdentifier = model.CdUsuario,
+                senha = model.Senha
             };
 
             var json = JsonSerializer.Serialize(loginRequest, JsonOptions);
+
+            // DEBUG: Logar o JSON sendo enviado (com senha mascarada)
+            _logger.LogInformation("🔍 [LOGIN] DEBUG - JSON Payload: {Json}",
+                json.Replace(model.Senha ?? "", "***"));
+
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await client.PostAsync(endpoint, content, ct);
@@ -127,21 +129,19 @@ public sealed class AuthApiService : IAuthApiService
     public async Task<bool> LogoutAsync(string accessToken, string refreshToken, CancellationToken ct = default)
     {
         var stopwatch = Stopwatch.StartNew();
-        
+
         try
         {
             _logger.LogInformation("🚪 [LOGOUT] Iniciando logout");
 
-            // Valida parâmetros
             if (string.IsNullOrWhiteSpace(accessToken))
             {
                 _logger.LogWarning("⚠️ [LOGOUT] AccessToken não fornecido - logout apenas local");
-                return true; // Permite logout local mesmo sem token
+                return true;
             }
 
             var client = _httpClientFactory.CreateClient("AuthApiClient");
-            
-            // Verifica se BaseAddress está configurado
+
             if (client.BaseAddress == null)
             {
                 _logger.LogError("❌ [LOGOUT] BaseAddress não configurado no HttpClient");
@@ -150,8 +150,8 @@ public sealed class AuthApiService : IAuthApiService
 
             var endpoint = "/api/identity/auth/logout";
 
-            // 🔧 CORREÇÃO: Adiciona o token JWT no header Authorization
-            client.DefaultRequestHeaders.Authorization = 
+            // Adiciona o token JWT no header Authorization
+            client.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", accessToken);
 
             var logoutRequest = new { refreshToken };
@@ -171,10 +171,7 @@ public sealed class AuthApiService : IAuthApiService
                 _logger.LogWarning(
                     "⚠️ [LOGOUT] Logout retornou status: {StatusCode}",
                     response.StatusCode);
-                
-                // Retorna true mesmo assim - o logout local já foi feito
-                // O refresh token será invalidado automaticamente quando expirar
-                return true;
+                return true; // Retorna true - o logout local já foi feito
             }
 
             _logger.LogInformation("✅ [LOGOUT] Logout realizado com sucesso na API");
@@ -183,12 +180,12 @@ public sealed class AuthApiService : IAuthApiService
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
             _logger.LogWarning(ex, "⏱️ [LOGOUT] Timeout no logout - continuando com logout local");
-            return true; // Permite logout local
+            return true;
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "🌐 [LOGOUT] Erro de conexão no logout - continuando com logout local");
-            return true; // Permite logout local
+            return true;
         }
         catch (Exception ex)
         {
@@ -205,7 +202,7 @@ public sealed class AuthApiService : IAuthApiService
             _logger.LogDebug("🔄 [REFRESH] Renovando token");
 
             var client = _httpClientFactory.CreateClient("AuthApiClient");
-            
+
             if (client.BaseAddress == null)
             {
                 _logger.LogError("❌ [REFRESH] BaseAddress não configurado");
@@ -246,15 +243,14 @@ public sealed class AuthApiService : IAuthApiService
             _logger.LogDebug("👤 [USER] Obtendo informações do usuário");
 
             var client = _httpClientFactory.CreateClient("ApiClient");
-            
+
             if (client.BaseAddress == null)
             {
                 _logger.LogError("❌ [USER] BaseAddress não configurado");
                 return null;
             }
 
-            // Adiciona token de autorização
-            client.DefaultRequestHeaders.Authorization = 
+            client.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", accessToken);
 
             var endpoint = "/api/identity/users/me";
@@ -281,8 +277,8 @@ public sealed class AuthApiService : IAuthApiService
 
     /// <inheritdoc/>
     public async Task<UserPermissionsViewModel?> GetUserPermissionsAsync(
-        string cdUsuario, 
-        string? cdSistema = null, 
+        string cdUsuario,
+        string? cdSistema = null,
         CancellationToken ct = default)
     {
         try
@@ -290,7 +286,7 @@ public sealed class AuthApiService : IAuthApiService
             _logger.LogDebug("🔑 [PERMISSIONS] Obtendo permissões para: {CdUsuario}", cdUsuario);
 
             var client = _httpClientFactory.CreateClient("ApiClient");
-            
+
             if (client.BaseAddress == null)
             {
                 _logger.LogError("❌ [PERMISSIONS] BaseAddress não configurado");

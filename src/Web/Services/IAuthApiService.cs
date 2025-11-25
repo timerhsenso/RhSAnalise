@@ -3,10 +3,10 @@
 // =============================================================================
 // Arquivo: src/Web/Services/IAuthApiService.cs
 // Descrição: Interface do serviço de autenticação via API
-// Versão: 2.1 (Corrigido - LogoutAsync com token)
-// Data: 25/11/2025
+// Versão: 3.0 (Corrigido - Using correto do AuthResponse)
 // =============================================================================
 
+using RhSensoERP.Identity.Application.DTOs.Auth;
 using RhSensoERP.Web.Models.Account;
 
 namespace RhSensoERP.Web.Services;
