@@ -1,15 +1,18 @@
-// src/Web/Controllers/Base/BaseCrudController.cs
-
+// =============================================================================
+// RHSENSOERP WEB - BASE CRUD CONTROLLER (ATUALIZADO COM CACHE DE PERMISSÕES)
+// =============================================================================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RhSensoERP.Web.Extensions;
 using RhSensoERP.Web.Models.Base;
 using RhSensoERP.Web.Models.Common;
 using RhSensoERP.Web.Services.Base;
+using RhSensoERP.Web.Services.Permissions;
 
 namespace RhSensoERP.Web.Controllers.Base;
 
 /// <summary>
-/// Controller abstrato para operações CRUD padrão.
+/// Controller abstrato para operações CRUD padrão com suporte a cache de permissões.
 /// Fornece métodos reutilizáveis para listagem, criação, edição e exclusão.
 /// </summary>
 /// <typeparam name="TDto">Tipo do DTO completo</typeparam>
@@ -23,13 +26,16 @@ public abstract class BaseCrudController<TDto, TCreateDto, TUpdateDto, TKey> : C
     where TUpdateDto : class
 {
     protected readonly IApiService<TDto, TCreateDto, TUpdateDto, TKey> _apiService;
+    protected readonly IUserPermissionsCacheService _permissionsCache;
     protected readonly ILogger _logger;
 
     protected BaseCrudController(
         IApiService<TDto, TCreateDto, TUpdateDto, TKey> apiService,
+        IUserPermissionsCacheService permissionsCache,
         ILogger logger)
     {
         _apiService = apiService;
+        _permissionsCache = permissionsCache;
         _logger = logger;
     }
 
@@ -99,6 +105,74 @@ public abstract class BaseCrudController<TDto, TCreateDto, TUpdateDto, TKey> : C
 
     #endregion
 
+    #region Métodos de Permissão
+
+    /// <summary>
+    /// Obtém o código do usuário logado a partir das claims.
+    /// </summary>
+    protected string? GetCurrentUserCode() => User.GetCdUsuario();
+
+    /// <summary>
+    /// Obtém as permissões do usuário para uma função específica, buscando do cache.
+    /// Formato retornado: "IAEC", "IAC", "C", etc.
+    /// </summary>
+    /// <param name="cdFuncao">Código da função/tela</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>String com ações permitidas</returns>
+    protected async Task<string> GetUserPermissionsAsync(string cdFuncao, CancellationToken ct = default)
+    {
+        var cdUsuario = GetCurrentUserCode();
+        if (string.IsNullOrWhiteSpace(cdUsuario))
+        {
+            _logger.LogWarning("Usuário não identificado ao buscar permissões para {CdFuncao}", cdFuncao);
+            return string.Empty;
+        }
+        return await _permissionsCache.GetPermissionsForFunctionAsync(cdUsuario, cdFuncao, ct);
+    }
+
+    /// <summary>
+    /// Verifica se o usuário tem uma permissão específica para uma função.
+    /// </summary>
+    /// <param name="cdFuncao">Código da função</param>
+    /// <param name="acao">Ação: 'I' (Incluir), 'A' (Alterar), 'E' (Excluir), 'C' (Consultar)</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>True se tem permissão</returns>
+    protected async Task<bool> HasPermissionAsync(string cdFuncao, char acao, CancellationToken ct = default)
+    {
+        var cdUsuario = GetCurrentUserCode();
+        if (string.IsNullOrWhiteSpace(cdUsuario))
+        {
+            return false;
+        }
+        return await _permissionsCache.HasPermissionAsync(cdUsuario, cdFuncao, acao, ct);
+    }
+
+    /// <summary>
+    /// Verifica se o usuário pode Incluir.
+    /// </summary>
+    protected async Task<bool> CanCreateAsync(string cdFuncao, CancellationToken ct = default)
+        => await HasPermissionAsync(cdFuncao, 'I', ct);
+
+    /// <summary>
+    /// Verifica se o usuário pode Alterar.
+    /// </summary>
+    protected async Task<bool> CanEditAsync(string cdFuncao, CancellationToken ct = default)
+        => await HasPermissionAsync(cdFuncao, 'A', ct);
+
+    /// <summary>
+    /// Verifica se o usuário pode Excluir.
+    /// </summary>
+    protected async Task<bool> CanDeleteAsync(string cdFuncao, CancellationToken ct = default)
+        => await HasPermissionAsync(cdFuncao, 'E', ct);
+
+    /// <summary>
+    /// Verifica se o usuário pode Consultar.
+    /// </summary>
+    protected async Task<bool> CanViewAsync(string cdFuncao, CancellationToken ct = default)
+        => await HasPermissionAsync(cdFuncao, 'C', ct);
+
+    #endregion
+
     #region Actions CRUD Virtuais
 
     /// <summary>
@@ -109,12 +183,10 @@ public abstract class BaseCrudController<TDto, TCreateDto, TUpdateDto, TKey> : C
     {
         try
         {
-            // Calcula a página atual
             var page = (request.Start / request.Length) + 1;
             var pageSize = request.Length;
             var search = request.Search?.Value;
 
-            // Busca os dados da API
             var result = await _apiService.GetPagedAsync(page, pageSize, search);
 
             if (!result.Success || result.Data == null)
@@ -129,7 +201,6 @@ public abstract class BaseCrudController<TDto, TCreateDto, TUpdateDto, TKey> : C
                 });
             }
 
-            // Retorna no formato esperado pelo DataTables
             return Json(new DataTableResponse<TDto>
             {
                 Draw = request.Draw,
@@ -216,9 +287,9 @@ public abstract class BaseCrudController<TDto, TCreateDto, TUpdateDto, TKey> : C
     /// <summary>
     /// Action para atualizar registro (AJAX).
     /// </summary>
-    [HttpPost]
+    [HttpPut]
     [ValidateAntiForgeryToken]
-    public virtual async Task<IActionResult> Edit(TKey id, [FromBody] TUpdateDto dto)
+    public virtual async Task<IActionResult> Update(TKey id, [FromBody] TUpdateDto dto)
     {
         try
         {
@@ -253,7 +324,7 @@ public abstract class BaseCrudController<TDto, TCreateDto, TUpdateDto, TKey> : C
     /// <summary>
     /// Action para excluir registro (AJAX).
     /// </summary>
-    [HttpPost]
+    [HttpDelete]
     [ValidateAntiForgeryToken]
     public virtual async Task<IActionResult> Delete(TKey id)
     {
@@ -276,119 +347,74 @@ public abstract class BaseCrudController<TDto, TCreateDto, TUpdateDto, TKey> : C
     }
 
     /// <summary>
-    /// Action para excluir múltiplos registros (AJAX).
-    /// Suporta exclusão em lote com resultado detalhado quando o serviço implementa IBatchDeleteService.
+    /// Action para exclusão múltipla (AJAX).
+    /// Detecta automaticamente se o serviço implementa IBatchDeleteService para usar exclusão detalhada.
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public virtual async Task<IActionResult> DeleteMultiple([FromBody] IEnumerable<TKey> ids)
+    public virtual async Task<IActionResult> DeleteMultiple([FromBody] List<TKey> ids)
     {
         try
         {
-            if (ids == null || !ids.Any())
+            if (ids == null || ids.Count == 0)
             {
-                return JsonError("Nenhum registro selecionado");
+                return JsonError("Nenhum registro selecionado para exclusão");
             }
 
-            var idsList = ids.ToList();
-            _logger.LogInformation("Excluindo {Count} registros", idsList.Count);
-
-            // Verifica se o serviço implementa IBatchDeleteService para suporte a exclusão detalhada
-            if (_apiService is IBatchDeleteService<TKey> batchDeleteService)
+            // Verifica se o serviço implementa IBatchDeleteService para exclusão detalhada
+            if (_apiService is IBatchDeleteService<TKey> batchService)
             {
-                _logger.LogDebug("Serviço implementa IBatchDeleteService - usando exclusão em lote detalhada");
-
-                // Usa o método com resultado detalhado
-                var batchResult = await batchDeleteService.DeleteBatchAsync(idsList);
-
-                if (batchResult.Success && batchResult.Data != null)
-                {
-                    var data = batchResult.Data;
-                    var successCount = data.SuccessCount;
-                    var failureCount = data.FailureCount;
-
-                    // Converte erros para lista de objetos serializáveis
-                    var errorsList = new List<object>();
-                    if (data.Errors != null && data.Errors.Any())
-                    {
-                        foreach (var error in data.Errors)
-                        {
-                            errorsList.Add(new
-                            {
-                                code = error.Code,
-                                message = error.Message
-                            });
-                        }
-                    }
-
-                    _logger.LogInformation(
-                        "Exclusão em lote concluída: {Success} sucesso(s), {Failure} falha(s)",
-                        successCount, failureCount);
-
-                    return Json(new
-                    {
-                        success = true,
-                        message = batchResult.Error?.Message ?? $"{successCount} registro(s) excluído(s) com sucesso.",
-                        data = new
-                        {
-                            successCount = successCount,
-                            failureCount = failureCount,
-                            errors = errorsList
-                        }
-                    });
-                }
-
-                return JsonError(
-                    batchResult.Error?.Message ?? "Erro ao excluir registros em lote");
-            }
-            else
-            {
-                _logger.LogDebug("Serviço NÃO implementa IBatchDeleteService - usando exclusão múltipla simples");
-
-                // Fallback: usa o método simples sem detalhes
-                var result = await _apiService.DeleteMultipleAsync(idsList);
+                var result = await batchService.DeleteBatchAsync(ids);
 
                 if (!result.Success)
                 {
                     return JsonError(result.Message ?? "Erro ao excluir registros");
                 }
 
-                return JsonSuccess(
-                    result.Message ?? $"{idsList.Count} registro(s) excluído(s) com sucesso");
+                // Usa as propriedades corretas do BatchDeleteResultDto
+                var batchResult = result.Data;
+                return JsonSuccess(result.Message ?? "Operação concluída", new
+                {
+                    totalRequested = ids.Count,
+                    successCount = batchResult?.SuccessCount ?? 0,
+                    failureCount = batchResult?.FailureCount ?? 0,
+                    errors = batchResult?.Errors ?? new List<BatchDeleteErrorDto>()
+                });
             }
+
+            // Fallback: Exclusão simples (sem detalhamento)
+            var successCount = 0;
+            var failureCount = 0;
+
+            foreach (var id in ids)
+            {
+                var result = await _apiService.DeleteAsync(id);
+                if (result.Success)
+                {
+                    successCount++;
+                }
+                else
+                {
+                    failureCount++;
+                }
+            }
+
+            var message = failureCount == 0
+                ? $"Todos os {successCount} registros foram excluídos com sucesso"
+                : $"{successCount} registros excluídos, {failureCount} falharam";
+
+            return JsonSuccess(message, new
+            {
+                totalRequested = ids.Count,
+                successCount,
+                failureCount
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao excluir múltiplos registros");
             return JsonError("Erro ao excluir registros");
         }
-    }
-
-    #endregion
-
-    #region Métodos Auxiliares
-
-    /// <summary>
-    /// Verifica se o usuário tem permissão para a ação.
-    /// </summary>
-    protected bool HasPermission(string cdFuncao, char acao)
-    {
-        // Busca a claim de permissão do usuário
-        var permissionClaim = User.FindFirst($"permission:{cdFuncao}");
-        if (permissionClaim != null)
-        {
-            return permissionClaim.Value.Contains(acao);
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// Obtém as permissões do usuário para uma função.
-    /// </summary>
-    protected string? GetUserPermissions(string cdFuncao)
-    {
-        var permissionClaim = User.FindFirst($"permission:{cdFuncao}");
-        return permissionClaim?.Value;
     }
 
     #endregion

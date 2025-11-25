@@ -482,9 +482,89 @@
             opcionalmente filtrando por sistema.
             </summary>
             <param name="cdUsuario">Código do usuário legado (tuse1.cdusuario)</param>
-            <param name="cdSistema">Código do sistema (opcional)</param>
+            <param name="cdSistema">Código do sistema (opcional). Exemplos: RHU, FIN, EST</param>
             <param name="ct">Token de cancelamento</param>
             <returns>DTO com permissões do usuário</returns>
+            <response code="200">Permissões carregadas com sucesso</response>
+            <response code="400">Parâmetros inválidos</response>
+            <response code="500">Erro interno do servidor</response>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.PermissoesController.ValidarPermissao(RhSensoERP.Identity.Application.DTOs.Permissoes.ValidarPermissaoRequest,System.Threading.CancellationToken)">
+            <summary>
+            Valida se um usuário tem permissão específica para uma ação em uma função.
+            Este endpoint é usado para validar ações específicas como Incluir, Alterar, Excluir, Consultar.
+            </summary>
+            <param name="request">Dados da validação (cdUsuario, cdSistema, cdFuncao, acao)</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Resultado detalhado da validação</returns>
+            <response code="200">Validação realizada com sucesso</response>
+            <response code="400">Parâmetros inválidos</response>
+            <response code="500">Erro interno do servidor</response>
+            <remarks>
+            Exemplo de request:
+            
+                POST /api/identity/permissoes/validar
+                {
+                  "cdUsuario": "VERUSA",
+                  "cdSistema": "RHU",
+                  "cdFuncao": "SEG_FM_TSISTEMA",
+                  "acao": "I"
+                }
+            
+            Ações válidas:
+            - I = Incluir
+            - A = Alterar
+            - E = Excluir
+            - C = Consultar
+            
+            Exemplo de response (com permissão):
+            
+                {
+                  "temPermissao": true,
+                  "cdUsuario": "VERUSA",
+                  "cdSistema": "RHU",
+                  "cdFuncao": "SEG_FM_TSISTEMA",
+                  "acao": "I",
+                  "descricaoAcao": "Incluir",
+                  "acoesDisponiveis": "IAEC"
+                }
+            
+            Exemplo de response (sem permissão):
+            
+                {
+                  "temPermissao": false,
+                  "cdUsuario": "VERUSA",
+                  "cdSistema": "RHU",
+                  "cdFuncao": "SEG_FM_TSISTEMA",
+                  "acao": "E",
+                  "descricaoAcao": "Excluir",
+                  "motivo": "Usuário não possui permissão de 'Excluir' para esta função. Ações disponíveis: Incluir, Alterar, Consultar",
+                  "acoesDisponiveis": "IAC"
+                }
+            </remarks>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.PermissoesController.GetFuncoesPermitidas(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Retorna lista de funções permitidas para um usuário.
+            </summary>
+            <param name="cdUsuario">Código do usuário</param>
+            <param name="cdSistema">Código do sistema (opcional)</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Lista de códigos de funções</returns>
+            <response code="200">Lista de funções retornada com sucesso</response>
+            <response code="400">Parâmetros inválidos</response>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.PermissoesController.GetBotoesPermitidos(System.String,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Retorna lista de botões permitidos para um usuário em uma função específica.
+            </summary>
+            <param name="cdUsuario">Código do usuário</param>
+            <param name="cdFuncao">Código da função</param>
+            <param name="cdSistema">Código do sistema (opcional)</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Lista de códigos de botões</returns>
+            <response code="200">Lista de botões retornada com sucesso</response>
+            <response code="400">Parâmetros inválidos</response>
         </member>
         <member name="T:RhSensoERP.API.Controllers.Identity.SistemasController">
             <summary>

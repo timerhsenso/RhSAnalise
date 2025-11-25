@@ -3,7 +3,7 @@
 // =============================================================================
 // Arquivo: src/Web/Services/AuthApiService.cs
 // Descrição: Implementação do serviço de autenticação via API
-// Versão: 3.0 (Corrigido - Using correto do AuthResponse)
+// Versão: 3.1 (CORRIGIDO - Endpoint /permissoes)
 // =============================================================================
 
 using System.Diagnostics;
@@ -293,24 +293,33 @@ public sealed class AuthApiService : IAuthApiService
                 return null;
             }
 
-            var endpoint = $"/api/identity/permissions/{cdUsuario}";
+            // ✅ CORREÇÃO APLICADA: /permissoes em vez de /permissions
+            var endpoint = $"/api/identity/permissoes/{cdUsuario}";
             if (!string.IsNullOrWhiteSpace(cdSistema))
             {
                 endpoint += $"?cdSistema={Uri.EscapeDataString(cdSistema)}";
             }
 
+            _logger.LogDebug("🔍 [PERMISSIONS] Endpoint: {Endpoint}", endpoint);
+
             var response = await client.GetAsync(endpoint, ct);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("❌ [PERMISSIONS] Falha ao obter permissões: {StatusCode}", response.StatusCode);
+                _logger.LogWarning(
+                    "❌ [PERMISSIONS] Falha ao obter permissões: {StatusCode} - {ReasonPhrase}",
+                    response.StatusCode,
+                    response.ReasonPhrase);
                 return null;
             }
 
             var content = await response.Content.ReadAsStringAsync(ct);
             var permissions = JsonSerializer.Deserialize<UserPermissionsViewModel>(content, JsonOptions);
 
-            _logger.LogDebug("✅ [PERMISSIONS] Permissões obtidas com sucesso");
+            _logger.LogInformation(
+                "✅ [PERMISSIONS] Permissões obtidas com sucesso. Funções: {Count}",
+                permissions?.Funcoes?.Count ?? 0);
+
             return permissions;
         }
         catch (Exception ex)

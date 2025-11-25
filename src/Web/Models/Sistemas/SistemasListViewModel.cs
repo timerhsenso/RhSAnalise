@@ -1,10 +1,11 @@
 // ============================================================================
-// SISTEMAS LIST VIEW MODEL
+// SISTEMAS LIST VIEW MODEL (COM CONTROLE DE PERMISSÕES)
 // ============================================================================
 // Arquivo: Models/Sistemas/SistemasListViewModel.cs
+// Versão: 3.0 (Compatível com BaseListViewModel)
 //
 // ViewModel para listagem de Sistemas.
-// Herda de BaseListViewModel e configura propriedades específicas.
+// Herda de BaseListViewModel que já possui as propriedades de permissões.
 //
 // ============================================================================
 
@@ -32,7 +33,7 @@ public sealed class SistemasListViewModel : BaseListViewModel
         ControllerName = "Sistemas";
 
         // Código da função para controle de permissões
-        CdFuncao = "SIS001";
+        CdFuncao = "SEG_FM_TSISTEMA";
 
         // Configurações de exportação
         ExportEnabled = true;
@@ -60,4 +61,13 @@ public sealed class SistemasListViewModel : BaseListViewModel
         // Mensagens customizadas (opcional)
         EmptyTableMessage = "Nenhum sistema cadastrado. Clique em 'Novo' para adicionar.";
     }
+
+    // =========================================================================
+    // NOTA: As propriedades de permissões já estão na classe BaseListViewModel:
+    // - UserPermissions (string "IAEC")
+    // - CanCreate (bool calculado)
+    // - CanEdit (bool calculado)
+    // - CanDelete (bool calculado)
+    // - CanView (bool calculado)
+    // =========================================================================
 }

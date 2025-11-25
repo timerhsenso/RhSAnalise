@@ -1,38 +1,34 @@
 // =============================================================================
-// RHSENSOERP WEB - ACCOUNT CONTROLLER
+// RHSENSOERP WEB - ACCOUNT CONTROLLER (ATUALIZADO COM CACHE DE PERMISSÕES)
 // =============================================================================
-// Arquivo: src/Web/Controllers/AccountController.cs
-// Descrição: Controller para autenticação de usuários
-// Versão: 3.0 (Corrigido - Usa AuthResponse do Identity)
-// =============================================================================
-
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RhSensoERP.Web.Extensions;
 using RhSensoERP.Web.Models.Account;
 using RhSensoERP.Web.Services;
+using RhSensoERP.Web.Services.Permissions; // ✅ Adicionado using para o serviço de cache
 
 namespace RhSensoERP.Web.Controllers;
 
-/// <summary>
-/// Controller para autenticação de usuários.
-/// </summary>
 public sealed class AccountController : Controller
 {
     private readonly IAuthApiService _authApiService;
+    private readonly IUserPermissionsCacheService _permissionsCache; // ✅ Injetado o serviço de cache
     private readonly ILogger<AccountController> _logger;
 
-    public AccountController(IAuthApiService authApiService, ILogger<AccountController> logger)
+    public AccountController(
+        IAuthApiService authApiService,
+        IUserPermissionsCacheService permissionsCache, // ✅ Novo parâmetro
+        ILogger<AccountController> logger)
     {
         _authApiService = authApiService;
+        _permissionsCache = permissionsCache;
         _logger = logger;
     }
 
-    /// <summary>
-    /// Exibe a página de login.
-    /// </summary>
     [HttpGet]
     [AllowAnonymous]
     public IActionResult Login(string? returnUrl = null)
@@ -41,21 +37,16 @@ public sealed class AccountController : Controller
         {
             return RedirectToLocal(returnUrl);
         }
-
         ViewData["ReturnUrl"] = returnUrl;
         return View(new LoginViewModel { ReturnUrl = returnUrl });
     }
 
-    /// <summary>
-    /// Processa o login do usuário.
-    /// </summary>
     [HttpPost]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model, CancellationToken ct)
     {
         ViewData["ReturnUrl"] = model.ReturnUrl;
-
         if (!ModelState.IsValid)
         {
             return View(model);
@@ -64,54 +55,37 @@ public sealed class AccountController : Controller
         try
         {
             var authResponse = await _authApiService.LoginAsync(model, ct);
-
-            if (authResponse == null)
+            if (authResponse == null || authResponse.User == null)
             {
                 ModelState.AddModelError(string.Empty, "Usuário ou senha inválidos.");
-                _logger.LogWarning("Tentativa de login falhou: {CdUsuario}", model.CdUsuario);
                 return View(model);
             }
 
-            // Cria as claims do usuário usando os dados do AuthResponse
+            // ============================================================================
+            // ✅ NOVO: BUSCA E ARMAZENA AS PERMISSÕES NO CACHE
+            // ============================================================================
+            var userPermissions = await _authApiService.GetUserPermissionsAsync(authResponse.User.CdUsuario, null, ct);
+            if (userPermissions != null)
+            {
+                // Armazena as permissões no cache com expiração alinhada ao token
+                var tokenLifetime = authResponse.ExpiresAt - DateTime.UtcNow;
+                _permissionsCache.Set(authResponse.User.CdUsuario, userPermissions, tokenLifetime);
+                _logger.LogInformation("Permissões do usuário {CdUsuario} armazenadas no cache.", authResponse.User.CdUsuario);
+            }
+            else
+            {
+                _logger.LogWarning("Não foi possível obter as permissões para o usuário {CdUsuario}.", authResponse.User.CdUsuario);
+            }
+            // ============================================================================
+
+            // Cria as claims MÍNIMAS para o cookie
             var claims = new List<Claim>
             {
-                new(ClaimTypes.NameIdentifier, authResponse.User?.Id.ToString() ?? Guid.Empty.ToString()),
-                new(ClaimTypes.Name, authResponse.User?.DcUsuario ?? model.CdUsuario),
-                new("cdusuario", authResponse.User?.CdUsuario ?? model.CdUsuario),
-                new("dcusuario", authResponse.User?.DcUsuario ?? model.CdUsuario),
-                new("AccessToken", authResponse.AccessToken),
-                new("RefreshToken", authResponse.RefreshToken),
-                new("TokenExpiry", authResponse.ExpiresAt.ToString("O"))
+                new(ClaimTypes.NameIdentifier, authResponse.User.Id.ToString()),
+                new(ClaimTypes.Name, authResponse.User.DcUsuario),
+                new("cdusuario", authResponse.User.CdUsuario),
+                // Outras claims essenciais (NÃO incluir permissões aqui)
             };
-
-            // Adiciona claims opcionais se existirem no UserInfoDto
-            if (authResponse.User != null)
-            {
-                if (!string.IsNullOrWhiteSpace(authResponse.User.NoMatric))
-                {
-                    claims.Add(new Claim("nomatric", authResponse.User.NoMatric));
-                }
-
-                if (authResponse.User.CdEmpresa.HasValue)
-                {
-                    claims.Add(new Claim("cdempresa", authResponse.User.CdEmpresa.Value.ToString()));
-                }
-
-                if (authResponse.User.CdFilial.HasValue)
-                {
-                    claims.Add(new Claim("cdfilial", authResponse.User.CdFilial.Value.ToString()));
-                }
-
-                if (authResponse.User.TenantId.HasValue)
-                {
-                    claims.Add(new Claim("tenantid", authResponse.User.TenantId.Value.ToString()));
-                }
-
-                if (!string.IsNullOrWhiteSpace(authResponse.User.Email))
-                {
-                    claims.Add(new Claim(ClaimTypes.Email, authResponse.User.Email));
-                }
-            }
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
@@ -119,18 +93,15 @@ public sealed class AccountController : Controller
             var authProperties = new AuthenticationProperties
             {
                 IsPersistent = model.RememberMe,
-                ExpiresUtc = model.RememberMe
-                    ? DateTimeOffset.UtcNow.AddDays(30)
-                    : DateTimeOffset.UtcNow.AddHours(8),
+                ExpiresUtc = model.RememberMe ? DateTimeOffset.UtcNow.AddDays(30) : authResponse.ExpiresAt,
                 AllowRefresh = true
             };
 
-            // Armazena os tokens nos AuthenticationProperties
+            // Armazena os tokens para serem usados pelo HttpClient
             authProperties.StoreTokens(new[]
             {
                 new AuthenticationToken { Name = "access_token", Value = authResponse.AccessToken },
                 new AuthenticationToken { Name = "refresh_token", Value = authResponse.RefreshToken },
-                new AuthenticationToken { Name = "expires_at", Value = authResponse.ExpiresAt.ToString("O") }
             });
 
             await HttpContext.SignInAsync(
@@ -139,7 +110,6 @@ public sealed class AccountController : Controller
                 authProperties);
 
             _logger.LogInformation("Login bem-sucedido: {CdUsuario}", model.CdUsuario);
-
             return RedirectToLocal(model.ReturnUrl);
         }
         catch (Exception ex)
@@ -150,135 +120,35 @@ public sealed class AccountController : Controller
         }
     }
 
-    /// <summary>
-    /// Realiza o logout do usuário.
-    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
-        try
+        var cdUsuario = User.GetCdUsuario();
+        if (!string.IsNullOrEmpty(cdUsuario))
         {
-            var accessToken = User.FindFirstValue("AccessToken");
-            var refreshToken = User.FindFirstValue("RefreshToken");
-
-            // Tenta também obter dos AuthenticationProperties
-            if (string.IsNullOrWhiteSpace(accessToken))
-            {
-                accessToken = await HttpContext.GetTokenAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme, 
-                    "access_token");
-            }
-
-            if (string.IsNullOrWhiteSpace(refreshToken))
-            {
-                refreshToken = await HttpContext.GetTokenAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme, 
-                    "refresh_token");
-            }
-
-            var cdUsuario = User.FindFirstValue("cdusuario") ?? "Desconhecido";
-
-            // Passa o AccessToken para autorização na API
-            if (!string.IsNullOrWhiteSpace(accessToken) && !string.IsNullOrWhiteSpace(refreshToken))
-            {
-                await _authApiService.LogoutAsync(accessToken, refreshToken);
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "⚠️ [LOGOUT] Tokens não encontrados nas claims. " +
-                    "AccessToken: {HasAccess}, RefreshToken: {HasRefresh}",
-                    !string.IsNullOrWhiteSpace(accessToken),
-                    !string.IsNullOrWhiteSpace(refreshToken));
-            }
-
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
-            _logger.LogInformation("Logout realizado: {CdUsuario}", cdUsuario);
-
-            return RedirectToAction(nameof(Login));
+            // ✅ NOVO: Remove as permissões do cache no logout
+            _permissionsCache.Remove(cdUsuario);
+            _logger.LogInformation("Permissões do usuário {CdUsuario} removidas do cache.", cdUsuario);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao fazer logout");
-            
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            
-            return RedirectToAction(nameof(Login));
-        }
+
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        _logger.LogInformation("Usuário deslogado com sucesso.");
+        return RedirectToAction("Index", "Home");
     }
 
-    /// <summary>
-    /// Página de acesso negado.
-    /// </summary>
     [HttpGet]
-    public IActionResult AccessDenied(string? returnUrl = null)
+    public IActionResult AccessDenied()
     {
-        ViewData["ReturnUrl"] = returnUrl;
         return View();
-    }
-
-    /// <summary>
-    /// Dashboard com informações e permissões do usuário.
-    /// </summary>
-    [HttpGet]
-    [Authorize]
-    public async Task<IActionResult> Dashboard(CancellationToken ct)
-    {
-        try
-        {
-            var accessToken = User.FindFirstValue("AccessToken");
-            
-            if (string.IsNullOrWhiteSpace(accessToken))
-            {
-                accessToken = await HttpContext.GetTokenAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme, 
-                    "access_token");
-            }
-            
-            var cdUsuario = User.FindFirstValue("cdusuario");
-
-            if (string.IsNullOrWhiteSpace(accessToken) || string.IsNullOrWhiteSpace(cdUsuario))
-            {
-                _logger.LogWarning("Token ou código de usuário não encontrado nas claims");
-                return RedirectToAction(nameof(Login));
-            }
-
-            var userInfo = await _authApiService.GetCurrentUserAsync(accessToken, ct);
-
-            if (userInfo == null)
-            {
-                _logger.LogWarning("Não foi possível obter informações do usuário: {CdUsuario}", cdUsuario);
-                return RedirectToAction(nameof(Login));
-            }
-
-            var permissions = await _authApiService.GetUserPermissionsAsync(cdUsuario, null, ct);
-
-            var viewModel = new DashboardViewModel
-            {
-                UserInfo = userInfo,
-                Permissions = permissions ?? new UserPermissionsViewModel(),
-                HasPermissionsError = permissions == null,
-                ErrorMessage = permissions == null ? "Não foi possível carregar as permissões do usuário." : null
-            };
-
-            return View(viewModel);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao carregar dashboard do usuário");
-            return RedirectToAction("Error", "Home");
-        }
     }
 
     private IActionResult RedirectToLocal(string? returnUrl)
     {
-        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        if (Url.IsLocalUrl(returnUrl))
         {
             return Redirect(returnUrl);
         }
-
         return RedirectToAction("Index", "Home");
     }
 }

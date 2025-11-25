@@ -1,54 +1,236 @@
-// src/Web/Controllers/SistemasController.cs
+// =============================================================================
+// RHSENSOERP WEB - SISTEMAS CONTROLLER (COM CONTROLE DE BOTÕES)
+// =============================================================================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RhSensoERP.Web.Controllers.Base;
 using RhSensoERP.Web.Models.Sistemas;
+using RhSensoERP.Web.Services.Permissions;
 using RhSensoERP.Web.Services.Sistemas;
 
 namespace RhSensoERP.Web.Controllers;
 
 /// <summary>
 /// Controller para gerenciamento de Sistemas.
-/// Herda toda a funcionalidade CRUD do BaseCrudController, incluindo exclusão em lote.
+/// Herda toda a funcionalidade CRUD do BaseCrudController com verificação de permissões.
 /// </summary>
 [Authorize]
 public class SistemasController : BaseCrudController<SistemaDto, CreateSistemaDto, UpdateSistemaDto, string>
 {
-    private readonly ISistemaApiService _sistemaService;
+    // =========================================================================
+    // CONFIGURAÇÃO DE PERMISSÕES
+    // =========================================================================
+    
+    /// <summary>
+    /// Código da função/tela no sistema de permissões.
+    /// Este código deve corresponder ao cadastrado na tabela tfunc1 do banco legado.
+    /// </summary>
+    private const string CdFuncao = "SEG_FM_TSISTEMA";
+    
+    /// <summary>
+    /// Código do sistema ao qual esta função pertence.
+    /// Exemplos: RHU (RH), FIN (Financeiro), EST (Estoque), SEG (Segurança)
+    /// </summary>
+    private const string CdSistema = "RHU";
+
+    // =========================================================================
+    // CONSTRUTOR
+    // =========================================================================
 
     public SistemasController(
         ISistemaApiService sistemaApiService,
+        IUserPermissionsCacheService permissionsCache,
         ILogger<SistemasController> logger)
-        : base(sistemaApiService, logger)
+        : base(sistemaApiService, permissionsCache, logger)
     {
-        _sistemaService = sistemaApiService;
     }
 
+    // =========================================================================
+    // ACTION: INDEX (Página Principal)
+    // =========================================================================
+    
     /// <summary>
-    /// Página principal (Index).
+    /// Página principal (Index) com verificação de permissão de consulta.
+    /// Valida se o usuário tem permissão de CONSULTAR (C) esta função.
     /// </summary>
     [HttpGet]
-    public IActionResult Index()
+    public async Task<IActionResult> Index(CancellationToken ct)
     {
+        // Verifica a permissão de consulta ANTES de renderizar a página
+        if (!await CanViewAsync(CdFuncao, ct))
+        {
+            _logger.LogWarning(
+                "⛔ Acesso negado: Usuário {User} tentou acessar {Funcao} sem permissão de consulta",
+                User.Identity?.Name,
+                CdFuncao);
+
+            return RedirectToAction("AccessDenied", "Account");
+        }
+
+        // Busca as permissões específicas do usuário para esta função
+        var permissions = await GetUserPermissionsAsync(CdFuncao, ct);
+
         var viewModel = new SistemasListViewModel
         {
-            // TODO: Buscar permissões reais do usuário logado
-            // Exemplo: UserPermissions = GetUserPermissions("SISTEMAS")
-            UserPermissions = "IAEC" // I=Incluir, A=Alterar, E=Excluir, C=Consultar
+            // ⭐ BaseListViewModel já possui a propriedade UserPermissions
+            UserPermissions = permissions
         };
+
+        _logger.LogInformation(
+            "✅ Usuário {User} acessou {Funcao} | Permissões: I={CanCreate}, A={CanEdit}, E={CanDelete}, C={CanView}",
+            User.Identity?.Name,
+            CdFuncao,
+            viewModel.CanCreate,
+            viewModel.CanEdit,
+            viewModel.CanDelete,
+            viewModel.CanView);
 
         return View(viewModel);
     }
 
-    // NOTA: O método DeleteMultiple foi REMOVIDO deste controller.
-    // A funcionalidade de exclusão múltipla agora é fornecida automaticamente
-    // pelo BaseCrudController, que detecta que ISistemaApiService implementa
-    // IBatchDeleteService<string> e usa o método DeleteBatchAsync com resultado detalhado.
-    //
-    // Benefícios desta abordagem:
-    // 1. Eliminação de código duplicado
-    // 2. Reutilização automática em todos os controllers CRUD
-    // 3. Manutenção centralizada no controller base
-    // 4. Suporte automático a exclusão detalhada quando o serviço implementa IBatchDeleteService
-    // 5. Fallback automático para exclusão simples quando o serviço não implementa a interface
+    // =========================================================================
+    // ACTION: CREATE (Incluir)
+    // =========================================================================
+    
+    /// <summary>
+    /// Cria um novo registro.
+    /// Valida se o usuário tem permissão de INCLUIR (I) nesta função.
+    /// </summary>
+    /// <param name="dto">Dados do registro a ser criado</param>
+    /// <returns>JSON com resultado da operação</returns>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public override async Task<IActionResult> Create([FromBody] CreateSistemaDto dto)
+    {
+        // Verifica se o usuário tem permissão de inclusão
+        if (!await CanCreateAsync(CdFuncao))
+        {
+            _logger.LogWarning(
+                "⛔ Tentativa de inclusão negada: Usuário {User} não tem permissão 'I' na função {Funcao}",
+                User.Identity?.Name,
+                CdFuncao);
+
+            return JsonError("Você não tem permissão para criar registros nesta tela.");
+        }
+
+        _logger.LogInformation(
+            "➕ Usuário {User} está criando um novo registro em {Funcao}",
+            User.Identity?.Name,
+            CdFuncao);
+
+        // Chama o método base que já implementa toda a lógica de criação
+        return await base.Create(dto);
+    }
+
+    // =========================================================================
+    // ACTION: UPDATE (Alterar)
+    // =========================================================================
+    
+    /// <summary>
+    /// Atualiza um registro existente.
+    /// Valida se o usuário tem permissão de ALTERAR (A) nesta função.
+    /// </summary>
+    /// <param name="id">ID do registro a ser atualizado</param>
+    /// <param name="dto">Dados atualizados</param>
+    /// <returns>JSON com resultado da operação</returns>
+    [HttpPut]
+    [ValidateAntiForgeryToken]
+    public override async Task<IActionResult> Update(string id, [FromBody] UpdateSistemaDto dto)
+    {
+        // Verifica se o usuário tem permissão de alteração
+        if (!await CanEditAsync(CdFuncao))
+        {
+            _logger.LogWarning(
+                "⛔ Tentativa de alteração negada: Usuário {User} não tem permissão 'A' na função {Funcao}",
+                User.Identity?.Name,
+                CdFuncao);
+
+            return JsonError("Você não tem permissão para alterar registros nesta tela.");
+        }
+
+        _logger.LogInformation(
+            "✏️ Usuário {User} está alterando registro {Id} em {Funcao}",
+            User.Identity?.Name,
+            id,
+            CdFuncao);
+
+        // Chama o método base que já implementa toda a lógica de atualização
+        return await base.Update(id, dto);
+    }
+
+    // =========================================================================
+    // ACTION: DELETE (Excluir)
+    // =========================================================================
+    
+    /// <summary>
+    /// Exclui um registro.
+    /// Valida se o usuário tem permissão de EXCLUIR (E) nesta função.
+    /// </summary>
+    /// <param name="id">ID do registro a ser excluído</param>
+    /// <returns>JSON com resultado da operação</returns>
+    [HttpDelete]
+    [ValidateAntiForgeryToken]
+    public override async Task<IActionResult> Delete(string id)
+    {
+        // Verifica se o usuário tem permissão de exclusão
+        if (!await CanDeleteAsync(CdFuncao))
+        {
+            _logger.LogWarning(
+                "⛔ Tentativa de exclusão negada: Usuário {User} não tem permissão 'E' na função {Funcao}",
+                User.Identity?.Name,
+                CdFuncao);
+
+            return JsonError("Você não tem permissão para excluir registros nesta tela.");
+        }
+
+        _logger.LogInformation(
+            "🗑️ Usuário {User} está excluindo registro {Id} em {Funcao}",
+            User.Identity?.Name,
+            id,
+            CdFuncao);
+
+        // Chama o método base que já implementa toda a lógica de exclusão
+        return await base.Delete(id);
+    }
+
+    // =========================================================================
+    // ACTION: DELETE MULTIPLE (Excluir Múltiplos)
+    // =========================================================================
+    
+    /// <summary>
+    /// Exclui múltiplos registros de uma vez.
+    /// Valida se o usuário tem permissão de EXCLUIR (E) nesta função.
+    /// </summary>
+    /// <param name="ids">Lista de IDs a serem excluídos</param>
+    /// <returns>JSON com resultado da operação</returns>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public override async Task<IActionResult> DeleteMultiple([FromBody] List<string>? ids)
+    {
+        // Validação de parâmetro nulo
+        if (ids == null || ids.Count == 0)
+        {
+            return JsonError("Nenhum registro selecionado para exclusão.");
+        }
+
+        // Verifica se o usuário tem permissão de exclusão
+        if (!await CanDeleteAsync(CdFuncao))
+        {
+            _logger.LogWarning(
+                "⛔ Tentativa de exclusão múltipla negada: Usuário {User} não tem permissão 'E' na função {Funcao}",
+                User.Identity?.Name,
+                CdFuncao);
+
+            return JsonError("Você não tem permissão para excluir registros nesta tela.");
+        }
+
+        _logger.LogInformation(
+            "🗑️ Usuário {User} está excluindo {Count} registros em {Funcao}",
+            User.Identity?.Name,
+            ids.Count,
+            CdFuncao);
+
+        // Chama o método base que já implementa toda a lógica de exclusão múltipla
+        return await base.DeleteMultiple(ids);
+    }
 }

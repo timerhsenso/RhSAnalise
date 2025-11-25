@@ -1,8 +1,9 @@
 // ============================================================================
-// ARQUIVO NOVO - FASE 2: src/Identity/Application/Services/IPermissaoService.cs
+// ARQUIVO ATUALIZADO - FASE 3: src/Identity/Application/Services/IPermissaoService.cs
 // ============================================================================
 
 using RhSensoERP.Identity.Application.DTOs.Auth;
+using RhSensoERP.Identity.Application.DTOs.Permissoes;
 
 namespace RhSensoERP.Identity.Application.Services;
 
@@ -38,6 +39,31 @@ public interface IPermissaoService
         string cdFuncao, 
         char acao, 
         string? cdSistema = null, 
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Valida permissão específica e retorna informações detalhadas.
+    /// Este método é mais completo que TemPermissaoAsync, retornando
+    /// não apenas se tem permissão, mas também o motivo da negação e
+    /// quais ações estão disponíveis.
+    /// </summary>
+    /// <param name="request">Request com dados da validação</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>Response detalhado com resultado da validação</returns>
+    Task<ValidarPermissaoResponse> ValidarPermissaoAsync(
+        ValidarPermissaoRequest request,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Obtém lista de funções permitidas para o usuário.
+    /// </summary>
+    /// <param name="cdUsuario">Código do usuário</param>
+    /// <param name="cdSistema">Código do sistema (opcional)</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>Lista de códigos de funções permitidas</returns>
+    Task<List<string>> ObterFuncoesPermitidasAsync(
+        string cdUsuario,
+        string? cdSistema = null,
         CancellationToken ct = default);
 
     /// <summary>

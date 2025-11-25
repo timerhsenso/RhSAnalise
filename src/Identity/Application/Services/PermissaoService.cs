@@ -1,17 +1,14 @@
 // ============================================================================
-// ARQUIVO CORRIGIDO - FASE 2:
+// ARQUIVO ATUALIZADO - FASE 3:
 // src/Identity/Application/Services/PermissaoService.cs
 // ============================================================================
 //
-// Este arquivo DEVE ficar no projeto Identity, camada Application.
-// Ele implementa a lógica de agregação das permissões do usuário
+// Este arquivo implementa a lógica de agregação das permissões do usuário
 // usando o repositório de permissões do legado.
 //
-// IMPORTANTE:
-// - Este arquivo substitui o conteúdo anterior, que estava com um
-//   controller dentro da pasta de Services (PermissoesController).
-// - O controller correto já está em
-//   src/API/Controllers/Identity/PermissoesController.cs
+// ATUALIZAÇÃO:
+// - Adicionado método ValidarPermissaoAsync para validação detalhada
+// - Melhoria no tratamento de erros e logging
 // ============================================================================
 
 using Microsoft.Extensions.Logging;
@@ -128,6 +125,110 @@ public sealed class PermissaoService : IPermissaoService
     }
 
     /// <inheritdoc />
+    public async Task<ValidarPermissaoResponse> ValidarPermissaoAsync(
+        ValidarPermissaoRequest request,
+        CancellationToken ct = default)
+    {
+        if (request == null)
+            throw new ArgumentNullException(nameof(request));
+
+        if (string.IsNullOrWhiteSpace(request.CdUsuario))
+            throw new ArgumentException("cdUsuario é obrigatório.", nameof(request.CdUsuario));
+
+        if (string.IsNullOrWhiteSpace(request.CdSistema))
+            throw new ArgumentException("cdSistema é obrigatório.", nameof(request.CdSistema));
+
+        if (string.IsNullOrWhiteSpace(request.CdFuncao))
+            throw new ArgumentException("cdFuncao é obrigatório.", nameof(request.CdFuncao));
+
+        _logger.LogInformation(
+            "🔍 Validando permissão: Usuário={User}, Sistema={Sistema}, Função={Funcao}, Ação={Acao}",
+            request.CdUsuario,
+            request.CdSistema,
+            request.CdFuncao,
+            request.Acao);
+
+        var response = new ValidarPermissaoResponse
+        {
+            CdUsuario = request.CdUsuario,
+            CdSistema = request.CdSistema,
+            CdFuncao = request.CdFuncao,
+            Acao = request.Acao,
+            DescricaoAcao = ObterDescricaoAcao(request.Acao)
+        };
+
+        try
+        {
+            // Busca as permissões do usuário para o sistema especificado
+            var funcoes = await _permissaoRepository.GetPermissoesDoUsuarioAsync(
+                request.CdUsuario,
+                request.CdSistema,
+                ct);
+
+            // Busca a função específica
+            var funcao = funcoes.FirstOrDefault(f =>
+                f.CdFuncao.Equals(request.CdFuncao, StringComparison.OrdinalIgnoreCase) &&
+                f.CdSistema.Equals(request.CdSistema, StringComparison.OrdinalIgnoreCase));
+
+            if (funcao == null)
+            {
+                response.TemPermissao = false;
+                response.Motivo = $"Usuário não possui acesso à função '{request.CdFuncao}' no sistema '{request.CdSistema}'";
+                response.AcoesDisponiveis = string.Empty;
+
+                _logger.LogWarning(
+                    "❌ Permissão negada: Usuário {User} não tem acesso à função {Funcao}",
+                    request.CdUsuario,
+                    request.CdFuncao);
+
+                return response;
+            }
+
+            // Armazena as ações disponíveis
+            response.AcoesDisponiveis = funcao.Acoes ?? string.Empty;
+
+            // Verifica se a ação específica está presente
+            if (string.IsNullOrEmpty(funcao.Acoes) || !funcao.Acoes.Contains(request.Acao))
+            {
+                response.TemPermissao = false;
+                response.Motivo = $"Usuário não possui permissão de '{response.DescricaoAcao}' para esta função. " +
+                                  $"Ações disponíveis: {FormatarAcoesDisponiveis(funcao.Acoes)}";
+
+                _logger.LogWarning(
+                    "❌ Permissão negada: Usuário {User} não tem ação '{Acao}' na função {Funcao}. Ações disponíveis: {Acoes}",
+                    request.CdUsuario,
+                    request.Acao,
+                    request.CdFuncao,
+                    funcao.Acoes);
+
+                return response;
+            }
+
+            // Permissão concedida
+            response.TemPermissao = true;
+
+            _logger.LogInformation(
+                "✅ Permissão concedida: Usuário {User} tem ação '{Acao}' na função {Funcao}",
+                request.CdUsuario,
+                request.Acao,
+                request.CdFuncao);
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "❌ Erro ao validar permissão para usuário {User}, função {Funcao}",
+                request.CdUsuario,
+                request.CdFuncao);
+
+            response.TemPermissao = false;
+            response.Motivo = "Erro ao validar permissão. Contate o administrador do sistema.";
+            return response;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<List<string>> ObterFuncoesPermitidasAsync(
         string cdUsuario,
         string? cdSistema = null,
@@ -164,4 +265,35 @@ public sealed class PermissaoService : IPermissaoService
             .OrderBy(b => b)
             .ToList();
     }
+
+    #region Métodos Auxiliares
+
+    /// <summary>
+    /// Obtém a descrição amigável da ação
+    /// </summary>
+    private static string ObterDescricaoAcao(char acao) => acao switch
+    {
+        'I' => "Incluir",
+        'A' => "Alterar",
+        'E' => "Excluir",
+        'C' => "Consultar",
+        _ => acao.ToString()
+    };
+
+    /// <summary>
+    /// Formata as ações disponíveis de forma amigável
+    /// </summary>
+    private static string FormatarAcoesDisponiveis(string? acoes)
+    {
+        if (string.IsNullOrEmpty(acoes))
+            return "Nenhuma";
+
+        var descricoes = acoes
+            .Select(a => ObterDescricaoAcao(a))
+            .ToList();
+
+        return string.Join(", ", descricoes);
+    }
+
+    #endregion
 }

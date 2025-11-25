@@ -3,8 +3,8 @@
 // ============================================================================
 // Arquivo: Program.cs
 // Descrição: Ponto de entrada da aplicação Web ASP.NET Core 8
-// Versão: 2.0 (Refatorado)
-// Data: 24/11/2025
+// Versão: 3.0 (Atualizado com Cache de Permissões)
+// Data: 25/11/2025
 // 
 // Responsabilidades:
 // - Configuração do WebApplicationBuilder (serviços, logging, autenticação)
@@ -14,6 +14,7 @@
 // Melhorias Aplicadas:
 // - Eliminação de duplicação no registro de serviços de API
 // - Centralização da configuração de HttpClients no método de extensão
+// - ✅ NOVO: Adicionado cache de permissões em memória (IMemoryCache)
 // - Documentação XML completa para facilitar manutenção
 // - Uso de ConfigureAwait(false) para melhor performance
 // - Organização clara das seções de configuração
@@ -95,6 +96,22 @@ public static class Program
         // NOTA: Este registro já está incluído em AddApiServices, mas mantido aqui
         // para compatibilidade com TagHelpers e outros componentes que possam depender dele
         builder.Services.AddHttpContextAccessor();
+
+        // ========================================
+        // ✅ NOVO: CACHE DE PERMISSÕES
+        // ========================================
+        // Adiciona o IMemoryCache e o IUserPermissionsCacheService ao contêiner de DI.
+        // Isso resolve o problema de armazenamento de permissões sem sobrecarregar o cookie.
+        // 
+        // Benefícios:
+        // - Cookies permanecem pequenos (< 1KB)
+        // - Permissões armazenadas no servidor (seguras)
+        // - Verificação rápida (< 1ms em memória)
+        // - TTL sincronizado com o token JWT
+        // 
+        // Parâmetro cacheSize: Número máximo de usuários simultâneos no cache (padrão: 1000)
+        builder.Services.AddPermissionsCaching(cacheSize: 1000);
+        // ========================================
 
         // ========================================
         // AUTENTICAÇÃO E AUTORIZAÇÃO
