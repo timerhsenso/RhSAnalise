@@ -30,7 +30,17 @@ public sealed class SistemasController : ControllerBase
     public async Task<ActionResult<Result<SistemaDto>>> GetById(
         [FromRoute] string cdSistema,
         CancellationToken ct)
-        => Ok(await _mediator.Send(new GetSistemaByIdQuery(cdSistema), ct));
+    {
+        var result = await _mediator.Send(new GetSistemaByIdQuery(cdSistema), ct);
+
+        // ✅ Verifica se houve erro
+        if (!result.IsSuccess)
+        {
+            return NotFound(result);
+        }
+
+        return Ok(result);
+    }
 
     /// <summary>
     /// Lista sistemas com paginacao.
@@ -39,7 +49,17 @@ public sealed class SistemasController : ControllerBase
     public async Task<ActionResult<Result<PagedResult<SistemaDto>>>> GetPaged(
         [FromQuery] PagedRequest req,
         CancellationToken ct)
-        => Ok(await _mediator.Send(new GetSistemasPagedQuery(req), ct));
+    {
+        var result = await _mediator.Send(new GetSistemasPagedQuery(req), ct);
+
+        // ✅ Verifica se houve erro
+        if (!result.IsSuccess)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
 
     /// <summary>
     /// Cria novo sistema.
@@ -48,7 +68,17 @@ public sealed class SistemasController : ControllerBase
     public async Task<ActionResult<Result<string>>> Create(
         [FromBody] CreateSistemaRequest body,
         CancellationToken ct)
-        => Ok(await _mediator.Send(new CreateSistemaCommand(body), ct));
+    {
+        var result = await _mediator.Send(new CreateSistemaCommand(body), ct);
+
+        // ✅ CORREÇÃO PRINCIPAL: Verifica se houve erro de validação (ex: código duplicado)
+        if (!result.IsSuccess)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
 
     /// <summary>
     /// Atualiza sistema existente.
@@ -58,7 +88,17 @@ public sealed class SistemasController : ControllerBase
         [FromRoute] string cdSistema,
         [FromBody] UpdateSistemaRequest body,
         CancellationToken ct)
-        => Ok(await _mediator.Send(new UpdateSistemaCommand(cdSistema, body), ct));
+    {
+        var result = await _mediator.Send(new UpdateSistemaCommand(cdSistema, body), ct);
+
+        // ✅ Verifica se houve erro
+        if (!result.IsSuccess)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
 
     /// <summary>
     /// Remove sistema.
@@ -67,7 +107,17 @@ public sealed class SistemasController : ControllerBase
     public async Task<ActionResult<Result<bool>>> Delete(
         [FromRoute] string cdSistema,
         CancellationToken ct)
-        => Ok(await _mediator.Send(new DeleteSistemaCommand(cdSistema), ct));
+    {
+        var result = await _mediator.Send(new DeleteSistemaCommand(cdSistema), ct);
+
+        // ✅ Verifica se houve erro
+        if (!result.IsSuccess)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
 
     /// <summary>
     /// Remove multiplos sistemas em lote.
@@ -76,5 +126,15 @@ public sealed class SistemasController : ControllerBase
     public async Task<ActionResult<Result<BatchDeleteResult>>> DeleteMultiple(
         [FromBody] List<string> codigos,
         CancellationToken ct)
-        => Ok(await _mediator.Send(new DeleteSistemasCommand(codigos), ct));
+    {
+        var result = await _mediator.Send(new DeleteSistemasCommand(codigos), ct);
+
+        // ✅ Verifica se houve erro
+        if (!result.IsSuccess)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
 }
