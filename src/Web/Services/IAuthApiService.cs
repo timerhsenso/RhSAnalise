@@ -1,62 +1,63 @@
+// =============================================================================
+// RHSENSOERP WEB - AUTH API SERVICE INTERFACE
+// =============================================================================
+// Arquivo: src/Web/Services/IAuthApiService.cs
+// Descrição: Interface do serviço de autenticação via API
+// Versão: 2.1 (Corrigido - LogoutAsync com token)
+// Data: 25/11/2025
+// =============================================================================
+
 using RhSensoERP.Web.Models.Account;
 
 namespace RhSensoERP.Web.Services;
 
 /// <summary>
-/// Serviço para comunicação com a API de autenticação.
+/// Interface para serviço de autenticação via API REST.
 /// </summary>
 public interface IAuthApiService
 {
     /// <summary>
-    /// Realiza login na API.
+    /// Realiza login do usuário na API.
     /// </summary>
-    Task<AuthApiResponse?> LoginAsync(LoginViewModel model, CancellationToken ct = default);
+    /// <param name="model">Dados de login</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>Resposta de autenticação com tokens ou null se falhou</returns>
+    Task<AuthResponse?> LoginAsync(LoginViewModel model, CancellationToken ct = default);
 
     /// <summary>
-    /// Renova tokens usando refresh token.
+    /// Realiza logout do usuário na API.
     /// </summary>
-    Task<AuthApiResponse?> RefreshTokenAsync(string accessToken, string refreshToken, CancellationToken ct = default);
+    /// <param name="accessToken">Token de acesso JWT para autorização</param>
+    /// <param name="refreshToken">Refresh token a ser invalidado</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>True se logout bem-sucedido</returns>
+    Task<bool> LogoutAsync(string accessToken, string refreshToken, CancellationToken ct = default);
 
     /// <summary>
-    /// Realiza logout na API.
+    /// Renova o access token usando o refresh token.
     /// </summary>
-    Task<bool> LogoutAsync(string refreshToken, CancellationToken ct = default);
+    /// <param name="refreshToken">Refresh token válido</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>Nova resposta de autenticação ou null se falhou</returns>
+    Task<AuthResponse?> RefreshTokenAsync(string refreshToken, CancellationToken ct = default);
 
     /// <summary>
-    /// Obtém informações do usuário autenticado.
+    /// Obtém informações do usuário atual.
     /// </summary>
+    /// <param name="accessToken">Token de acesso JWT</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>Informações do usuário ou null se falhou</returns>
     Task<UserInfoViewModel?> GetCurrentUserAsync(string accessToken, CancellationToken ct = default);
 
     /// <summary>
     /// Obtém permissões do usuário.
     /// </summary>
-    Task<UserPermissionsViewModel?> GetUserPermissionsAsync(string cdUsuario, string? cdSistema = null, CancellationToken ct = default);
-}
-
-/// <summary>
-/// Resposta da API de autenticação.
-/// </summary>
-public sealed class AuthApiResponse
-{
-    public string AccessToken { get; set; } = string.Empty;
-    public string RefreshToken { get; set; } = string.Empty;
-    public DateTime ExpiresAt { get; set; }
-    public UserInfoData? User { get; set; }
-}
-
-/// <summary>
-/// Dados do usuário na resposta de login (mapeado do UserInfoDto da API).
-/// </summary>
-public sealed class UserInfoData
-{
-    public Guid Id { get; set; }
-    public string CdUsuario { get; set; } = string.Empty;
-    public string DcUsuario { get; set; } = string.Empty;
-    public string? Email { get; set; }
-    public string? NoMatric { get; set; }
-    public int? CdEmpresa { get; set; }
-    public int? CdFilial { get; set; }
-    public Guid? TenantId { get; set; }
-    public bool TwoFactorEnabled { get; set; }
-    public bool MustChangePassword { get; set; }
+    /// <param name="cdUsuario">Código do usuário</param>
+    /// <param name="cdSistema">Código do sistema (opcional)</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>Permissões do usuário ou null se falhou</returns>
+    Task<UserPermissionsViewModel?> GetUserPermissionsAsync(
+        string cdUsuario, 
+        string? cdSistema = null, 
+        CancellationToken ct = default);
 }

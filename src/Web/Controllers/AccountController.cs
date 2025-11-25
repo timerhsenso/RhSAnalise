@@ -1,3 +1,17 @@
+// =============================================================================
+// RHSENSOERP WEB - ACCOUNT CONTROLLER
+// =============================================================================
+// Arquivo: src/Web/Controllers/AccountController.cs
+// Descrição: Controller para autenticação de usuários
+// Versão: 2.1 (Corrigido - Logout passa AccessToken)
+// Data: 25/11/2025
+//
+// CORREÇÕES APLICADAS:
+// - Logout agora passa AccessToken para autorização na API
+// - Armazena tokens corretamente nos AuthenticationProperties
+// - Melhorado tratamento de erros
+// =============================================================================
+
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -116,6 +130,15 @@ public sealed class AccountController : Controller
                 AllowRefresh = true
             };
 
+            // 🔧 CORREÇÃO: Armazena os tokens nos AuthenticationProperties
+            // Isso permite recuperá-los via GetTokenAsync()
+            authProperties.StoreTokens(new[]
+            {
+                new AuthenticationToken { Name = "access_token", Value = authResponse.AccessToken },
+                new AuthenticationToken { Name = "refresh_token", Value = authResponse.RefreshToken },
+                new AuthenticationToken { Name = "expires_at", Value = authResponse.ExpiresAt.ToString("O") }
+            });
+
             // Faz o sign in com cookie
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
@@ -143,22 +166,55 @@ public sealed class AccountController : Controller
     {
         try
         {
+            // 🔧 CORREÇÃO: Obtém AMBOS os tokens para logout
+            var accessToken = User.FindFirstValue("AccessToken");
             var refreshToken = User.FindFirstValue("RefreshToken");
 
-            if (!string.IsNullOrWhiteSpace(refreshToken))
+            // Tenta também obter dos AuthenticationProperties (método alternativo)
+            if (string.IsNullOrWhiteSpace(accessToken))
             {
-                await _authApiService.LogoutAsync(refreshToken);
+                accessToken = await HttpContext.GetTokenAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme, 
+                    "access_token");
             }
 
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                refreshToken = await HttpContext.GetTokenAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme, 
+                    "refresh_token");
+            }
+
+            var cdUsuario = User.FindFirstValue("cdusuario") ?? "Desconhecido";
+
+            // 🔧 CORREÇÃO: Passa o AccessToken para autorização na API
+            if (!string.IsNullOrWhiteSpace(accessToken) && !string.IsNullOrWhiteSpace(refreshToken))
+            {
+                await _authApiService.LogoutAsync(accessToken, refreshToken);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "⚠️ [LOGOUT] Tokens não encontrados nas claims. " +
+                    "AccessToken: {HasAccess}, RefreshToken: {HasRefresh}",
+                    !string.IsNullOrWhiteSpace(accessToken),
+                    !string.IsNullOrWhiteSpace(refreshToken));
+            }
+
+            // Faz o sign out do cookie (logout local)
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-            _logger.LogInformation("Logout realizado: {CdUsuario}", User.FindFirstValue("cdusuario"));
+            _logger.LogInformation("Logout realizado: {CdUsuario}", cdUsuario);
 
             return RedirectToAction(nameof(Login));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao fazer logout");
+            
+            // Mesmo com erro, faz o logout local
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            
             return RedirectToAction(nameof(Login));
         }
     }
@@ -183,6 +239,15 @@ public sealed class AccountController : Controller
         try
         {
             var accessToken = User.FindFirstValue("AccessToken");
+            
+            // Tenta obter do AuthenticationProperties se não encontrar nas claims
+            if (string.IsNullOrWhiteSpace(accessToken))
+            {
+                accessToken = await HttpContext.GetTokenAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme, 
+                    "access_token");
+            }
+            
             var cdUsuario = User.FindFirstValue("cdusuario");
 
             if (string.IsNullOrWhiteSpace(accessToken) || string.IsNullOrWhiteSpace(cdUsuario))
