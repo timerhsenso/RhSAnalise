@@ -11,9 +11,16 @@
     INDEX SIMPLIFICADO - Sistemas
     ============================================================================
     Arquivo: Views/Sistemas/Index.cshtml
+    Versão: 2.1 (Corrigido)
     
-    Esta view usa as partial views reutilizáveis para eliminar duplicação.
-    O JavaScript está externalizado em /wwwroot/js/pages/sistemas.js
+    Esta view usa:
+    - Layout _CrudLayout que inclui os modais automaticamente
+    - Partial view _CrudTable para a tabela
+    - Section ModalContent para o conteúdo específico do formulário
+    - Section PageScripts para scripts específicos da página
+    
+    NOTA: O modal agora é renderizado pelo _CrudLayout, não mais via partial view,
+    pois @RenderSection só funciona em layouts.
     
     ============================================================================
 *@
@@ -21,10 +28,10 @@
 @* Renderiza a tabela CRUD (container, header, toolbar, datatable) *@
 @await Html.PartialAsync("_CrudTable", Model)
 
-@* Renderiza os modals (criar/editar/visualizar) *@
-@await Html.PartialAsync("_CrudModal")
-
-@* Conteúdo específico do modal de Sistemas *@
+@* ============================================================================
+   CONTEÚDO ESPECÍFICO DO MODAL DE SISTEMAS
+   Esta section é renderizada dentro do modal pelo _CrudLayout
+   ============================================================================ *@
 @section ModalContent {
     <div class="row">
         <div class="col-md-4 mb-3">
