@@ -607,12 +607,12 @@
             Lista sistemas com paginacao.
             </summary>
         </member>
-        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Create(RhSensoERP.Identity.Application.Requests.Sistema.CreateSistemaRequest,System.Threading.CancellationToken)">
+        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Create(RhSensoERP.Identity.Application.DTOs.Sistema.CreateSistemaRequest,System.Threading.CancellationToken)">
             <summary>
             Cria novo sistema.
             </summary>
         </member>
-        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Update(System.String,RhSensoERP.Identity.Application.Requests.Sistema.UpdateSistemaRequest,System.Threading.CancellationToken)">
+        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Update(System.String,RhSensoERP.Identity.Application.DTOs.Sistema.UpdateSistemaRequest,System.Threading.CancellationToken)">
             <summary>
             Atualiza sistema existente.
             </summary>

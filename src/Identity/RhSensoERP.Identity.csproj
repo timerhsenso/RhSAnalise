@@ -6,6 +6,11 @@
 		<ProjectReference Include="..\Shared\Infrastructure\RhSensoERP.Shared.Infrastructure.csproj" />
 	</ItemGroup>
 
+	<!-- ✅ Source Generator -->
+	<ItemGroup>
+		<ProjectReference Include="..\Generators\RhSensoERP.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+	
 	<ItemGroup>
 		<PackageReference Include="BCrypt.Net-Next" />
 		<PackageReference Include="MediatR" />
@@ -18,6 +23,10 @@
 		<PackageReference Include="System.DirectoryServices.AccountManagement" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
 
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <Folder Include="Application\Requests\" />
 	</ItemGroup>
 
 	<PropertyGroup>
