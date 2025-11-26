@@ -79,4 +79,14 @@ public interface IPermissaoService
         string cdFuncao, 
         string? cdSistema = null, 
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Habilita ou desabilita uma ação específica para o grupo do usuário em uma função.
+    /// </summary>
+    /// <param name="request">Request com dados do toggle</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>Response com resultado da operação</returns>
+    Task<TogglePermissaoResponse> TogglePermissaoAsync(
+        TogglePermissaoRequest request,
+        CancellationToken ct = default);
 }

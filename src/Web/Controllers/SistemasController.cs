@@ -1,6 +1,9 @@
 // =============================================================================
 // RHSENSOERP WEB - SISTEMAS CONTROLLER (COM CONTROLE DE BOTÕES)
 // =============================================================================
+// Arquivo: src/Web/Controllers/SistemasController.cs
+// Versão: 3.1 - Corrigido para suportar POST /Edit (compatibilidade com CrudBase.js)
+// =============================================================================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RhSensoERP.Web.Controllers.Base;
@@ -20,18 +23,18 @@ public class SistemasController : BaseCrudController<SistemaDto, CreateSistemaDt
     // =========================================================================
     // CONFIGURAÇÃO DE PERMISSÕES
     // =========================================================================
-    
+
     /// <summary>
     /// Código da função/tela no sistema de permissões.
     /// Este código deve corresponder ao cadastrado na tabela tfunc1 do banco legado.
     /// </summary>
     private const string CdFuncao = "SEG_FM_TSISTEMA";
-    
+
     /// <summary>
     /// Código do sistema ao qual esta função pertence.
-    /// Exemplos: RHU (RH), FIN (Financeiro), EST (Estoque), SEG (Segurança)
+    /// Sistemas pertence ao módulo SEG (Segurança).
     /// </summary>
-    private const string CdSistema = "RHU";
+    private const string CdSistema = "SEG";
 
     // =========================================================================
     // CONSTRUTOR
@@ -48,7 +51,7 @@ public class SistemasController : BaseCrudController<SistemaDto, CreateSistemaDt
     // =========================================================================
     // ACTION: INDEX (Página Principal)
     // =========================================================================
-    
+
     /// <summary>
     /// Página principal (Index) com verificação de permissão de consulta.
     /// Valida se o usuário tem permissão de CONSULTAR (C) esta função.
@@ -91,7 +94,7 @@ public class SistemasController : BaseCrudController<SistemaDto, CreateSistemaDt
     // =========================================================================
     // ACTION: CREATE (Incluir)
     // =========================================================================
-    
+
     /// <summary>
     /// Cria um novo registro.
     /// Valida se o usuário tem permissão de INCLUIR (I) nesta função.
@@ -123,11 +126,55 @@ public class SistemasController : BaseCrudController<SistemaDto, CreateSistemaDt
     }
 
     // =========================================================================
-    // ACTION: UPDATE (Alterar)
+    // ACTION: EDIT (Alterar via POST - compatibilidade com CrudBase.js)
     // =========================================================================
-    
+
     /// <summary>
-    /// Atualiza um registro existente.
+    /// Atualiza um registro existente via POST.
+    /// Esta action é necessária para compatibilidade com o CrudBase.js que faz POST para /Edit.
+    /// Valida se o usuário tem permissão de ALTERAR (A) nesta função.
+    /// </summary>
+    /// <param name="id">ID do registro a ser atualizado (via query string)</param>
+    /// <param name="dto">Dados atualizados</param>
+    /// <returns>JSON com resultado da operação</returns>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit([FromQuery] string id, [FromBody] UpdateSistemaDto dto)
+    {
+        // Validação do ID
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            _logger.LogWarning("⛔ Tentativa de edição sem ID informado");
+            return JsonError("ID do registro não informado.");
+        }
+
+        // Verifica se o usuário tem permissão de alteração
+        if (!await CanEditAsync(CdFuncao))
+        {
+            _logger.LogWarning(
+                "⛔ Tentativa de alteração negada: Usuário {User} não tem permissão 'A' na função {Funcao}",
+                User.Identity?.Name,
+                CdFuncao);
+
+            return JsonError("Você não tem permissão para alterar registros nesta tela.");
+        }
+
+        _logger.LogInformation(
+            "✏️ Usuário {User} está alterando registro {Id} em {Funcao} (via Edit POST)",
+            User.Identity?.Name,
+            id,
+            CdFuncao);
+
+        // Reutiliza a lógica do método Update do BaseCrudController
+        return await base.Update(id, dto);
+    }
+
+    // =========================================================================
+    // ACTION: UPDATE (Alterar via PUT - padrão REST)
+    // =========================================================================
+
+    /// <summary>
+    /// Atualiza um registro existente via PUT (padrão REST).
     /// Valida se o usuário tem permissão de ALTERAR (A) nesta função.
     /// </summary>
     /// <param name="id">ID do registro a ser atualizado</param>
@@ -161,7 +208,7 @@ public class SistemasController : BaseCrudController<SistemaDto, CreateSistemaDt
     // =========================================================================
     // ACTION: DELETE (Excluir)
     // =========================================================================
-    
+
     /// <summary>
     /// Exclui um registro.
     /// Valida se o usuário tem permissão de EXCLUIR (E) nesta função.
@@ -196,7 +243,7 @@ public class SistemasController : BaseCrudController<SistemaDto, CreateSistemaDt
     // =========================================================================
     // ACTION: DELETE MULTIPLE (Excluir Múltiplos)
     // =========================================================================
-    
+
     /// <summary>
     /// Exclui múltiplos registros de uma vez.
     /// Valida se o usuário tem permissão de EXCLUIR (E) nesta função.

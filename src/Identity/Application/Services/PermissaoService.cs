@@ -296,4 +296,64 @@ public sealed class PermissaoService : IPermissaoService
     }
 
     #endregion
+
+    /// <inheritdoc />
+    public async Task<TogglePermissaoResponse> TogglePermissaoAsync(
+        TogglePermissaoRequest request,
+        CancellationToken ct = default)
+    {
+        if (request == null)
+            throw new ArgumentNullException(nameof(request));
+
+        if (string.IsNullOrWhiteSpace(request.CdUsuario))
+            throw new ArgumentException("cdUsuario é obrigatório.", nameof(request.CdUsuario));
+
+        if (string.IsNullOrWhiteSpace(request.CdSistema))
+            throw new ArgumentException("cdSistema é obrigatório.", nameof(request.CdSistema));
+
+        if (string.IsNullOrWhiteSpace(request.CdFuncao))
+            throw new ArgumentException("cdFuncao é obrigatório.", nameof(request.CdFuncao));
+
+        _logger.LogInformation(
+            "🔄 Toggle permissão: Usuário={User}, Sistema={Sistema}, Função={Funcao}, Ação={Acao}, Enabled={Enabled}",
+            request.CdUsuario,
+            request.CdSistema,
+            request.CdFuncao,
+            request.Acao,
+            request.Enabled);
+
+        try
+        {
+            var result = await _permissaoRepository.TogglePermissaoAsync(
+                request.CdUsuario,
+                request.CdSistema,
+                request.CdFuncao,
+                request.Acao,
+                request.Enabled,
+                ct);
+
+            if (result.Success)
+            {
+                _logger.LogInformation(
+                    "✅ Permissão atualizada: Grupo={Grupo}, Ações={Acoes}",
+                    result.CdGrUser,
+                    result.CdAcoesAtualizado);
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ Falha ao toggle permissão: {Message}", result.Message);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Erro ao toggle permissão para usuário {User}", request.CdUsuario);
+            return new TogglePermissaoResponse
+            {
+                Success = false,
+                Message = "Erro ao atualizar permissão: " + ex.Message
+            };
+        }
+    }
 }

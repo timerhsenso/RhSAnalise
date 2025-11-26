@@ -566,6 +566,32 @@
             <response code="200">Lista de botões retornada com sucesso</response>
             <response code="400">Parâmetros inválidos</response>
         </member>
+        <member name="M:RhSensoERP.API.Controllers.Identity.PermissoesController.TogglePermissao(RhSensoERP.Identity.Application.DTOs.Permissoes.TogglePermissaoRequest,System.Threading.CancellationToken)">
+            <summary>
+            Habilita ou desabilita uma permissão específica (ação) para o grupo do usuário.
+            </summary>
+            <param name="request">Dados do toggle</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Resultado da operação</returns>
+            <response code="200">Permissão alterada com sucesso</response>
+            <response code="400">Parâmetros inválidos</response>
+            <response code="500">Erro interno</response>
+            <remarks>
+            Exemplo de request:
+            
+                POST /api/identity/permissoes/toggle
+                {
+                  "cdUsuario": "VERUSA",
+                  "cdSistema": "RHU",
+                  "cdFuncao": "FM_COMPINSS",
+                  "acao": "I",
+                  "enabled": false
+                }
+            
+            **ATENÇÃO:** Esta operação altera a permissão no GRUPO do usuário,
+            afetando todos os usuários deste grupo.
+            </remarks>
+        </member>
         <member name="T:RhSensoERP.API.Controllers.Identity.SistemasController">
             <summary>
             Controller para gerenciamento de sistemas do ERP.

@@ -260,4 +260,79 @@ public sealed class PermissoesController : ControllerBase
             return StatusCode(500, new { error = "Erro ao buscar botões." });
         }
     }
+
+    /// <summary>
+    /// Habilita ou desabilita uma permissão específica (ação) para o grupo do usuário.
+    /// </summary>
+    /// <param name="request">Dados do toggle</param>
+    /// <param name="ct">Token de cancelamento</param>
+    /// <returns>Resultado da operação</returns>
+    /// <response code="200">Permissão alterada com sucesso</response>
+    /// <response code="400">Parâmetros inválidos</response>
+    /// <response code="500">Erro interno</response>
+    /// <remarks>
+    /// Exemplo de request:
+    /// 
+    ///     POST /api/identity/permissoes/toggle
+    ///     {
+    ///       "cdUsuario": "VERUSA",
+    ///       "cdSistema": "RHU",
+    ///       "cdFuncao": "FM_COMPINSS",
+    ///       "acao": "I",
+    ///       "enabled": false
+    ///     }
+    /// 
+    /// **ATENÇÃO:** Esta operação altera a permissão no GRUPO do usuário,
+    /// afetando todos os usuários deste grupo.
+    /// </remarks>
+    [HttpPost("toggle")]
+    [ProducesResponseType(typeof(TogglePermissaoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> TogglePermissao(
+        [FromBody] TogglePermissaoRequest request,
+        CancellationToken ct)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { error = "Request inválido." });
+        }
+
+        // Validações
+        if (string.IsNullOrWhiteSpace(request.CdUsuario))
+            return BadRequest(new { error = "cdUsuario é obrigatório." });
+
+        if (string.IsNullOrWhiteSpace(request.CdSistema))
+            return BadRequest(new { error = "cdSistema é obrigatório." });
+
+        if (string.IsNullOrWhiteSpace(request.CdFuncao))
+            return BadRequest(new { error = "cdFuncao é obrigatório." });
+
+        var acoesValidas = new[] { 'I', 'A', 'E', 'C' };
+        if (!acoesValidas.Contains(char.ToUpper(request.Acao)))
+        {
+            return BadRequest(new
+            {
+                error = "Ação inválida. Valores aceitos: I (Incluir), A (Alterar), E (Excluir), C (Consultar)"
+            });
+        }
+
+        try
+        {
+            var result = await _service.TogglePermissaoAsync(request, ct);
+
+            if (!result.Success)
+            {
+                return BadRequest(new { error = result.Message });
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao toggle permissão");
+            return StatusCode(500, new { error = "Erro ao atualizar permissão." });
+        }
+    }
+
 }
