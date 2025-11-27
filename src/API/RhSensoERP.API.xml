@@ -614,6 +614,76 @@
             <param name="ct">Token de cancelamento</param>
             <returns>Lista de usuários encontrados</returns>
         </member>
+        <member name="T:RhSensoERP.API.Controllers.MetadataController">
+            <summary>
+            Controller para consulta de metadados de entidades.
+            Usado pelo frontend dinâmico para renderizar UI.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.MetadataController.GetModules">
+            <summary>
+            Lista todos os módulos disponíveis.
+            </summary>
+            <returns>Lista de nomes de módulos</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.MetadataController.GetModuleEntities(System.String)">
+            <summary>
+            Lista todas as entidades de um módulo.
+            </summary>
+            <param name="moduleName">Nome do módulo (ex: GestaoDePessoas)</param>
+            <returns>Lista de entidades do módulo</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.MetadataController.GetByRoute(System.String,System.String)">
+            <summary>
+            Retorna metadados completos de uma entidade por módulo e nome.
+            </summary>
+            <param name="moduleName">Nome do módulo (ex: GestaoDePessoas)</param>
+            <param name="entityName">Nome da entidade no plural (ex: bancos)</param>
+            <returns>Metadados completos da entidade</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.MetadataController.GetByName(System.String)">
+            <summary>
+            Retorna metadados completos de uma entidade pelo nome.
+            </summary>
+            <param name="entityName">Nome da entidade (ex: Banco)</param>
+            <returns>Metadados completos da entidade</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.MetadataController.GetAll">
+            <summary>
+            Lista todas as entidades registradas.
+            </summary>
+            <returns>Lista de todas as entidades</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.MetadataController.GetStats">
+            <summary>
+            Retorna estatísticas do registry de metadados.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.MetadataController.FormatModuleName(System.String)">
+            <summary>
+            Formata o nome do módulo para exibição.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.ModuleInfo">
+            <summary>
+            Informações resumidas de um módulo.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.EntitySummary">
+            <summary>
+            Informações resumidas de uma entidade.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.MetadataStats">
+            <summary>
+            Estatísticas do registry de metadados.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.ModuleStats">
+            <summary>
+            Estatísticas de um módulo.
+            </summary>
+        </member>
         <member name="T:RhSensoERP.API.Controllers.SecurityMetricsController">
             <summary>
             Controller para métricas de segurança do sistema.
@@ -666,6 +736,21 @@
         <member name="M:RhSensoERP.API.Controllers.SwaggerTestController.GetSwaggerDocs">
             <summary>
             Lista todos os documentos Swagger disponíveis.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Extensions.MetadataExtensions">
+            <summary>
+            Extensões para configuração do sistema de metadados.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Extensions.MetadataExtensions.AddEntityMetadata(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+            <summary>
+            Adiciona o sistema de metadados ao container de DI.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Extensions.MetadataExtensions.RegisterAllMetadata(RhSensoERP.Shared.Application.Metadata.MetadataRegistry)">
+            <summary>
+            Registra todos os MetadataProviders gerados pelo Source Generator.
             </summary>
         </member>
         <member name="T:RhSensoERP.API.Extensions.ServiceCollectionExtensions">

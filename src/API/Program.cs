@@ -53,6 +53,9 @@ using RhSensoERP.Shared.Infrastructure.Services;
 using Serilog;
 using System.Text;
 
+using RhSensoERP.API.Extensions;
+
+
 // ============================================================================
 // PROGRAM.CS - PONTO DE ENTRADA DA APLICAÇÃO RhSensoERP API
 // ============================================================================
@@ -206,6 +209,14 @@ builder.Services.AddIdentityApplication();
 
 // ❌ COMENTADO TEMPORARIAMENTE - Erro no EF mapeamento
 //builder.Services.AddGestaoDePessoasModule(builder.Configuration);
+
+// ============================================================================
+// METADATA REGISTRY (UI DINÂMICA)
+// ============================================================================
+// Registra metadados de todas as entidades para o frontend dinâmico.
+// Disponibiliza via API: GET /api/metadata/{entity}
+// ============================================================================
+builder.Services.AddEntityMetadata();
 
 // ============================================================================
 // 4. CONFIGURAÇÃO DE CONTROLLERS E API EXPLORER

@@ -1,8 +1,8 @@
 // =============================================================================
-// RHSENSOERP GENERATOR v3.0 - ENTITY INFO MODEL
+// RHSENSOERP GENERATOR v3.1 - ENTITY INFO MODEL
 // =============================================================================
 // Arquivo: src/Generators/Models/EntityInfo.cs
-// Versão: 3.0 - Com suporte completo a módulos e permissões
+// Versão: 3.1 - Com suporte a MetadataProvider para UI dinâmica
 // =============================================================================
 
 namespace RhSensoERP.Generators.Models;
@@ -131,7 +131,7 @@ public class EntityInfo
     public string ApiGroup { get; set; } = string.Empty;
 
     // =========================================================================
-    // FLAGS DE GERAÇÃO
+    // FLAGS DE GERAÇÃO - BACKEND
     // =========================================================================
 
     public bool GenerateDto { get; set; } = true;
@@ -142,6 +142,16 @@ public class EntityInfo
     public bool GenerateRepository { get; set; } = true;
     public bool GenerateMapper { get; set; } = true;
     public bool GenerateEfConfig { get; set; } = true;
+
+    /// <summary>
+    /// Gera o MetadataProvider para UI dinâmica (NOVO v3.1).
+    /// </summary>
+    public bool GenerateMetadata { get; set; } = true;
+
+    // =========================================================================
+    // FLAGS DE GERAÇÃO - API/WEB
+    // =========================================================================
+
     public bool GenerateApiController { get; set; } = false;
     public bool GenerateWebController { get; set; } = false;
     public bool GenerateWebModels { get; set; } = false;
@@ -230,6 +240,11 @@ public class EntityInfo
     /// Namespace do EF Config.
     /// </summary>
     public string EfConfigNamespace => $"{ModuleNamespace}.Infrastructure.Persistence.Configurations";
+
+    /// <summary>
+    /// Namespace do MetadataProvider (NOVO v3.1).
+    /// </summary>
+    public string MetadataNamespace => $"{ModuleNamespace}.Application.Metadata";
 
     /// <summary>
     /// Namespace do API Controller.

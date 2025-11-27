@@ -1,8 +1,8 @@
 // =============================================================================
-// RHSENSOERP GENERATOR v3.0 - ENTITY INFO EXTRACTOR
+// RHSENSOERP GENERATOR v3.1 - ENTITY INFO EXTRACTOR
 // =============================================================================
 // Arquivo: src/Generators/Extractors/EntityInfoExtractor.cs
-// Versão: 3.0 - Extração completa com módulos e permissões
+// Versão: 3.1 - Com suporte a MetadataProvider para UI dinâmica
 // =============================================================================
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -162,6 +162,11 @@ public static class EntityInfoExtractor
                     info.GenerateEfConfig = (bool)value;
                     break;
 
+                // Flag de geração - Metadata (NOVO v3.1)
+                case "GenerateMetadata":
+                    info.GenerateMetadata = (bool)value;
+                    break;
+
                 // Flags de geração - API e Web
                 case "GenerateApiController":
                     info.GenerateApiController = (bool)value;
@@ -206,7 +211,8 @@ public static class EntityInfoExtractor
             .OfType<IPropertySymbol>()
             .Where(p => p.DeclaredAccessibility == Accessibility.Public)
             .Where(p => !p.IsStatic)
-            .Where(p => p.GetMethod != null && p.SetMethod != null);
+            .Where(p => p.GetMethod != null && p.SetMethod != null)
+            .Where(p => !IsNavigationProperty(p)); // Exclui propriedades de navegação
 
         foreach (var prop in properties)
         {
@@ -468,5 +474,45 @@ public static class EntityInfoExtractor
             "SHR" => "Shared",
             _ => cdSistema
         };
+    }
+
+    /// <summary>
+    /// Verifica se a propriedade é uma propriedade de navegação (relacionamento).
+    /// Propriedades de navegação são ICollection, IEnumerable, List, HashSet, etc.
+    /// </summary>
+    private static bool IsNavigationProperty(IPropertySymbol property)
+    {
+        var typeName = property.Type.ToDisplayString();
+
+        // Verifica se é uma coleção genérica (ICollection<T>, IEnumerable<T>, List<T>, etc.)
+        if (typeName.Contains("System.Collections.Generic.ICollection<") ||
+            typeName.Contains("System.Collections.Generic.IEnumerable<") ||
+            typeName.Contains("System.Collections.Generic.IList<") ||
+            typeName.Contains("System.Collections.Generic.List<") ||
+            typeName.Contains("System.Collections.Generic.HashSet<"))
+        {
+            return true;
+        }
+
+        // Verifica se o tipo é uma entidade (classe de outro namespace que não seja primitivo)
+        var typeSymbol = property.Type as INamedTypeSymbol;
+        if (typeSymbol != null)
+        {
+            // Se for uma classe (não primitivo) e não for string/DateTime/etc
+            if (typeSymbol.TypeKind == TypeKind.Class &&
+                !typeSymbol.SpecialType.ToString().StartsWith("System_") &&
+                typeSymbol.SpecialType == SpecialType.None)
+            {
+                var ns = typeSymbol.ContainingNamespace?.ToDisplayString() ?? "";
+
+                // Se estiver em namespace de Entities, é navegação
+                if (ns.Contains(".Entities") || ns.Contains(".Domain"))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

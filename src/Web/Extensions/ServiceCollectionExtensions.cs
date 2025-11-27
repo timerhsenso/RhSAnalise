@@ -12,6 +12,9 @@ using RhSensoERP.Web.Services;
 using RhSensoERP.Web.Services.Bancos;
 using RhSensoERP.Web.Services.Sistemas;
 
+
+
+
 namespace RhSensoERP.Web.Extensions;
 
 /// <summary>
@@ -107,6 +110,19 @@ public static class ServiceCollectionExtensions
 
         // Serviço de Bancos
         services.AddScoped<IBancoApiService, BancoApiService>();
+
+        // =====================================================================
+        // SERVIÇO DE METADADOS (UI Dinâmica)
+        // =====================================================================
+        services.AddHttpClient<IMetadataService, MetadataService>(client =>
+        {
+            client.BaseAddress = new Uri(apiSettings.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(apiSettings.TimeoutSeconds);
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("RhSensoERP.Web/2.0");
+        });
 
         // =====================================================================
         // LOG DE CONFIGURAÇÃO

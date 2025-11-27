@@ -1,5 +1,8 @@
 // =============================================================================
-// RHSENSOERP GENERATOR v3.0 - CRUD SOURCE GENERATOR
+// RHSENSOERP GENERATOR v3.1 - CRUD SOURCE GENERATOR
+// =============================================================================
+// Arquivo: src/Generators/Generators/CrudGenerator.cs
+// Versão: 3.1 - Com suporte a MetadataProvider para UI dinâmica
 // =============================================================================
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -10,31 +13,16 @@ using System.Linq;
 
 namespace RhSensoERP.Generators.Generators;
 
+/// <summary>
+/// Source Generator que processa Entities marcadas com [GenerateCrud]
+/// e gera todos os arquivos necessários para CRUD completo.
+/// </summary>
 [Generator]
 public class CrudGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // DEBUG: Captura TODAS as classes com atributos
-        var allClasses = context.SyntaxProvider
-            .CreateSyntaxProvider(
-                predicate: static (node, _) => node is ClassDeclarationSyntax c && c.AttributeLists.Count > 0,
-                transform: static (ctx, _) => GetDebugInfo(ctx))
-            .Where(static x => x != null);
-
-        context.RegisterSourceOutput(allClasses, static (ctx, debugInfo) =>
-        {
-            if (debugInfo == null) return;
-            ctx.AddSource($"DEBUG_{debugInfo.Value.className}.g.cs",
-                $@"// DEBUG INFO
-// ClassName: {debugInfo.Value.className}
-// Namespace: {debugInfo.Value.ns}
-// Attributes: {debugInfo.Value.attributes}
-// HasGenerateCrud: {debugInfo.Value.hasGenerateCrud}
-");
-        });
-
-        // Pipeline original - Filtra classes com o atributo [GenerateCrud]
+        // Pipeline - Filtra classes com o atributo [GenerateCrud]
         var entityProvider = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (node, _) => IsCandidateClass(node),
@@ -47,26 +35,6 @@ public class CrudGenerator : IIncrementalGenerator
             if (info == null) return;
             GenerateAllFiles(ctx, info);
         });
-    }
-
-    /// <summary>
-    /// DEBUG: Extrai informações de debug de uma classe.
-    /// </summary>
-    private static (string className, string ns, string attributes, bool hasGenerateCrud)? GetDebugInfo(GeneratorSyntaxContext ctx)
-    {
-        if (ctx.Node is not ClassDeclarationSyntax classDeclaration)
-            return null;
-
-        var symbol = ctx.SemanticModel.GetDeclaredSymbol(classDeclaration);
-        if (symbol == null)
-            return null;
-
-        var attrs = string.Join(", ", symbol.GetAttributes().Select(a => a.AttributeClass?.Name ?? "?"));
-        var hasGenerateCrud = symbol.GetAttributes().Any(a =>
-            a.AttributeClass?.Name == "GenerateCrudAttribute" ||
-            a.AttributeClass?.Name == "GenerateCrud");
-
-        return (symbol.Name, symbol.ContainingNamespace.ToDisplayString(), attrs, hasGenerateCrud);
     }
 
     /// <summary>
@@ -174,6 +142,15 @@ public class CrudGenerator : IIncrementalGenerator
         {
             var efConfigCode = EfConfigTemplate.GenerateConfig(info);
             context.AddSource($"{info.EntityName}Configuration.g.cs", efConfigCode);
+        }
+
+        // =====================================================================
+        // BACKEND - MetadataProvider (NOVO v3.1)
+        // =====================================================================
+        if (info.GenerateMetadata)
+        {
+            var metadataCode = MetadataTemplate.GenerateMetadataProvider(info);
+            context.AddSource($"{info.EntityName}MetadataProvider.g.cs", metadataCode);
         }
 
         // =====================================================================
