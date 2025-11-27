@@ -19,9 +19,9 @@
     
     <!-- Metadados do pacote -->
     <PackageId>RhSensoERP.Generators</PackageId>
-    <Version>2.1.0</Version>
+    <Version>3.0.0</Version>
     <Authors>RhSenso Team</Authors>
-    <Description>Source Generator adaptado para RhSensoERP - Gera CRUD completo com Result, Request, FluentValidation</Description>
+    <Description>Source Generator para geração automática de CRUD completo (API + Web) com suporte a permissões IAEC</Description>
   </PropertyGroup>
 
   <ItemGroup>

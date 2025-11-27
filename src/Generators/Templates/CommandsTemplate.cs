@@ -1,353 +1,354 @@
 // =============================================================================
-// RHSENSOERP SOURCE GENERATOR - TEMPLATE DE COMMANDS
+// RHSENSOERP GENERATOR v3.0 - COMMANDS TEMPLATE
 // =============================================================================
-
-using System.Text;
+// Arquivo: src/Generators/Templates/CommandsTemplate.cs
+// Versão: 3.0 - Com suporte a CQRS completo
+// =============================================================================
 using RhSensoERP.Generators.Models;
 
 namespace RhSensoERP.Generators.Templates;
 
+/// <summary>
+/// Template para geração de Commands (CQRS).
+/// </summary>
 public static class CommandsTemplate
 {
-    public static string GenerateCreateCommand(EntityInfo entity)
+    /// <summary>
+    /// Gera o CreateCommand com Handler.
+    /// </summary>
+    public static string GenerateCreateCommand(EntityInfo info)
     {
-        var sb = new StringBuilder();
-        var pk = entity.PrimaryKey;
-        var pkName = pk?.Name ?? "Id";
-        var pkType = pk?.TypeName ?? "int";
+        var pkType = info.PrimaryKeyType;
+        var pkProp = info.PrimaryKeyProperty;
+        var entityNs = info.Namespace;
 
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - Create Command");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using MediatR;");
-        sb.AppendLine("using Microsoft.Extensions.Logging;");
-        sb.AppendLine($"using {entity.DtoNamespace};");
-        sb.AppendLine($"using {entity.RepositoryInterfaceNamespace};");
-        sb.AppendLine("using RhSensoERP.Shared.Core.Common;");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.CommandsNamespace};");
-        sb.AppendLine();
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
+using AutoMapper;
+using MediatR;
+using Microsoft.Extensions.Logging;
+using {{entityNs}};
+using {{info.DtoNamespace}};
+using {{info.RepositoryInterfaceNamespace}};
+using RhSensoERP.Shared.Core.Common;
 
-        // Command Record
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Command para criar {entity.DisplayName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed record Create{entity.ClassName}Command(Create{entity.ClassName}Request Request) : IRequest<Result<{pkType}>>;");
-        sb.AppendLine();
+namespace {{info.CommandsNamespace}};
 
-        // Handler
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Handler do Create{entity.ClassName}Command.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class Create{entity.ClassName}CommandHandler : IRequestHandler<Create{entity.ClassName}Command, Result<{pkType}>>");
-        sb.AppendLine("{");
-        sb.AppendLine($"    private readonly I{entity.ClassName}Repository _repository;");
-        sb.AppendLine($"    private readonly ILogger<Create{entity.ClassName}CommandHandler> _logger;");
-        sb.AppendLine();
-        sb.AppendLine($"    public Create{entity.ClassName}CommandHandler(");
-        sb.AppendLine($"        I{entity.ClassName}Repository repository,");
-        sb.AppendLine($"        ILogger<Create{entity.ClassName}CommandHandler> logger)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        _repository = repository;");
-        sb.AppendLine("        _logger = logger;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine($"    public async Task<Result<{pkType}>> Handle(Create{entity.ClassName}Command command, CancellationToken ct)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        try");
-        sb.AppendLine("        {");
-        sb.AppendLine("            var request = command.Request;");
-        sb.AppendLine();
+/// <summary>
+/// Command para criação de {{info.DisplayName}}.
+/// </summary>
+public sealed record Create{{info.EntityName}}Command(Create{{info.EntityName}}Request Request)
+    : IRequest<Result<{{pkType}}>>;
 
-        // Verificar duplicidade se tiver PK string
-        if (pkType == "string")
+/// <summary>
+/// Handler do comando de criação.
+/// </summary>
+public sealed class Create{{info.EntityName}}Handler
+    : IRequestHandler<Create{{info.EntityName}}Command, Result<{{pkType}}>>
+{
+    private readonly I{{info.EntityName}}Repository _repository;
+    private readonly IMapper _mapper;
+    private readonly ILogger<Create{{info.EntityName}}Handler> _logger;
+
+    public Create{{info.EntityName}}Handler(
+        I{{info.EntityName}}Repository repository,
+        IMapper mapper,
+        ILogger<Create{{info.EntityName}}Handler> logger)
+    {
+        _repository = repository;
+        _mapper = mapper;
+        _logger = logger;
+    }
+
+    public async Task<Result<{{pkType}}>> Handle(
+        Create{{info.EntityName}}Command command,
+        CancellationToken cancellationToken)
+    {
+        try
         {
-            sb.AppendLine($"            // Verificar se já existe");
-            sb.AppendLine($"            var exists = await _repository.ExistsAsync(request.{pkName}, ct);");
-            sb.AppendLine("            if (exists)");
-            sb.AppendLine("            {");
-            sb.AppendLine($"                return Result<{pkType}>.Failure(\"DUPLICATE\", \"{entity.DisplayName} já existe com este código.\");");
-            sb.AppendLine("            }");
-            sb.AppendLine();
+            _logger.LogInformation("Criando {{info.DisplayName}}...");
+
+            // Mapeia request para entity
+            var entity = _mapper.Map<{{info.EntityName}}>(command.Request);
+
+            // Persiste no banco
+            await _repository.AddAsync(entity, cancellationToken);
+
+            _logger.LogInformation("{{info.DisplayName}} criado com sucesso: {Id}", entity.{{pkProp}});
+
+            return Result<{{pkType}}>.Success(entity.{{pkProp}});
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao criar {{info.DisplayName}}");
+            return Result<{{pkType}}>.Failure(
+                Error.Failure("{{info.EntityName}}.CreateError", $"Erro ao criar {{info.DisplayName}}: {ex.Message}"));
+        }
+    }
+}
+""";
+    }
+
+    /// <summary>
+    /// Gera o UpdateCommand com Handler.
+    /// </summary>
+    public static string GenerateUpdateCommand(EntityInfo info)
+    {
+        var pkType = info.PrimaryKeyType;
+        var pkProp = info.PrimaryKeyProperty;
+        var entityNs = info.Namespace;
+
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
+using AutoMapper;
+using MediatR;
+using Microsoft.Extensions.Logging;
+using {{entityNs}};
+using {{info.DtoNamespace}};
+using {{info.RepositoryInterfaceNamespace}};
+using RhSensoERP.Shared.Core.Common;
+
+namespace {{info.CommandsNamespace}};
+
+/// <summary>
+/// Command para atualização de {{info.DisplayName}}.
+/// </summary>
+public sealed record Update{{info.EntityName}}Command({{pkType}} Id, Update{{info.EntityName}}Request Request)
+    : IRequest<Result<bool>>;
+
+/// <summary>
+/// Handler do comando de atualização.
+/// </summary>
+public sealed class Update{{info.EntityName}}Handler
+    : IRequestHandler<Update{{info.EntityName}}Command, Result<bool>>
+{
+    private readonly I{{info.EntityName}}Repository _repository;
+    private readonly IMapper _mapper;
+    private readonly ILogger<Update{{info.EntityName}}Handler> _logger;
+
+    public Update{{info.EntityName}}Handler(
+        I{{info.EntityName}}Repository repository,
+        IMapper mapper,
+        ILogger<Update{{info.EntityName}}Handler> logger)
+    {
+        _repository = repository;
+        _mapper = mapper;
+        _logger = logger;
+    }
+
+    public async Task<Result<bool>> Handle(
+        Update{{info.EntityName}}Command command,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Atualizando {{info.DisplayName}} {Id}...", command.Id);
+
+            // Busca entidade existente
+            var entity = await _repository.GetByIdAsync(command.Id, cancellationToken);
+            if (entity == null)
+            {
+                _logger.LogWarning("{{info.DisplayName}} {Id} não encontrado", command.Id);
+                return Result<bool>.Failure(
+                    Error.NotFound("{{info.EntityName}}.NotFound", "{{info.DisplayName}} não encontrado"));
+            }
+
+            // Atualiza propriedades
+            _mapper.Map(command.Request, entity);
+
+            // Persiste alterações
+            await _repository.UpdateAsync(entity, cancellationToken);
+
+            _logger.LogInformation("{{info.DisplayName}} {Id} atualizado com sucesso", command.Id);
+
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao atualizar {{info.DisplayName}} {Id}", command.Id);
+            return Result<bool>.Failure(
+                Error.Failure("{{info.EntityName}}.UpdateError", $"Erro ao atualizar {{info.DisplayName}}: {ex.Message}"));
+        }
+    }
+}
+""";
+    }
+
+    /// <summary>
+    /// Gera o DeleteCommand com Handler.
+    /// </summary>
+    public static string GenerateDeleteCommand(EntityInfo info)
+    {
+        var pkType = info.PrimaryKeyType;
+
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
+using MediatR;
+using Microsoft.Extensions.Logging;
+using {{info.RepositoryInterfaceNamespace}};
+using RhSensoERP.Shared.Core.Common;
+
+namespace {{info.CommandsNamespace}};
+
+/// <summary>
+/// Command para exclusão de {{info.DisplayName}}.
+/// </summary>
+public sealed record Delete{{info.EntityName}}Command({{pkType}} Id)
+    : IRequest<Result<bool>>;
+
+/// <summary>
+/// Handler do comando de exclusão.
+/// </summary>
+public sealed class Delete{{info.EntityName}}Handler
+    : IRequestHandler<Delete{{info.EntityName}}Command, Result<bool>>
+{
+    private readonly I{{info.EntityName}}Repository _repository;
+    private readonly ILogger<Delete{{info.EntityName}}Handler> _logger;
+
+    public Delete{{info.EntityName}}Handler(
+        I{{info.EntityName}}Repository repository,
+        ILogger<Delete{{info.EntityName}}Handler> logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
+
+    public async Task<Result<bool>> Handle(
+        Delete{{info.EntityName}}Command command,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Excluindo {{info.DisplayName}} {Id}...", command.Id);
+
+            // Busca entidade
+            var entity = await _repository.GetByIdAsync(command.Id, cancellationToken);
+            if (entity == null)
+            {
+                _logger.LogWarning("{{info.DisplayName}} {Id} não encontrado", command.Id);
+                return Result<bool>.Failure(
+                    Error.NotFound("{{info.EntityName}}.NotFound", "{{info.DisplayName}} não encontrado"));
+            }
+
+            // Remove
+            await _repository.DeleteAsync(entity, cancellationToken);
+
+            _logger.LogInformation("{{info.DisplayName}} {Id} excluído com sucesso", command.Id);
+
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao excluir {{info.DisplayName}} {Id}", command.Id);
+            return Result<bool>.Failure(
+                Error.Failure("{{info.EntityName}}.DeleteError", $"Erro ao excluir {{info.DisplayName}}: {ex.Message}"));
+        }
+    }
+}
+""";
+    }
+
+    /// <summary>
+    /// Gera o DeleteMultipleCommand (Batch) com Handler.
+    /// </summary>
+    public static string GenerateBatchDeleteCommand(EntityInfo info)
+    {
+        var pkType = info.PrimaryKeyType;
+
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
+using MediatR;
+using Microsoft.Extensions.Logging;
+using {{info.RepositoryInterfaceNamespace}};
+using RhSensoERP.Shared.Core.Common;
+using RhSensoERP.Shared.Application.DTOs.Common;
+
+namespace {{info.CommandsNamespace}};
+
+/// <summary>
+/// Command para exclusão em lote de {{info.DisplayName}}.
+/// </summary>
+public sealed record Delete{{info.PluralName}}Command(List<{{pkType}}> Ids)
+    : IRequest<Result<BatchDeleteResult>>;
+
+/// <summary>
+/// Handler do comando de exclusão em lote.
+/// </summary>
+public sealed class Delete{{info.PluralName}}Handler
+    : IRequestHandler<Delete{{info.PluralName}}Command, Result<BatchDeleteResult>>
+{
+    private readonly I{{info.EntityName}}Repository _repository;
+    private readonly ILogger<Delete{{info.PluralName}}Handler> _logger;
+
+    public Delete{{info.PluralName}}Handler(
+        I{{info.EntityName}}Repository repository,
+        ILogger<Delete{{info.PluralName}}Handler> logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
+
+    public async Task<Result<BatchDeleteResult>> Handle(
+        Delete{{info.PluralName}}Command command,
+        CancellationToken cancellationToken)
+    {
+        var errors = new List<BatchDeleteError>();
+        var successCount = 0;
+
+        _logger.LogInformation("Excluindo {Count} {{info.DisplayName}}(s) em lote...", command.Ids.Count);
+
+        foreach (var id in command.Ids)
+        {
+            try
+            {
+                var entity = await _repository.GetByIdAsync(id, cancellationToken);
+                if (entity == null)
+                {
+                    errors.Add(new BatchDeleteError(id.ToString()!, "Registro não encontrado"));
+                    continue;
+                }
+
+                await _repository.DeleteAsync(entity, cancellationToken);
+                successCount++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao excluir {{info.DisplayName}} {Id}", id);
+                errors.Add(new BatchDeleteError(id.ToString()!, ex.Message));
+            }
         }
 
-        sb.AppendLine($"            var entity = new {entity.Namespace}.{entity.ClassName}");
-        sb.AppendLine("            {");
-        foreach (var prop in entity.ScalarProperties.Where(p => 
-            !p.IgnoreInAllDtos && !p.IgnoreInCreateDto && !p.IsReadOnly && !IsBaseEntity(p.Name)))
+        var result = new BatchDeleteResult
         {
-            sb.AppendLine($"                {prop.Name} = request.{prop.Name},");
-        }
-        sb.AppendLine("            };");
-        sb.AppendLine();
-        sb.AppendLine("            await _repository.AddAsync(entity, ct);");
-        sb.AppendLine();
-        sb.AppendLine($"            _logger.LogInformation(\"{entity.DisplayName} criado: {{Codigo}}\", entity.{pkName});");
-        sb.AppendLine();
-        sb.AppendLine($"            return Result<{pkType}>.Success(entity.{pkName});");
-        sb.AppendLine("        }");
-        sb.AppendLine("        catch (Exception ex)");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            _logger.LogError(ex, \"Erro ao criar {entity.DisplayName}\");");
-        sb.AppendLine($"            return Result<{pkType}>.Failure(\"CREATE_ERROR\", \"Erro ao criar {entity.DisplayName}.\");");
-        sb.AppendLine("        }");
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
+            SuccessCount = successCount,
+            FailureCount = errors.Count,
+            Errors = errors
+        };
 
-        return sb.ToString();
+        _logger.LogInformation(
+            "Exclusão em lote concluída: {Success} sucesso(s), {Failure} falha(s)",
+            result.SuccessCount,
+            result.FailureCount);
+
+        return Result<BatchDeleteResult>.Success(result);
     }
-
-    public static string GenerateUpdateCommand(EntityInfo entity)
-    {
-        var sb = new StringBuilder();
-        var pk = entity.PrimaryKey;
-        var pkName = pk?.Name ?? "Id";
-        var pkType = pk?.TypeName ?? "int";
-
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - Update Command");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using MediatR;");
-        sb.AppendLine("using Microsoft.Extensions.Logging;");
-        sb.AppendLine($"using {entity.DtoNamespace};");
-        sb.AppendLine($"using {entity.RepositoryInterfaceNamespace};");
-        sb.AppendLine("using RhSensoERP.Shared.Core.Common;");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.CommandsNamespace};");
-        sb.AppendLine();
-
-        // Command Record
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Command para atualizar {entity.DisplayName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed record Update{entity.ClassName}Command({pkType} {pkName}, Update{entity.ClassName}Request Request) : IRequest<Result<bool>>;");
-        sb.AppendLine();
-
-        // Handler
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Handler do Update{entity.ClassName}Command.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class Update{entity.ClassName}CommandHandler : IRequestHandler<Update{entity.ClassName}Command, Result<bool>>");
-        sb.AppendLine("{");
-        sb.AppendLine($"    private readonly I{entity.ClassName}Repository _repository;");
-        sb.AppendLine($"    private readonly ILogger<Update{entity.ClassName}CommandHandler> _logger;");
-        sb.AppendLine();
-        sb.AppendLine($"    public Update{entity.ClassName}CommandHandler(");
-        sb.AppendLine($"        I{entity.ClassName}Repository repository,");
-        sb.AppendLine($"        ILogger<Update{entity.ClassName}CommandHandler> logger)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        _repository = repository;");
-        sb.AppendLine("        _logger = logger;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine($"    public async Task<Result<bool>> Handle(Update{entity.ClassName}Command command, CancellationToken ct)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        try");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            var entity = await _repository.GetBy{pkName}Async(command.{pkName}, ct);");
-        sb.AppendLine("            if (entity == null)");
-        sb.AppendLine("            {");
-        sb.AppendLine($"                return Result<bool>.Failure(\"NOT_FOUND\", \"{entity.DisplayName} não encontrado.\");");
-        sb.AppendLine("            }");
-        sb.AppendLine();
-        sb.AppendLine("            // Atualizar propriedades");
-
-        foreach (var prop in entity.ScalarProperties.Where(p => 
-            !p.IgnoreInAllDtos && !p.IgnoreInUpdateDto && !p.IsReadOnly && !p.IsKey && !IsBaseEntity(p.Name)))
-        {
-            sb.AppendLine($"            entity.{prop.Name} = command.Request.{prop.Name};");
-        }
-
-        sb.AppendLine();
-        sb.AppendLine("            _repository.Update(entity);");
-        sb.AppendLine("            await _repository.SaveChangesAsync(ct);");
-        sb.AppendLine();
-        sb.AppendLine($"            _logger.LogInformation(\"{entity.DisplayName} atualizado: {{Codigo}}\", command.{pkName});");
-        sb.AppendLine();
-        sb.AppendLine("            return Result<bool>.Success(true);");
-        sb.AppendLine("        }");
-        sb.AppendLine("        catch (Exception ex)");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            _logger.LogError(ex, \"Erro ao atualizar {entity.DisplayName}: {{Codigo}}\", command.{pkName});");
-        sb.AppendLine("            return Result<bool>.Failure(\"UPDATE_ERROR\", \"Erro ao atualizar {entity.DisplayName}.\");");
-        sb.AppendLine("        }");
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
-
-        return sb.ToString();
+}
+""";
     }
-
-    public static string GenerateDeleteCommand(EntityInfo entity)
-    {
-        var sb = new StringBuilder();
-        var pk = entity.PrimaryKey;
-        var pkName = pk?.Name ?? "Id";
-        var pkType = pk?.TypeName ?? "int";
-
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - Delete Command");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using MediatR;");
-        sb.AppendLine("using Microsoft.Extensions.Logging;");
-        sb.AppendLine($"using {entity.RepositoryInterfaceNamespace};");
-        sb.AppendLine("using RhSensoERP.Shared.Core.Common;");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.CommandsNamespace};");
-        sb.AppendLine();
-
-        // Command Record
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Command para excluir {entity.DisplayName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed record Delete{entity.ClassName}Command({pkType} {pkName}) : IRequest<Result<bool>>;");
-        sb.AppendLine();
-
-        // Handler
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Handler do Delete{entity.ClassName}Command.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class Delete{entity.ClassName}CommandHandler : IRequestHandler<Delete{entity.ClassName}Command, Result<bool>>");
-        sb.AppendLine("{");
-        sb.AppendLine($"    private readonly I{entity.ClassName}Repository _repository;");
-        sb.AppendLine($"    private readonly ILogger<Delete{entity.ClassName}CommandHandler> _logger;");
-        sb.AppendLine();
-        sb.AppendLine($"    public Delete{entity.ClassName}CommandHandler(");
-        sb.AppendLine($"        I{entity.ClassName}Repository repository,");
-        sb.AppendLine($"        ILogger<Delete{entity.ClassName}CommandHandler> logger)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        _repository = repository;");
-        sb.AppendLine("        _logger = logger;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine($"    public async Task<Result<bool>> Handle(Delete{entity.ClassName}Command command, CancellationToken ct)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        try");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            var entity = await _repository.GetBy{pkName}Async(command.{pkName}, ct);");
-        sb.AppendLine("            if (entity == null)");
-        sb.AppendLine("            {");
-        sb.AppendLine($"                return Result<bool>.Failure(\"NOT_FOUND\", \"{entity.DisplayName} não encontrado.\");");
-        sb.AppendLine("            }");
-        sb.AppendLine();
-        sb.AppendLine("            _repository.Remove(entity);");
-        sb.AppendLine("            await _repository.SaveChangesAsync(ct);");
-        sb.AppendLine();
-        sb.AppendLine($"            _logger.LogInformation(\"{entity.DisplayName} excluído: {{Codigo}}\", command.{pkName});");
-        sb.AppendLine();
-        sb.AppendLine("            return Result<bool>.Success(true);");
-        sb.AppendLine("        }");
-        sb.AppendLine("        catch (Exception ex)");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            _logger.LogError(ex, \"Erro ao excluir {entity.DisplayName}: {{Codigo}}\", command.{pkName});");
-        sb.AppendLine("            return Result<bool>.Failure(\"DELETE_ERROR\", \"Erro ao excluir {entity.DisplayName}.\");");
-        sb.AppendLine("        }");
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
-
-        return sb.ToString();
-    }
-
-    public static string GenerateDeleteBatchCommand(EntityInfo entity)
-    {
-        var sb = new StringBuilder();
-        var pk = entity.PrimaryKey;
-        var pkName = pk?.Name ?? "Id";
-        var pkType = pk?.TypeName ?? "int";
-
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - Delete Batch Command");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using MediatR;");
-        sb.AppendLine("using Microsoft.Extensions.Logging;");
-        sb.AppendLine($"using {entity.RepositoryInterfaceNamespace};");
-        sb.AppendLine("using RhSensoERP.Shared.Core.Common;");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.CommandsNamespace};");
-        sb.AppendLine();
-
-        // BatchDeleteResult
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine("/// Resultado da exclusão em lote.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class {entity.ClassName}BatchDeleteResult");
-        sb.AppendLine("{");
-        sb.AppendLine("    public int TotalRequested { get; set; }");
-        sb.AppendLine("    public int TotalDeleted { get; set; }");
-        sb.AppendLine($"    public List<{pkType}> NotFound {{ get; set; }} = new();");
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Command Record
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Command para excluir múltiplos {entity.PluralName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed record Delete{entity.PluralName}Command(List<{pkType}> Codigos) : IRequest<Result<{entity.ClassName}BatchDeleteResult>>;");
-        sb.AppendLine();
-
-        // Handler
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Handler do Delete{entity.PluralName}Command.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class Delete{entity.PluralName}CommandHandler : IRequestHandler<Delete{entity.PluralName}Command, Result<{entity.ClassName}BatchDeleteResult>>");
-        sb.AppendLine("{");
-        sb.AppendLine($"    private readonly I{entity.ClassName}Repository _repository;");
-        sb.AppendLine($"    private readonly ILogger<Delete{entity.PluralName}CommandHandler> _logger;");
-        sb.AppendLine();
-        sb.AppendLine($"    public Delete{entity.PluralName}CommandHandler(");
-        sb.AppendLine($"        I{entity.ClassName}Repository repository,");
-        sb.AppendLine($"        ILogger<Delete{entity.PluralName}CommandHandler> logger)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        _repository = repository;");
-        sb.AppendLine("        _logger = logger;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine($"    public async Task<Result<{entity.ClassName}BatchDeleteResult>> Handle(Delete{entity.PluralName}Command command, CancellationToken ct)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        try");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            var result = new {entity.ClassName}BatchDeleteResult");
-        sb.AppendLine("            {");
-        sb.AppendLine("                TotalRequested = command.Codigos.Count");
-        sb.AppendLine("            };");
-        sb.AppendLine();
-        sb.AppendLine("            foreach (var codigo in command.Codigos)");
-        sb.AppendLine("            {");
-        sb.AppendLine($"                var entity = await _repository.GetBy{pkName}Async(codigo, ct);");
-        sb.AppendLine("                if (entity == null)");
-        sb.AppendLine("                {");
-        sb.AppendLine("                    result.NotFound.Add(codigo);");
-        sb.AppendLine("                    continue;");
-        sb.AppendLine("                }");
-        sb.AppendLine();
-        sb.AppendLine("                _repository.Remove(entity);");
-        sb.AppendLine("                result.TotalDeleted++;");
-        sb.AppendLine("            }");
-        sb.AppendLine();
-        sb.AppendLine("            await _repository.SaveChangesAsync(ct);");
-        sb.AppendLine();
-        sb.AppendLine($"            _logger.LogInformation(\"{entity.PluralName} excluídos: {{Total}}\", result.TotalDeleted);");
-        sb.AppendLine();
-        sb.AppendLine($"            return Result<{entity.ClassName}BatchDeleteResult>.Success(result);");
-        sb.AppendLine("        }");
-        sb.AppendLine("        catch (Exception ex)");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            _logger.LogError(ex, \"Erro ao excluir {entity.PluralName} em lote\");");
-        sb.AppendLine($"            return Result<{entity.ClassName}BatchDeleteResult>.Failure(\"DELETE_BATCH_ERROR\", \"Erro ao excluir {entity.PluralName}.\");");
-        sb.AppendLine("        }");
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
-
-        return sb.ToString();
-    }
-
-    private static readonly string[] BaseEntityProps = { "Id", "CreatedAt", "CreatedBy", "UpdatedAt", "UpdatedBy" };
-    private static bool IsBaseEntity(string name) => BaseEntityProps.Contains(name);
 }

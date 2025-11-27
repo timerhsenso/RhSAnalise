@@ -1,18 +1,23 @@
-﻿// src/API/Controllers/Identity/SistemasController.cs
+// =============================================================================
+// ARQUIVO GERADO POR RhSensoERP.CrudTool
+// Entity: Sistema
+// Data: 2025-11-27 01:25:15
+// =============================================================================
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using RhSensoERP.Identity.Application.DTOs.Common;
-using RhSensoERP.Identity.Application.DTOs.Sistema;
-using RhSensoERP.Identity.Application.Features.Sistema.Commands;
-using RhSensoERP.Identity.Application.Features.Sistema.Queries;
-//using RhSensoERP.Identity.Application.Requests.Sistema;
+//using RhSensoERP.Identity.Application.DTOs.Common;
+using RhSensoERP.Shared.Application.DTOs.Common;
+
+using RhSensoERP.Identity.Application.DTOs.Sistemas;
+using RhSensoERP.Identity.Application.Features.Sistemas.Commands;
+using RhSensoERP.Identity.Application.Features.Sistemas.Queries;
 using RhSensoERP.Shared.Contracts.Common;
 using RhSensoERP.Shared.Core.Common;
 
 namespace RhSensoERP.API.Controllers.Identity;
 
 /// <summary>
-/// Controller para gerenciamento de sistemas do ERP.
+/// Controller para gerenciamento de Sistema.
 /// </summary>
 [ApiController]
 [Route("api/identity/sistemas")]
@@ -24,16 +29,15 @@ public sealed class SistemasController : ControllerBase
     public SistemasController(IMediator mediator) => _mediator = mediator;
 
     /// <summary>
-    /// Obtem um sistema pelo codigo.
+    /// Obtém Sistema pelo código.
     /// </summary>
     [HttpGet("{cdSistema}")]
     public async Task<ActionResult<Result<SistemaDto>>> GetById(
         [FromRoute] string cdSistema,
         CancellationToken ct)
     {
-        var result = await _mediator.Send(new GetSistemaByIdQuery(cdSistema), ct);
+        var result = await _mediator.Send(new GetBySistemaIdQuery(cdSistema), ct);
 
-        // ✅ Verifica se houve erro
         if (!result.IsSuccess)
         {
             return NotFound(result);
@@ -43,7 +47,7 @@ public sealed class SistemasController : ControllerBase
     }
 
     /// <summary>
-    /// Lista sistemas com paginacao.
+    /// Lista Sistema com paginação.
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<Result<PagedResult<SistemaDto>>>> GetPaged(
@@ -52,7 +56,6 @@ public sealed class SistemasController : ControllerBase
     {
         var result = await _mediator.Send(new GetSistemasPagedQuery(req), ct);
 
-        // ✅ Verifica se houve erro
         if (!result.IsSuccess)
         {
             return BadRequest(result);
@@ -62,7 +65,7 @@ public sealed class SistemasController : ControllerBase
     }
 
     /// <summary>
-    /// Cria novo sistema.
+    /// Cria novo Sistema.
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<Result<string>>> Create(
@@ -71,7 +74,6 @@ public sealed class SistemasController : ControllerBase
     {
         var result = await _mediator.Send(new CreateSistemaCommand(body), ct);
 
-        // ✅ CORREÇÃO PRINCIPAL: Verifica se houve erro de validação (ex: código duplicado)
         if (!result.IsSuccess)
         {
             return BadRequest(result);
@@ -81,7 +83,7 @@ public sealed class SistemasController : ControllerBase
     }
 
     /// <summary>
-    /// Atualiza sistema existente.
+    /// Atualiza Sistema existente.
     /// </summary>
     [HttpPut("{cdSistema}")]
     public async Task<ActionResult<Result<bool>>> Update(
@@ -91,7 +93,6 @@ public sealed class SistemasController : ControllerBase
     {
         var result = await _mediator.Send(new UpdateSistemaCommand(cdSistema, body), ct);
 
-        // ✅ Verifica se houve erro
         if (!result.IsSuccess)
         {
             return BadRequest(result);
@@ -101,7 +102,7 @@ public sealed class SistemasController : ControllerBase
     }
 
     /// <summary>
-    /// Remove sistema.
+    /// Remove Sistema.
     /// </summary>
     [HttpDelete("{cdSistema}")]
     public async Task<ActionResult<Result<bool>>> Delete(
@@ -110,7 +111,6 @@ public sealed class SistemasController : ControllerBase
     {
         var result = await _mediator.Send(new DeleteSistemaCommand(cdSistema), ct);
 
-        // ✅ Verifica se houve erro
         if (!result.IsSuccess)
         {
             return BadRequest(result);
@@ -120,7 +120,7 @@ public sealed class SistemasController : ControllerBase
     }
 
     /// <summary>
-    /// Remove multiplos sistemas em lote.
+    /// Remove múltiplos Sistema em lote.
     /// </summary>
     [HttpDelete("batch")]
     public async Task<ActionResult<Result<BatchDeleteResult>>> DeleteMultiple(
@@ -129,7 +129,6 @@ public sealed class SistemasController : ControllerBase
     {
         var result = await _mediator.Send(new DeleteSistemasCommand(codigos), ct);
 
-        // ✅ Verifica se houve erro
         if (!result.IsSuccess)
         {
             return BadRequest(result);

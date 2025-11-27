@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using RhSensoERP.Modules.GestaoDePessoas.Application.Services;
+//using RhSensoERP.Modules.GestaoDePessoas.Application.Services;
 using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Contexts;
 using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Repositories;
 

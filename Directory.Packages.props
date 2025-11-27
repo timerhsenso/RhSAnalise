@@ -37,27 +37,15 @@
 
     <!-- ========================================================= -->
     <!--  JWT / Tokens / Autenticação                              -->
-    <!--  🔥 Ajustado para resolver NU1109                         -->
-    <!--  - Todos pacotes de token DEVEM usar a mesma versão       -->
     <!-- ========================================================= -->
-
-    <!-- JwtBearer deve ser alinhado com a versão das libs de Tokens -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
-
-    <!-- IdentityModel – todos precisam ficar na mesma versão -->
-    <!-- 8.14.0 é o mínimo que satisfaz o MediatR → JsonWebTokens -->
     <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.14.0" />
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.14.0" />
     <PackageVersion Include="Microsoft.IdentityModel.Logging" Version="8.14.0" />
-
-    <!-- System.IdentityModel também deve seguir a mesma versão -->
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
 
     <!-- ========================================================= -->
     <!--  Active Directory - FASE 3                                -->
-    <!--  ✅ NOVO: Pacotes para autenticação AD/LDAP               -->
-    <!--  ⚠️ IMPORTANTE: Funcionam apenas em Windows!              -->
-    <!--  Para Linux, usar Novell.Directory.Ldap.NETStandard       -->
     <!-- ========================================================= -->
     <PackageVersion Include="System.DirectoryServices" Version="8.0.0" />
     <PackageVersion Include="System.DirectoryServices.AccountManagement" Version="8.0.0" />
@@ -167,13 +155,24 @@
     <PackageVersion Include="QuestPDF" Version="2024.10.3" />
 
     <!-- ========================================================= -->
-    <!--  Source Generator                                         -->
-    <!--  ✅ Pacotes para o RhSensoERP.Generators                  -->
-    <!--  - Microsoft.CodeAnalysis.CSharp: Engine Roslyn           -->
-    <!--  - Microsoft.CodeAnalysis.Analyzers: Regras de análise    -->
+    <!--  Source Generator & Roslyn (CodeAnalysis)                 -->
+    <!--  ✅ Versões unificadas para evitar conflito NU1107        -->
+    <!--  - EF Core Design usa CodeAnalysis.Workspaces 4.5.0       -->
+    <!--  - Source Generator usa CodeAnalysis.CSharp 4.8.0         -->
+    <!--  - Solução: Forçar todas para 4.8.0                       -->
     <!-- ========================================================= -->
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" />
+
+    <!-- ========================================================= -->
+    <!--  Tools CLI Front                                          -->
+    <!-- ========================================================= -->
+    <PackageVersion Include="Spectre.Console" Version="0.49.1" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageVersion Include="System.Text.Json" Version="8.0.0" />
 
   </ItemGroup>
 </Project>

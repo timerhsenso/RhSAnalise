@@ -1,140 +1,107 @@
 // =============================================================================
-// RHSENSOERP SOURCE GENERATOR - TEMPLATE DE DTOs/REQUESTS
+// RHSENSOERP GENERATOR v3.0 - DTO TEMPLATE
 // =============================================================================
-
-using System.Text;
 using RhSensoERP.Generators.Models;
 
 namespace RhSensoERP.Generators.Templates;
 
+/// <summary>
+/// Template para geração de DTOs (Data Transfer Objects).
+/// </summary>
 public static class DtoTemplate
 {
-    private static readonly string[] BaseEntityProps = { "Id", "CreatedAt", "CreatedBy", "UpdatedAt", "UpdatedBy" };
-
-    public static string GenerateReadDto(EntityInfo entity)
+    /// <summary>
+    /// Gera o DTO de leitura (EntityDto.g.cs).
+    /// </summary>
+    public static string GenerateDto(EntityInfo info)
     {
-        var sb = new StringBuilder();
+        var props = string.Join("\n", info.DtoProperties.Select(p =>
+            $"    public {p.Type} {p.Name} {{ get; set; }}{GetDefaultValue(p)}"));
 
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - DTO de Leitura");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.DtoNamespace};");
-        sb.AppendLine();
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// DTO de leitura para {entity.DisplayName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class {entity.ClassName}Dto");
-        sb.AppendLine("{");
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
 
-        foreach (var prop in entity.ScalarProperties.Where(p => !p.IgnoreInAllDtos && !p.IgnoreInReadDto))
-        {
-            sb.AppendLine($"    /// <summary>{prop.DisplayName}</summary>");
-            sb.AppendLine($"    public {prop.FullTypeName} {prop.Name} {{ get; set; }}{GetInit(prop)}");
-            sb.AppendLine();
-        }
+namespace {{info.DtoNamespace}};
 
-        sb.AppendLine("}");
-        return sb.ToString();
+/// <summary>
+/// DTO para leitura de {{info.DisplayName}}.
+/// </summary>
+public sealed class {{info.EntityName}}Dto
+{
+{{props}}
+}
+""";
     }
 
-    public static string GenerateCreateRequest(EntityInfo entity)
+    /// <summary>
+    /// Gera o DTO de criação (CreateEntityRequest.g.cs).
+    /// </summary>
+    public static string GenerateCreateRequest(EntityInfo info)
     {
-        var sb = new StringBuilder();
+        var props = string.Join("\n", info.CreateProperties.Select(p =>
+            $"    public {p.Type} {p.Name} {{ get; set; }}{GetDefaultValue(p)}"));
 
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - Request de Criação");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using System.ComponentModel.DataAnnotations;");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.DtoNamespace};");
-        sb.AppendLine();
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Request para criar {entity.DisplayName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class Create{entity.ClassName}Request");
-        sb.AppendLine("{");
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
 
-        foreach (var prop in entity.ScalarProperties.Where(p => 
-            !p.IgnoreInAllDtos && !p.IgnoreInCreateDto && !p.IsReadOnly && !IsBaseEntity(p.Name)))
-        {
-            sb.AppendLine($"    /// <summary>{prop.DisplayName}</summary>");
-            AppendValidation(sb, prop);
-            sb.AppendLine($"    public {prop.FullTypeName} {prop.Name} {{ get; set; }}{GetInit(prop)}");
-            sb.AppendLine();
-        }
+namespace {{info.DtoNamespace}};
 
-        sb.AppendLine("}");
-        return sb.ToString();
+/// <summary>
+/// Request para criação de {{info.DisplayName}}.
+/// </summary>
+public sealed class Create{{info.EntityName}}Request
+{
+{{props}}
+}
+""";
     }
 
-    public static string GenerateUpdateRequest(EntityInfo entity)
+    /// <summary>
+    /// Gera o DTO de atualização (UpdateEntityRequest.g.cs).
+    /// </summary>
+    public static string GenerateUpdateRequest(EntityInfo info)
     {
-        var sb = new StringBuilder();
+        var props = string.Join("\n", info.UpdateProperties.Select(p =>
+            $"    public {p.Type} {p.Name} {{ get; set; }}{GetDefaultValue(p)}"));
 
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - Request de Atualização");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using System.ComponentModel.DataAnnotations;");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.DtoNamespace};");
-        sb.AppendLine();
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Request para atualizar {entity.DisplayName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class Update{entity.ClassName}Request");
-        sb.AppendLine("{");
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
 
-        foreach (var prop in entity.ScalarProperties.Where(p => 
-            !p.IgnoreInAllDtos && !p.IgnoreInUpdateDto && !p.IsReadOnly && !p.IsKey && !IsBaseEntity(p.Name)))
-        {
-            sb.AppendLine($"    /// <summary>{prop.DisplayName}</summary>");
-            AppendValidation(sb, prop);
-            sb.AppendLine($"    public {prop.FullTypeName} {prop.Name} {{ get; set; }}{GetInit(prop)}");
-            sb.AppendLine();
-        }
+namespace {{info.DtoNamespace}};
 
-        sb.AppendLine("}");
-        return sb.ToString();
+/// <summary>
+/// Request para atualização de {{info.DisplayName}}.
+/// </summary>
+public sealed class Update{{info.EntityName}}Request
+{
+{{props}}
+}
+""";
     }
 
-    private static bool IsBaseEntity(string name) => BaseEntityProps.Contains(name);
-
-    private static string GetInit(PropertyInfo prop)
+    /// <summary>
+    /// Obtém o valor padrão para uma propriedade.
+    /// </summary>
+    private static string GetDefaultValue(PropertyInfo prop)
     {
-        if (prop.IsNullable) return "";
-        return prop.TypeName == "string" ? " = string.Empty;" : "";
+        if (!string.IsNullOrEmpty(prop.DefaultValue))
+            return $" = {prop.DefaultValue};";
+
+        if (prop.IsString && !prop.IsNullable)
+            return " = string.Empty;";
+
+        return string.Empty;
     }
-
-    private static void AppendValidation(StringBuilder sb, PropertyInfo prop)
-    {
-        if (prop.IsRequired && !prop.IsNullable)
-        {
-            var msg = prop.Messages.RequiredMessage ?? $"O campo {prop.DisplayName} é obrigatório.";
-            sb.AppendLine($"    [Required(ErrorMessage = \"{Escape(msg)}\")]");
-        }
-
-        if (prop.MaxLength.HasValue && prop.IsString)
-        {
-            if (prop.MinLength.HasValue)
-            {
-                var msg = prop.Messages.LengthMessage ?? 
-                    $"O campo {prop.DisplayName} deve ter entre {prop.MinLength} e {prop.MaxLength} caracteres.";
-                sb.AppendLine($"    [StringLength({prop.MaxLength}, MinimumLength = {prop.MinLength}, ErrorMessage = \"{Escape(msg)}\")]");
-            }
-            else
-            {
-                var msg = prop.Messages.LengthMessage ?? 
-                    $"O campo {prop.DisplayName} deve ter no máximo {prop.MaxLength} caracteres.";
-                sb.AppendLine($"    [StringLength({prop.MaxLength}, ErrorMessage = \"{Escape(msg)}\")]");
-            }
-        }
-    }
-
-    private static string Escape(string s) => s.Replace("\"", "\\\"");
 }

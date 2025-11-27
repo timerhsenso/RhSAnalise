@@ -1,196 +1,372 @@
 // =============================================================================
-// RHSENSOERP SOURCE GENERATOR - MODELS
+// RHSENSOERP GENERATOR v3.0 - ENTITY INFO MODEL
+// =============================================================================
+// Arquivo: src/Generators/Models/EntityInfo.cs
+// Versão: 3.0 - Com suporte completo a módulos e permissões
 // =============================================================================
 
 namespace RhSensoERP.Generators.Models;
 
 /// <summary>
-/// Informações extraídas de uma Entity para geração de código.
+/// Modelo que contém todas as informações extraídas de uma Entity
+/// para geração de código.
 /// </summary>
-public sealed class EntityInfo
+public class EntityInfo
 {
-    /// <summary>Nome da classe (ex: "Sistema").</summary>
-    public string ClassName { get; set; } = string.Empty;
+    // =========================================================================
+    // IDENTIFICAÇÃO DA ENTITY
+    // =========================================================================
 
-    /// <summary>Namespace completo da classe.</summary>
+    /// <summary>
+    /// Nome da classe da Entity (ex: "Sistema", "Usuario").
+    /// </summary>
+    public string EntityName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Nome completo com namespace (ex: "RhSensoERP.Identity.Domain.Entities.Sistema").
+    /// </summary>
+    public string FullClassName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Namespace da Entity (ex: "RhSensoERP.Identity.Domain.Entities").
+    /// </summary>
     public string Namespace { get; set; } = string.Empty;
 
-    /// <summary>Nome de exibição para mensagens (ex: "Sistema").</summary>
+    /// <summary>
+    /// Nome amigável para exibição (ex: "Sistema", "Usuário").
+    /// </summary>
     public string DisplayName { get; set; } = string.Empty;
 
-    /// <summary>Nome no plural (ex: "Sistemas").</summary>
+    /// <summary>
+    /// Nome no plural (ex: "Sistemas", "Usuarios").
+    /// </summary>
     public string PluralName { get; set; } = string.Empty;
 
-    /// <summary>Nome em camelCase (ex: "sistema").</summary>
-    public string CamelCaseName { get; set; } = string.Empty;
+    // =========================================================================
+    // MÓDULO E PERMISSÕES
+    // =========================================================================
 
-    /// <summary>Nome da tabela no banco.</summary>
+    /// <summary>
+    /// Módulo inferido do namespace (ex: "Identity", "GestaoDePessoas", "Shared").
+    /// </summary>
+    public string ModuleName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Indica se o módulo está na pasta Modules (true) ou na raiz (false).
+    /// Ex: RhSensoERP.Modules.GestaoDePessoas = true
+    /// Ex: RhSensoERP.Identity = false
+    /// </summary>
+    public bool IsModulesStructure { get; set; }
+
+    /// <summary>
+    /// Código do sistema para permissões (ex: "SEG", "RHU").
+    /// </summary>
+    public string CdSistema { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Código da função para verificação de permissões (ex: "SEG_FM_TSISTEMA").
+    /// </summary>
+    public string CdFuncao { get; set; } = string.Empty;
+
+    // =========================================================================
+    // CONFIGURAÇÃO DA TABELA
+    // =========================================================================
+
+    /// <summary>
+    /// Nome da tabela no banco de dados.
+    /// </summary>
     public string TableName { get; set; } = string.Empty;
 
-    /// <summary>Schema do banco (ex: "dbo").</summary>
-    public string? Schema { get; set; }
+    /// <summary>
+    /// Schema da tabela (padrão: "dbo").
+    /// </summary>
+    public string Schema { get; set; } = "dbo";
 
-    /// <summary>Lista de propriedades da Entity.</summary>
+    /// <summary>
+    /// Indica se é tabela legada (sem BaseEntity).
+    /// </summary>
+    public bool IsLegacyTable { get; set; }
+
+    // =========================================================================
+    // CHAVE PRIMÁRIA
+    // =========================================================================
+
+    /// <summary>
+    /// Nome da propriedade que é a PK (ex: "CdSistema", "Id").
+    /// </summary>
+    public string PrimaryKeyProperty { get; set; } = "Id";
+
+    /// <summary>
+    /// Nome da coluna da PK no banco (ex: "cdsistema", "id").
+    /// </summary>
+    public string PrimaryKeyColumn { get; set; } = "id";
+
+    /// <summary>
+    /// Tipo C# da PK (ex: "string", "int", "Guid").
+    /// </summary>
+    public string PrimaryKeyType { get; set; } = "Guid";
+
+    /// <summary>
+    /// Indica se a PK é gerada pelo banco (Identity/AutoIncrement).
+    /// </summary>
+    public bool PrimaryKeyIsGenerated { get; set; }
+
+    // =========================================================================
+    // ROTAS E API
+    // =========================================================================
+
+    /// <summary>
+    /// Rota base da API (ex: "identity/sistemas").
+    /// </summary>
+    public string ApiRoute { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Rota completa da API (ex: "/api/identity/sistemas").
+    /// </summary>
+    public string ApiFullRoute => $"/api/{ApiRoute}";
+
+    /// <summary>
+    /// Nome do grupo no Swagger (ex: "Identity", "RHU").
+    /// </summary>
+    public string ApiGroup { get; set; } = string.Empty;
+
+    // =========================================================================
+    // FLAGS DE GERAÇÃO
+    // =========================================================================
+
+    public bool GenerateDto { get; set; } = true;
+    public bool GenerateRequests { get; set; } = true;
+    public bool GenerateCommands { get; set; } = true;
+    public bool GenerateQueries { get; set; } = true;
+    public bool GenerateValidators { get; set; } = true;
+    public bool GenerateRepository { get; set; } = true;
+    public bool GenerateMapper { get; set; } = true;
+    public bool GenerateEfConfig { get; set; } = true;
+    public bool GenerateApiController { get; set; } = false;
+    public bool GenerateWebController { get; set; } = false;
+    public bool GenerateWebModels { get; set; } = false;
+    public bool GenerateWebServices { get; set; } = false;
+    public bool SupportsBatchDelete { get; set; } = true;
+    public bool ApiRequiresAuth { get; set; } = true;
+
+    // =========================================================================
+    // PROPRIEDADES DA ENTITY
+    // =========================================================================
+
+    /// <summary>
+    /// Lista de todas as propriedades da Entity.
+    /// </summary>
     public List<PropertyInfo> Properties { get; set; } = new();
 
-    /// <summary>Propriedade que é a chave primária.</summary>
-    public PropertyInfo? PrimaryKey => Properties.FirstOrDefault(p => p.IsKey);
+    /// <summary>
+    /// Propriedades que vão para o DTO de leitura.
+    /// </summary>
+    public IEnumerable<PropertyInfo> DtoProperties =>
+        Properties.Where(p => !p.ExcludeFromDto);
 
-    /// <summary>Propriedades que não são navegação.</summary>
-    public IEnumerable<PropertyInfo> ScalarProperties => Properties.Where(p => !p.IsNavigation);
+    /// <summary>
+    /// Propriedades editáveis no Create.
+    /// </summary>
+    public IEnumerable<PropertyInfo> CreateProperties =>
+        Properties.Where(p => !p.IsReadOnly && !p.IsPrimaryKey);
 
-    /// <summary>Configurações do atributo [GenerateCrud].</summary>
-    public GenerationConfig Config { get; set; } = new();
+    /// <summary>
+    /// Propriedades editáveis no Update.
+    /// </summary>
+    public IEnumerable<PropertyInfo> UpdateProperties =>
+        Properties.Where(p => !p.IsReadOnly && !p.IsPrimaryKey);
+
+    /// <summary>
+    /// Propriedades obrigatórias na criação.
+    /// </summary>
+    public IEnumerable<PropertyInfo> RequiredProperties =>
+        Properties.Where(p => p.IsRequired || p.RequiredOnCreate);
 
     // =========================================================================
-    // NAMESPACES (Padrão RhSensoERP)
+    // NAMESPACES GERADOS
     // =========================================================================
 
-    /// <summary>Namespace base.</summary>
-    public string BaseNamespace => Config.BaseNamespace ?? GetBaseNamespaceFromEntity();
+    /// <summary>
+    /// Namespace base do módulo (ex: "RhSensoERP.Identity" ou "RhSensoERP.Modules.GestaoDePessoas").
+    /// </summary>
+    public string ModuleNamespace { get; set; } = string.Empty;
 
-    /// <summary>Namespace para DTOs/Requests.</summary>
-    public string DtoNamespace => Config.DtoNamespace ?? $"{BaseNamespace}.Application.DTOs.{ClassName}";
+    /// <summary>
+    /// Namespace dos DTOs.
+    /// </summary>
+    public string DtoNamespace => $"{ModuleNamespace}.Application.DTOs.{PluralName}";
 
-    /// <summary>Namespace para Commands.</summary>
-    public string CommandsNamespace => Config.CommandsNamespace ?? $"{BaseNamespace}.Application.Features.{ClassName}.Commands";
+    /// <summary>
+    /// Namespace dos Commands.
+    /// </summary>
+    public string CommandsNamespace => $"{ModuleNamespace}.Application.Features.{PluralName}.Commands";
 
-    /// <summary>Namespace para Queries.</summary>
-    public string QueriesNamespace => Config.QueriesNamespace ?? $"{BaseNamespace}.Application.Features.{ClassName}.Queries";
+    /// <summary>
+    /// Namespace das Queries.
+    /// </summary>
+    public string QueriesNamespace => $"{ModuleNamespace}.Application.Features.{PluralName}.Queries";
 
-    /// <summary>Namespace para Validators.</summary>
-    public string ValidatorsNamespace => Config.ValidatorsNamespace ?? $"{BaseNamespace}.Application.Validators.{ClassName}";
+    /// <summary>
+    /// Namespace dos Validators.
+    /// </summary>
+    public string ValidatorsNamespace => $"{ModuleNamespace}.Application.Validators.{PluralName}";
 
-    /// <summary>Namespace para Repository Interface.</summary>
-    public string RepositoryInterfaceNamespace => $"{BaseNamespace}.Core.Interfaces.Repositories";
+    /// <summary>
+    /// Namespace do Repository Interface.
+    /// </summary>
+    public string RepositoryInterfaceNamespace => $"{ModuleNamespace}.Core.Interfaces.Repositories";
 
-    /// <summary>Namespace para Repository Implementation.</summary>
-    public string RepositoryImplementationNamespace => Config.RepositoryNamespace ?? $"{BaseNamespace}.Infrastructure.Repositories";
+    /// <summary>
+    /// Namespace do Repository Implementation.
+    /// </summary>
+    public string RepositoryImplNamespace => $"{ModuleNamespace}.Infrastructure.Repositories";
 
-    /// <summary>Namespace para AutoMapper Profile.</summary>
-    public string MapperNamespace => $"{BaseNamespace}.Application.Mapping";
+    /// <summary>
+    /// Namespace do Mapper.
+    /// </summary>
+    public string MapperNamespace => $"{ModuleNamespace}.Application.Mapping";
 
-    /// <summary>Namespace para EF Configuration.</summary>
-    public string ConfigurationNamespace => Config.ConfigurationNamespace ?? $"{BaseNamespace}.Infrastructure.Persistence.Configurations";
+    /// <summary>
+    /// Namespace do EF Config.
+    /// </summary>
+    public string EfConfigNamespace => $"{ModuleNamespace}.Infrastructure.Persistence.Configurations";
 
-    /// <summary>Namespace do DbContext.</summary>
-    public string DbContextNamespace => $"{BaseNamespace}.Infrastructure.Persistence";
+    /// <summary>
+    /// Namespace do API Controller.
+    /// </summary>
+    public string ApiControllerNamespace => $"RhSensoERP.API.Controllers.{ModuleName}";
 
-    /// <summary>Nome do DbContext.</summary>
-    public string DbContextName => GetDbContextName();
+    /// <summary>
+    /// Namespace do Web Controller.
+    /// </summary>
+    public string WebControllerNamespace => "RhSensoERP.Web.Controllers";
 
-    private string GetBaseNamespaceFromEntity()
-    {
-        var ns = Namespace;
-        var suffixes = new[] { ".Domain.Entities", ".Entities", ".Domain" };
-        foreach (var suffix in suffixes)
-        {
-            if (ns.EndsWith(suffix))
-                return ns.Substring(0, ns.Length - suffix.Length);
-        }
-        return ns;
-    }
+    /// <summary>
+    /// Namespace dos Web Models.
+    /// </summary>
+    public string WebModelsNamespace => $"RhSensoERP.Web.Models.{PluralName}";
 
-    private string GetDbContextName()
-    {
-        // RhSensoERP.Identity -> IdentityDbContext
-        var parts = BaseNamespace.Split('.');
-        var last = parts.LastOrDefault() ?? "App";
-        return $"{last}DbContext";
-    }
+    /// <summary>
+    /// Namespace dos Web Services.
+    /// </summary>
+    public string WebServicesNamespace => $"RhSensoERP.Web.Services.{PluralName}";
+
+    // =========================================================================
+    // DBCONTEXT - PROPRIEDADES CALCULADAS
+    // =========================================================================
+
+    /// <summary>
+    /// Namespace do DbContext do módulo.
+    /// Para Modules: RhSensoERP.Modules.{Nome}.Infrastructure.Persistence.Contexts
+    /// Para Identity: RhSensoERP.Identity.Infrastructure.Persistence
+    /// </summary>
+    public string DbContextNamespace => IsModulesStructure
+        ? $"{ModuleNamespace}.Infrastructure.Persistence.Contexts"
+        : $"{ModuleNamespace}.Infrastructure.Persistence";
+
+    /// <summary>
+    /// Nome do DbContext do módulo (ex: "GestaoDePessoasDbContext", "IdentityDbContext").
+    /// </summary>
+    public string DbContextName => $"{ModuleName}DbContext";
 }
 
 /// <summary>
 /// Informações de uma propriedade da Entity.
 /// </summary>
-public sealed class PropertyInfo
+public class PropertyInfo
 {
+    /// <summary>
+    /// Nome da propriedade C# (ex: "CdSistema", "DcSistema").
+    /// </summary>
     public string Name { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string TypeName { get; set; } = string.Empty;
-    public bool IsNullable { get; set; }
-    public string FullTypeName => IsNullable && !TypeName.EndsWith("?") ? $"{TypeName}?" : TypeName;
 
-    // Banco de dados
+    /// <summary>
+    /// Tipo C# da propriedade (ex: "string", "int?", "DateTime").
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Nome da coluna no banco (se diferente do nome da propriedade).
+    /// </summary>
     public string ColumnName { get; set; } = string.Empty;
-    public bool IsKey { get; set; }
 
-    // Validações
+    /// <summary>
+    /// Nome amigável para exibição.
+    /// </summary>
+    public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Indica se é a chave primária.
+    /// </summary>
+    public bool IsPrimaryKey { get; set; }
+
+    /// <summary>
+    /// Indica se é obrigatório ([Required]).
+    /// </summary>
     public bool IsRequired { get; set; }
-    public int? MaxLength { get; set; }
-    public int? MinLength { get; set; }
-    public object? MinValue { get; set; }
-    public object? MaxValue { get; set; }
-    public string? Pattern { get; set; }
-    public ValidationMessages Messages { get; set; } = new();
 
-    // Geração
-    public bool IgnoreInAllDtos { get; set; }
-    public bool IgnoreInCreateDto { get; set; }
-    public bool IgnoreInUpdateDto { get; set; }
-    public bool IgnoreInReadDto { get; set; }
+    /// <summary>
+    /// Indica se é obrigatório apenas na criação.
+    /// </summary>
+    public bool RequiredOnCreate { get; set; }
+
+    /// <summary>
+    /// Indica se é somente leitura (não editável).
+    /// </summary>
     public bool IsReadOnly { get; set; }
-    public bool IsNavigation { get; set; }
 
-    // Helpers
-    public bool IsString => TypeName == "string" || TypeName == "String";
-    public bool IsNumeric => TypeName is "int" or "long" or "decimal" or "double" or "float" or "short" or "byte";
-    public bool IsBoolean => TypeName is "bool" or "Boolean";
-    public bool IsDateTime => TypeName is "DateTime" or "DateTimeOffset";
-}
+    /// <summary>
+    /// Indica se deve ser excluído do DTO de leitura.
+    /// </summary>
+    public bool ExcludeFromDto { get; set; }
 
-public sealed class ValidationMessages
-{
-    public string? RequiredMessage { get; set; }
-    public string? LengthMessage { get; set; }
-    public string? RangeMessage { get; set; }
-    public string? PatternMessage { get; set; }
-}
+    /// <summary>
+    /// Indica se é nullable (tipo termina com ?).
+    /// </summary>
+    public bool IsNullable { get; set; }
 
-public sealed class GenerationConfig
-{
-    public bool GenerateAsPartial { get; set; } = false; // Não usar partial por padrão
+    /// <summary>
+    /// Comprimento máximo da string ([StringLength] ou [MaxLength]).
+    /// </summary>
+    public int? MaxLength { get; set; }
 
-    // DTOs/Requests
-    public bool GenerateDto { get; set; } = true;
-    public bool GenerateCreateDto { get; set; } = true;
-    public bool GenerateUpdateDto { get; set; } = true;
+    /// <summary>
+    /// Comprimento mínimo da string ([MinLength]).
+    /// </summary>
+    public int? MinLength { get; set; }
 
-    // Commands
-    public bool GenerateCreateCommand { get; set; } = true;
-    public bool GenerateUpdateCommand { get; set; } = true;
-    public bool GenerateDeleteCommand { get; set; } = true;
-    public bool GenerateDeleteBatchCommand { get; set; } = true;
+    /// <summary>
+    /// Valor padrão da propriedade.
+    /// </summary>
+    public string? DefaultValue { get; set; }
 
-    // Queries
-    public bool GenerateGetByIdQuery { get; set; } = true;
-    public bool GenerateGetPagedQuery { get; set; } = true;
+    /// <summary>
+    /// Tipo base sem nullable (ex: "string" para "string?").
+    /// </summary>
+    public string BaseType => Type.TrimEnd('?');
 
-    // Validators
-    public bool GenerateCreateValidator { get; set; } = true;
-    public bool GenerateUpdateValidator { get; set; } = true;
+    /// <summary>
+    /// Verifica se é tipo string.
+    /// </summary>
+    public bool IsString => BaseType.Equals("string", StringComparison.OrdinalIgnoreCase);
 
-    // Repository
-    public bool GenerateRepositoryInterface { get; set; } = true;
-    public bool GenerateRepositoryImplementation { get; set; } = true;
+    /// <summary>
+    /// Verifica se é tipo numérico.
+    /// </summary>
+    public bool IsNumeric => BaseType is "int" or "long" or "decimal" or "double" or "float" or "short" or "byte";
 
-    // Mapper & EF
-    public bool GenerateMapperProfile { get; set; } = true;
-    public bool GenerateEfConfiguration { get; set; } = true;
+    /// <summary>
+    /// Verifica se é tipo DateTime.
+    /// </summary>
+    public bool IsDateTime => BaseType is "DateTime" or "DateTimeOffset" or "DateOnly" or "TimeOnly";
 
-    // Banco
-    public string? TableName { get; set; }
-    public string? Schema { get; set; }
+    /// <summary>
+    /// Verifica se é tipo bool.
+    /// </summary>
+    public bool IsBool => BaseType is "bool" or "Boolean";
 
-    // Namespaces customizados
-    public string? BaseNamespace { get; set; }
-    public string? DtoNamespace { get; set; }
-    public string? CommandsNamespace { get; set; }
-    public string? QueriesNamespace { get; set; }
-    public string? ValidatorsNamespace { get; set; }
-    public string? RepositoryNamespace { get; set; }
-    public string? ConfigurationNamespace { get; set; }
-
-    // Display
-    public string? DisplayName { get; set; }
+    /// <summary>
+    /// Verifica se é tipo Guid.
+    /// </summary>
+    public bool IsGuid => BaseType is "Guid";
 }

@@ -1,5 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+	<!-- ✅ Source Generator -->
+	<ItemGroup>
+		<ProjectReference Include="..\..\Generators\RhSensoERP.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	</ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\Core\RhSensoERP.Shared.Core.csproj" />
     <ProjectReference Include="..\..\Shared\Application\RhSensoERP.Shared.Application.csproj" />
@@ -11,6 +14,10 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="MediatR" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Infrastructure\Persistence\Configurations\" />
   </ItemGroup>
 
   <PropertyGroup>

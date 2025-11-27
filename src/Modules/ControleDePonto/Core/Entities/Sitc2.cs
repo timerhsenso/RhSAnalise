@@ -1,31 +1,92 @@
-﻿using System;
+﻿// src/Modules/ControleDePonto/Core/Entities/Sitc2.cs
+
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using RhSensoERP.Shared.Core.Primitives;
+using RhSensoERP.Shared.Core.Attributes;
 
 namespace RhSensoERP.Modules.ControleDePonto.Core.Entities;
 
 /// <summary>
 /// Situação de fechamento/processamento de frequência por colaborador/dia.
+/// Tabela: sitc2
 /// </summary>
-[Table("sitc2")]
-public class Sitc2 : BaseEntity
+[GenerateCrud(
+    TableName = "sitc2",
+    DisplayName = "Situação de Frequência",
+    CdSistema = "FRE",
+    CdFuncao = "CPT_FM_SITC2",
+    IsLegacyTable = true
+)]
+public class Sitc2
 {
-    /// <summary>Chave técnica (tabela não define PK explícita).</summary>
     [Key]
     [Column("id")]
+    [FieldDisplayName("Id")]
     public Guid Id { get; set; }
 
-    [Column("cdempresa")] public int CdEmpresa { get; set; }
-    [Column("cdfilial")] public int CdFilial { get; set; }
-    [Column("nomatric"), StringLength(8)] public string NoMatric { get; set; } = default!;
-    [Column("dtfrequen")] public DateTime DtFrequen { get; set; }
-    [Column("flsituacao")] public int FlSituacao { get; set; }
-    [Column("cdusuario"), StringLength(20)] public string? CdUsuario { get; set; }
-    [Column("dtultmov")] public DateTime DtUltMov { get; set; }
-    [Column("FLPROCESSADO")] public int FlProcessado { get; set; }
-    [Column("FLIMPORTADO")] public int FlImportado { get; set; }
-    [Column("DTIMPORTACAO")] public DateTime? DtImportacao { get; set; }
-    [Column("DTPROCESSAMENTO")] public DateTime? DtProcessamento { get; set; }
-    [Column("idfuncionario")] public Guid? IdFuncionario { get; set; }
+    [Required]
+    [Column("cdempresa")]
+    [FieldDisplayName("Código Empresa")]
+    public int CdEmpresa { get; set; }
+
+    [Required]
+    [Column("cdfilial")]
+    [FieldDisplayName("Código Filial")]
+    public int CdFilial { get; set; }
+
+    [Required]
+    [Column("nomatric", TypeName = "char(8)")]
+    [StringLength(8)]
+    [FieldDisplayName("Matrícula")]
+    public string NoMatric { get; set; } = string.Empty;
+
+    [Required]
+    [Column("dtfrequen")]
+    [FieldDisplayName("Data Frequência")]
+    public DateTime DtFrequen { get; set; }
+
+    [Required]
+    [Column("flsituacao")]
+    [FieldDisplayName("Situação")]
+    public int FlSituacao { get; set; }
+
+    [Column("cdusuario")]
+    [StringLength(20)]
+    [FieldDisplayName("Código Usuário")]
+    public string? CdUsuario { get; set; }
+
+    [Required]
+    [Column("dtultmov")]
+    [FieldDisplayName("Data Última Movimentação")]
+    public DateTime DtUltMov { get; set; }
+
+    [Required]
+    [Column("FLPROCESSADO")]
+    [FieldDisplayName("Processado")]
+    public int FlProcessado { get; set; }
+
+    [Required]
+    [Column("FLIMPORTADO")]
+    [FieldDisplayName("Importado")]
+    public int FlImportado { get; set; }
+
+    [Column("DTIMPORTACAO")]
+    [FieldDisplayName("Data Importação")]
+    public DateTime? DtImportacao { get; set; }
+
+    [Column("DTPROCESSAMENTO")]
+    [FieldDisplayName("Data Processamento")]
+    public DateTime? DtProcessamento { get; set; }
+
+    [Column("idfuncionario")]
+    [FieldDisplayName("Id Funcionário")]
+    public Guid? IdFuncionario { get; set; }
+
+    // ═══════════════════════════════════════════════════════════════
+    // NAVEGAÇÃO
+    // ═══════════════════════════════════════════════════════════════
+
+    // Se tiver a entidade Funcionario no módulo, descomente:
+    // [ForeignKey(nameof(IdFuncionario))]
+    // public virtual Funcionario? Funcionario { get; set; }
 }

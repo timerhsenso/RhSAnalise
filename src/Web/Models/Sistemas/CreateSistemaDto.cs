@@ -1,5 +1,8 @@
-// src/Web/Models/Sistemas/CreateSistemaDto.cs
-
+// =============================================================================
+// ARQUIVO GERADO POR RhSensoERP.CrudTool
+// Entity: Sistema
+// Data: 2025-11-27 01:25:15
+// =============================================================================
 using System.ComponentModel.DataAnnotations;
 
 namespace RhSensoERP.Web.Models.Sistemas;
@@ -7,24 +10,27 @@ namespace RhSensoERP.Web.Models.Sistemas;
 /// <summary>
 /// DTO para criação de Sistema.
 /// </summary>
-public sealed class CreateSistemaDto
+public class CreateSistemaDto
 {
     /// <summary>
-    /// Código do sistema (PK).
+    /// Código
     /// </summary>
-    [Required(ErrorMessage = "O código do sistema é obrigatório")]
-    [StringLength(10, MinimumLength = 1, ErrorMessage = "O código deve ter entre 1 e 10 caracteres")]
+    [Display(Name = "Código")]
+    [Required(ErrorMessage = "Código é obrigatório")]
+    [StringLength(10, ErrorMessage = "Código deve ter no máximo 10 caracteres")]
     public string CdSistema { get; set; } = string.Empty;
 
     /// <summary>
-    /// Descrição do sistema.
+    /// Descrição
     /// </summary>
-    [Required(ErrorMessage = "A descrição do sistema é obrigatória")]
-    [StringLength(100, MinimumLength = 3, ErrorMessage = "A descrição deve ter entre 3 e 100 caracteres")]
+    [Display(Name = "Descrição")]
+    [Required(ErrorMessage = "Descrição é obrigatório")]
+    [StringLength(60, ErrorMessage = "Descrição deve ter no máximo 60 caracteres")]
     public string DcSistema { get; set; } = string.Empty;
 
     /// <summary>
-    /// Indica se o sistema está ativo.
+    /// Ativo
     /// </summary>
+    [Display(Name = "Ativo")]
     public bool Ativo { get; set; } = true;
 }

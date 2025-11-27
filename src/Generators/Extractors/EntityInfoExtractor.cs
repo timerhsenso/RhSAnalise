@@ -1,229 +1,472 @@
 // =============================================================================
-// RHSENSOERP SOURCE GENERATOR - EXTRACTOR
+// RHSENSOERP GENERATOR v3.0 - ENTITY INFO EXTRACTOR
 // =============================================================================
-
+// Arquivo: src/Generators/Extractors/EntityInfoExtractor.cs
+// Versão: 3.0 - Extração completa com módulos e permissões
+// =============================================================================
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhSensoERP.Generators.Models;
 
 namespace RhSensoERP.Generators.Extractors;
 
+/// <summary>
+/// Extrai informações de uma Entity marcada com [GenerateCrud].
+/// </summary>
 public static class EntityInfoExtractor
 {
-    public static EntityInfo? Extract(INamedTypeSymbol classSymbol)
+    /// <summary>
+    /// Extrai todas as informações necessárias de uma Entity.
+    /// </summary>
+    public static EntityInfo? Extract(GeneratorSyntaxContext context)
     {
-        var config = ExtractConfig(classSymbol);
-        if (config == null) return null;
+        if (context.Node is not ClassDeclarationSyntax classDeclaration)
+            return null;
 
-        var className = classSymbol.Name;
-        var ns = classSymbol.ContainingNamespace.ToDisplayString();
+        var symbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
+        if (symbol is not INamedTypeSymbol typeSymbol)
+            return null;
 
-        var entityInfo = new EntityInfo
-        {
-            ClassName = className,
-            Namespace = ns,
-            DisplayName = config.DisplayName ?? className,
-            PluralName = Pluralize(className),
-            CamelCaseName = ToCamelCase(className),
-            TableName = config.TableName ?? className.ToLowerInvariant(),
-            Schema = config.Schema,
-            Config = config
-        };
-
-        foreach (var member in classSymbol.GetMembers())
-        {
-            if (member is IPropertySymbol property && property.DeclaredAccessibility == Accessibility.Public)
-            {
-                var propInfo = ExtractProperty(property);
-                if (propInfo != null)
-                    entityInfo.Properties.Add(propInfo);
-            }
-        }
-
-        return entityInfo;
-    }
-
-    private static GenerationConfig? ExtractConfig(INamedTypeSymbol classSymbol)
-    {
-        var attr = classSymbol.GetAttributes()
+        // Busca o atributo [GenerateCrud]
+        var attribute = typeSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.Name is "GenerateCrudAttribute" or "GenerateCrud");
 
-        if (attr == null) return null;
+        if (attribute == null)
+            return null;
 
-        var config = new GenerationConfig();
-
-        foreach (var arg in attr.NamedArguments)
+        var info = new EntityInfo
         {
-            var value = arg.Value.Value;
-            switch (arg.Key)
-            {
-                case "TableName": config.TableName = value as string; break;
-                case "Schema": config.Schema = value as string; break;
-                case "DisplayName": config.DisplayName = value as string; break;
-                case "BaseNamespace": config.BaseNamespace = value as string; break;
-                case "DtoNamespace": config.DtoNamespace = value as string; break;
-                case "CommandsNamespace": config.CommandsNamespace = value as string; break;
-                case "QueriesNamespace": config.QueriesNamespace = value as string; break;
-                case "ValidatorsNamespace": config.ValidatorsNamespace = value as string; break;
-                case "RepositoryNamespace": config.RepositoryNamespace = value as string; break;
-                case "ConfigurationNamespace": config.ConfigurationNamespace = value as string; break;
+            EntityName = typeSymbol.Name,
+            FullClassName = typeSymbol.ToDisplayString(),
+            Namespace = typeSymbol.ContainingNamespace.ToDisplayString()
+        };
 
-                case "GenerateDto": config.GenerateDto = (bool)(value ?? true); break;
-                case "GenerateCreateDto": config.GenerateCreateDto = (bool)(value ?? true); break;
-                case "GenerateUpdateDto": config.GenerateUpdateDto = (bool)(value ?? true); break;
-                case "GenerateCreateCommand": config.GenerateCreateCommand = (bool)(value ?? true); break;
-                case "GenerateUpdateCommand": config.GenerateUpdateCommand = (bool)(value ?? true); break;
-                case "GenerateDeleteCommand": config.GenerateDeleteCommand = (bool)(value ?? true); break;
-                case "GenerateDeleteBatchCommand": config.GenerateDeleteBatchCommand = (bool)(value ?? true); break;
-                case "GenerateGetByIdQuery": config.GenerateGetByIdQuery = (bool)(value ?? true); break;
-                case "GenerateGetPagedQuery": config.GenerateGetPagedQuery = (bool)(value ?? true); break;
-                case "GenerateCreateValidator": config.GenerateCreateValidator = (bool)(value ?? true); break;
-                case "GenerateUpdateValidator": config.GenerateUpdateValidator = (bool)(value ?? true); break;
-                case "GenerateRepositoryInterface": config.GenerateRepositoryInterface = (bool)(value ?? true); break;
-                case "GenerateRepositoryImplementation": config.GenerateRepositoryImplementation = (bool)(value ?? true); break;
-                case "GenerateMapperProfile": config.GenerateMapperProfile = (bool)(value ?? true); break;
-                case "GenerateEfConfiguration": config.GenerateEfConfiguration = (bool)(value ?? true); break;
+        // Extrai informações do namespace para determinar o módulo
+        ExtractModuleInfo(info);
+
+        // Extrai valores do atributo
+        ExtractAttributeValues(attribute, info);
+
+        // Extrai propriedades da classe
+        ExtractProperties(typeSymbol, info);
+
+        // Determina a chave primária
+        DeterminePrimaryKey(info);
+
+        // Gera valores padrão para campos não preenchidos
+        ApplyDefaults(info);
+
+        return info;
+    }
+
+    /// <summary>
+    /// Extrai informações do módulo baseado no namespace.
+    /// Exemplos de namespaces:
+    /// - RhSensoERP.Identity.Domain.Entities
+    /// - RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal
+    /// - RhSensoERP.Modules.ControleDePonto.Core.Entities
+    /// </summary>
+    private static void ExtractModuleInfo(EntityInfo info)
+    {
+        var parts = info.Namespace.Split('.');
+
+        if (parts.Length < 2 || parts[0] != "RhSensoERP")
+        {
+            // Fallback para namespaces não esperados
+            info.ModuleName = parts.Length > 1 ? parts[1] : "Core";
+            info.ModuleNamespace = string.Join(".", parts.Take(2));
+            info.IsModulesStructure = false;
+            return;
+        }
+
+        // Verifica se é estrutura de Modules (RhSensoERP.Modules.{Nome})
+        if (parts.Length >= 3 && parts[1] == "Modules")
+        {
+            // Exemplo: RhSensoERP.Modules.GestaoDePessoas.Core.Entities...
+            info.ModuleName = parts[2]; // GestaoDePessoas, ControleDePonto, etc.
+            info.ModuleNamespace = $"RhSensoERP.Modules.{parts[2]}";
+            info.IsModulesStructure = true;
+        }
+        else
+        {
+            // Módulos raiz: Identity, Shared, etc.
+            // Exemplo: RhSensoERP.Identity.Domain.Entities
+            info.ModuleName = parts[1]; // Identity, Shared, etc.
+            info.ModuleNamespace = $"RhSensoERP.{parts[1]}";
+            info.IsModulesStructure = false;
+        }
+    }
+
+    /// <summary>
+    /// Extrai os valores do atributo [GenerateCrud].
+    /// </summary>
+    private static void ExtractAttributeValues(AttributeData attribute, EntityInfo info)
+    {
+        foreach (var namedArg in attribute.NamedArguments)
+        {
+            var value = namedArg.Value.Value;
+            if (value == null) continue;
+
+            switch (namedArg.Key)
+            {
+                // Configurações básicas
+                case "TableName":
+                    info.TableName = value.ToString()!;
+                    break;
+                case "Schema":
+                    info.Schema = value.ToString()!;
+                    break;
+                case "DisplayName":
+                    info.DisplayName = value.ToString()!;
+                    break;
+
+                // Módulo e permissões
+                case "CdSistema":
+                    info.CdSistema = value.ToString()!;
+                    break;
+                case "CdFuncao":
+                    info.CdFuncao = value.ToString()!;
+                    break;
+
+                // Rotas e API
+                case "ApiRoute":
+                    info.ApiRoute = value.ToString()!;
+                    break;
+                case "ApiGroup":
+                    info.ApiGroup = value.ToString()!;
+                    break;
+
+                // Flags de geração - Backend
+                case "GenerateDto":
+                    info.GenerateDto = (bool)value;
+                    break;
+                case "GenerateRequests":
+                    info.GenerateRequests = (bool)value;
+                    break;
+                case "GenerateCommands":
+                    info.GenerateCommands = (bool)value;
+                    break;
+                case "GenerateQueries":
+                    info.GenerateQueries = (bool)value;
+                    break;
+                case "GenerateValidators":
+                    info.GenerateValidators = (bool)value;
+                    break;
+                case "GenerateRepository":
+                    info.GenerateRepository = (bool)value;
+                    break;
+                case "GenerateMapper":
+                    info.GenerateMapper = (bool)value;
+                    break;
+                case "GenerateEfConfig":
+                    info.GenerateEfConfig = (bool)value;
+                    break;
+
+                // Flags de geração - API e Web
+                case "GenerateApiController":
+                    info.GenerateApiController = (bool)value;
+                    break;
+                case "GenerateWebController":
+                    info.GenerateWebController = (bool)value;
+                    break;
+                case "GenerateWebModels":
+                    info.GenerateWebModels = (bool)value;
+                    break;
+                case "GenerateWebServices":
+                    info.GenerateWebServices = (bool)value;
+                    break;
+                case "ApiRequiresAuth":
+                    info.ApiRequiresAuth = (bool)value;
+                    break;
+
+                // Funcionalidades
+                case "SupportsBatchDelete":
+                    info.SupportsBatchDelete = (bool)value;
+                    break;
+                case "IsLegacyTable":
+                    info.IsLegacyTable = (bool)value;
+                    break;
+                case "PrimaryKeyProperty":
+                    info.PrimaryKeyProperty = value.ToString()!;
+                    break;
+                case "PrimaryKeyType":
+                    info.PrimaryKeyType = value.ToString()!;
+                    break;
             }
         }
-
-        return config;
     }
 
-    private static Models.PropertyInfo? ExtractProperty(IPropertySymbol property)
+    /// <summary>
+    /// Extrai as propriedades da classe.
+    /// </summary>
+    private static void ExtractProperties(INamedTypeSymbol typeSymbol, EntityInfo info)
     {
-        if (IsNavigationProperty(property))
+        // Pega propriedades da classe atual
+        var properties = typeSymbol.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => p.DeclaredAccessibility == Accessibility.Public)
+            .Where(p => !p.IsStatic)
+            .Where(p => p.GetMethod != null && p.SetMethod != null);
+
+        foreach (var prop in properties)
         {
-            return new Models.PropertyInfo
+            var propInfo = new Models.PropertyInfo
             {
-                Name = property.Name,
-                TypeName = SimplifyTypeName(property.Type),
-                IsNavigation = true
+                Name = prop.Name,
+                Type = prop.Type.ToDisplayString(),
+                IsNullable = prop.Type.NullableAnnotation == NullableAnnotation.Annotated ||
+                             prop.Type.ToDisplayString().EndsWith("?")
             };
-        }
 
-        var propInfo = new Models.PropertyInfo
-        {
-            Name = property.Name,
-            TypeName = SimplifyTypeName(property.Type),
-            IsNullable = property.Type.NullableAnnotation == NullableAnnotation.Annotated,
-            ColumnName = property.Name.ToUpperInvariant(),
-            DisplayName = property.Name
-        };
+            // Extrai atributos da propriedade
+            foreach (var attr in prop.GetAttributes())
+            {
+                var attrName = attr.AttributeClass?.Name;
 
-        foreach (var attr in property.GetAttributes())
-        {
-            ProcessAttribute(propInfo, attr);
-        }
-
-        return propInfo;
-    }
-
-    private static void ProcessAttribute(Models.PropertyInfo propInfo, AttributeData attr)
-    {
-        var name = attr.AttributeClass?.Name;
-
-        switch (name)
-        {
-            case "KeyAttribute" or "Key":
-                propInfo.IsKey = true;
-                propInfo.IsRequired = true;
-                break;
-
-            case "RequiredAttribute" or "Required":
-                propInfo.IsRequired = true;
-                var reqMsg = attr.NamedArguments.FirstOrDefault(a => a.Key == "ErrorMessage").Value.Value as string;
-                if (!string.IsNullOrEmpty(reqMsg))
-                    propInfo.Messages.RequiredMessage = reqMsg;
-                break;
-
-            case "StringLengthAttribute" or "StringLength":
-                if (attr.ConstructorArguments.Length > 0)
-                    propInfo.MaxLength = (int)attr.ConstructorArguments[0].Value!;
-                foreach (var arg in attr.NamedArguments)
+                switch (attrName)
                 {
-                    if (arg.Key == "MinimumLength")
-                        propInfo.MinLength = (int)arg.Value.Value!;
-                    if (arg.Key == "ErrorMessage")
-                        propInfo.Messages.LengthMessage = arg.Value.Value as string;
+                    case "KeyAttribute" or "Key":
+                        propInfo.IsPrimaryKey = true;
+                        break;
+
+                    case "RequiredAttribute" or "Required":
+                        propInfo.IsRequired = true;
+                        break;
+
+                    case "ColumnAttribute" or "Column":
+                        var columnName = attr.ConstructorArguments.FirstOrDefault().Value?.ToString();
+                        if (!string.IsNullOrEmpty(columnName))
+                            propInfo.ColumnName = columnName;
+                        break;
+
+                    case "StringLengthAttribute" or "StringLength":
+                        if (attr.ConstructorArguments.Length > 0)
+                            propInfo.MaxLength = (int)attr.ConstructorArguments[0].Value!;
+                        // Verifica MinimumLength como named argument
+                        var minLengthArg = attr.NamedArguments
+                            .FirstOrDefault(a => a.Key == "MinimumLength");
+                        if (minLengthArg.Value.Value != null)
+                            propInfo.MinLength = (int)minLengthArg.Value.Value;
+                        break;
+
+                    case "MaxLengthAttribute" or "MaxLength":
+                        if (attr.ConstructorArguments.Length > 0)
+                            propInfo.MaxLength = (int)attr.ConstructorArguments[0].Value!;
+                        break;
+
+                    case "MinLengthAttribute" or "MinLength":
+                        if (attr.ConstructorArguments.Length > 0)
+                            propInfo.MinLength = (int)attr.ConstructorArguments[0].Value!;
+                        break;
+
+                    case "FieldDisplayNameAttribute" or "FieldDisplayName":
+                        var displayName = attr.ConstructorArguments.FirstOrDefault().Value?.ToString();
+                        if (!string.IsNullOrEmpty(displayName))
+                            propInfo.DisplayName = displayName;
+                        break;
+
+                    case "ExcludeFromDtoAttribute" or "ExcludeFromDto":
+                        propInfo.ExcludeFromDto = true;
+                        break;
+
+                    case "ReadOnlyFieldAttribute" or "ReadOnlyField":
+                        propInfo.IsReadOnly = true;
+                        break;
+
+                    case "RequiredOnCreateAttribute" or "RequiredOnCreate":
+                        propInfo.RequiredOnCreate = true;
+                        break;
+
+                    case "DatabaseGeneratedAttribute" or "DatabaseGenerated":
+                        // Verifica se é Identity
+                        var option = attr.ConstructorArguments.FirstOrDefault().Value;
+                        if (option != null && (int)option == 1) // Identity = 1
+                        {
+                            propInfo.IsReadOnly = true;
+                        }
+                        break;
                 }
-                break;
+            }
 
-            case "MaxLengthAttribute" or "MaxLength":
-                if (attr.ConstructorArguments.Length > 0)
-                    propInfo.MaxLength = (int)attr.ConstructorArguments[0].Value!;
-                break;
+            // Se não tem ColumnName, usa o nome da propriedade em lowercase
+            if (string.IsNullOrEmpty(propInfo.ColumnName))
+                propInfo.ColumnName = prop.Name.ToLowerInvariant();
 
-            case "ColumnNameAttribute" or "ColumnName":
-                if (attr.ConstructorArguments.Length > 0)
-                    propInfo.ColumnName = attr.ConstructorArguments[0].Value as string ?? propInfo.ColumnName;
-                break;
+            // Se não tem DisplayName, usa o nome da propriedade
+            if (string.IsNullOrEmpty(propInfo.DisplayName))
+                propInfo.DisplayName = prop.Name;
 
-            case "FieldDisplayNameAttribute" or "FieldDisplayName":
-                if (attr.ConstructorArguments.Length > 0)
-                    propInfo.DisplayName = attr.ConstructorArguments[0].Value as string ?? propInfo.DisplayName;
-                break;
+            info.Properties.Add(propInfo);
+        }
 
-            case "ReadOnlyFieldAttribute" or "ReadOnlyField":
-                propInfo.IsReadOnly = true;
-                break;
-
-            case "IgnoreInDtoAttribute" or "IgnoreInDto":
-                propInfo.IgnoreInAllDtos = true;
-                break;
+        // Se herda de BaseEntity, adiciona propriedades de auditoria (a menos que seja legado)
+        if (!info.IsLegacyTable)
+        {
+            var baseType = typeSymbol.BaseType;
+            while (baseType != null && baseType.Name != "Object")
+            {
+                if (baseType.Name == "BaseEntity")
+                {
+                    // Adiciona propriedades de BaseEntity se não existirem
+                    AddBaseEntityPropertiesIfMissing(info);
+                    break;
+                }
+                baseType = baseType.BaseType;
+            }
         }
     }
 
-    private static bool IsNavigationProperty(IPropertySymbol property)
+    /// <summary>
+    /// Adiciona propriedades de BaseEntity se não existirem.
+    /// </summary>
+    private static void AddBaseEntityPropertiesIfMissing(EntityInfo info)
     {
-        var typeName = property.Type.ToDisplayString();
-        return typeName.Contains("ICollection") ||
-               typeName.Contains("IEnumerable") ||
-               typeName.Contains("IList") ||
-               typeName.Contains("List<");
-    }
-
-    private static string SimplifyTypeName(ITypeSymbol type)
-    {
-        var fullName = type.ToDisplayString();
-        var isNullable = fullName.EndsWith("?");
-        var baseName = isNullable ? fullName.TrimEnd('?') : fullName;
-
-        var simplified = baseName switch
+        var baseProps = new[]
         {
-            "System.String" => "string",
-            "System.Int32" => "int",
-            "System.Int64" => "long",
-            "System.Boolean" => "bool",
-            "System.Decimal" => "decimal",
-            "System.Double" => "double",
-            "System.DateTime" => "DateTime",
-            "System.Guid" => "Guid",
-            _ => baseName.Contains(".") ? baseName.Split('.').Last() : baseName
+            new Models.PropertyInfo { Name = "Id", Type = "Guid", IsPrimaryKey = true, IsReadOnly = true, ColumnName = "id" },
+            new Models.PropertyInfo { Name = "CreatedAt", Type = "DateTime", IsReadOnly = true, ColumnName = "createdat" },
+            new Models.PropertyInfo { Name = "CreatedBy", Type = "string", IsReadOnly = true, ColumnName = "createdby", MaxLength = 100 },
+            new Models.PropertyInfo { Name = "UpdatedAt", Type = "DateTime?", IsReadOnly = true, IsNullable = true, ColumnName = "updatedat" },
+            new Models.PropertyInfo { Name = "UpdatedBy", Type = "string?", IsReadOnly = true, IsNullable = true, ColumnName = "updatedby", MaxLength = 100 }
         };
 
-        return isNullable ? $"{simplified}?" : simplified;
+        foreach (var baseProp in baseProps)
+        {
+            if (!info.Properties.Any(p => p.Name == baseProp.Name))
+            {
+                info.Properties.Insert(0, baseProp);
+            }
+        }
     }
 
-    private static string ToCamelCase(string name)
+    /// <summary>
+    /// Determina qual propriedade é a chave primária.
+    /// </summary>
+    private static void DeterminePrimaryKey(EntityInfo info)
     {
-        if (string.IsNullOrEmpty(name)) return name;
-        return char.ToLowerInvariant(name[0]) + name.Substring(1);
+        // Primeiro tenta encontrar uma propriedade marcada com [Key]
+        var keyProp = info.Properties.FirstOrDefault(p => p.IsPrimaryKey);
+
+        // Se não encontrou, procura por "Id" ou "{EntityName}Id"
+        if (keyProp == null)
+        {
+            keyProp = info.Properties.FirstOrDefault(p =>
+                p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) ||
+                p.Name.Equals($"{info.EntityName}Id", StringComparison.OrdinalIgnoreCase));
+
+            if (keyProp != null)
+                keyProp.IsPrimaryKey = true;
+        }
+
+        if (keyProp != null)
+        {
+            info.PrimaryKeyProperty = keyProp.Name;
+            info.PrimaryKeyColumn = keyProp.ColumnName;
+            info.PrimaryKeyType = keyProp.BaseType;
+        }
     }
 
+    /// <summary>
+    /// Aplica valores padrão para campos não preenchidos.
+    /// </summary>
+    private static void ApplyDefaults(EntityInfo info)
+    {
+        // DisplayName padrão = EntityName
+        if (string.IsNullOrEmpty(info.DisplayName))
+            info.DisplayName = info.EntityName;
+
+        // PluralName padrão
+        if (string.IsNullOrEmpty(info.PluralName))
+            info.PluralName = Pluralize(info.EntityName);
+
+        // TableName padrão = EntityName em lowercase
+        if (string.IsNullOrEmpty(info.TableName))
+            info.TableName = info.EntityName.ToLowerInvariant();
+
+        // ApiRoute padrão = module/entities
+        if (string.IsNullOrEmpty(info.ApiRoute))
+            info.ApiRoute = $"{info.ModuleName.ToLowerInvariant()}/{info.PluralName.ToLowerInvariant()}";
+
+        // ApiGroup padrão = ModuleName
+        if (string.IsNullOrEmpty(info.ApiGroup))
+            info.ApiGroup = !string.IsNullOrEmpty(info.CdSistema)
+                ? MapCdSistemaToApiGroup(info.CdSistema)
+                : info.ModuleName;
+
+        // CdSistema padrão baseado no módulo
+        if (string.IsNullOrEmpty(info.CdSistema))
+            info.CdSistema = MapModuleToCdSistema(info.ModuleName);
+
+        // CdFuncao padrão = {CdSistema}_FM_T{ENTITYNAME}
+        if (string.IsNullOrEmpty(info.CdFuncao))
+            info.CdFuncao = $"{info.CdSistema}_FM_T{info.EntityName.ToUpperInvariant()}";
+    }
+
+    /// <summary>
+    /// Pluraliza um nome de entidade.
+    /// </summary>
     private static string Pluralize(string name)
     {
         if (string.IsNullOrEmpty(name)) return name;
 
+        // Regras simples de pluralização para português/inglês
         if (name.EndsWith("ao", StringComparison.OrdinalIgnoreCase))
-            return name.Substring(0, name.Length - 2) + "oes";
-        if (name.EndsWith("m", StringComparison.OrdinalIgnoreCase))
-            return name.Substring(0, name.Length - 1) + "ns";
-        if (name.EndsWith("r", StringComparison.OrdinalIgnoreCase) ||
+            return name.Substring(0, name.Length - 2) + "oes"; // funcao -> funcoes
+
+        if (name.EndsWith("al", StringComparison.OrdinalIgnoreCase))
+            return name.Substring(0, name.Length - 2) + "ais"; // animal -> animais
+
+        if (name.EndsWith("el", StringComparison.OrdinalIgnoreCase))
+            return name.Substring(0, name.Length - 2) + "eis"; // papel -> papeis
+
+        if (name.EndsWith("y", StringComparison.OrdinalIgnoreCase))
+            return name.Substring(0, name.Length - 1) + "ies"; // category -> categories
+
+        if (name.EndsWith("s", StringComparison.OrdinalIgnoreCase) ||
+            name.EndsWith("x", StringComparison.OrdinalIgnoreCase) ||
             name.EndsWith("z", StringComparison.OrdinalIgnoreCase) ||
-            name.EndsWith("s", StringComparison.OrdinalIgnoreCase))
+            name.EndsWith("ch", StringComparison.OrdinalIgnoreCase) ||
+            name.EndsWith("sh", StringComparison.OrdinalIgnoreCase))
             return name + "es";
-        if (name.EndsWith("l", StringComparison.OrdinalIgnoreCase))
-            return name.Substring(0, name.Length - 1) + "is";
 
         return name + "s";
+    }
+
+    /// <summary>
+    /// Mapeia nome do módulo para código do sistema.
+    /// </summary>
+    private static string MapModuleToCdSistema(string moduleName)
+    {
+        return moduleName.ToUpperInvariant() switch
+        {
+            "IDENTITY" => "SEG",
+            "GESTAODEPESSOAS" => "RHU",
+            "CONTROLEDEPONTO" => "CPT",
+            "TREINAMENTOS" => "TRE",
+            "SAUDEOCUPACIONAL" => "SOC",
+            "AVALIACOES" => "AVA",
+            "FINANCEIRO" => "FIN",
+            "SHARED" => "SHR",
+            _ => moduleName.Length >= 3 ? moduleName.Substring(0, 3).ToUpperInvariant() : moduleName.ToUpperInvariant()
+        };
+    }
+
+    /// <summary>
+    /// Mapeia código do sistema para nome do grupo da API.
+    /// </summary>
+    private static string MapCdSistemaToApiGroup(string cdSistema)
+    {
+        return cdSistema.ToUpperInvariant() switch
+        {
+            "SEG" => "Identity",
+            "RHU" => "GestaoDePessoas",
+            "CPT" => "ControleDePonto",
+            "TRE" => "Treinamentos",
+            "SOC" => "SaudeOcupacional",
+            "AVA" => "Avaliacoes",
+            "FIN" => "Financeiro",
+            "SHR" => "Shared",
+            _ => cdSistema
+        };
     }
 }

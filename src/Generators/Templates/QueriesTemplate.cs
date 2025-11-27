@@ -1,140 +1,201 @@
 // =============================================================================
-// RHSENSOERP SOURCE GENERATOR - TEMPLATE DE QUERIES
+// RHSENSOERP GENERATOR v3.0 - QUERIES TEMPLATE
 // =============================================================================
-
-using System.Text;
 using RhSensoERP.Generators.Models;
 
 namespace RhSensoERP.Generators.Templates;
 
+/// <summary>
+/// Template para geração de Queries (CQRS).
+/// </summary>
 public static class QueriesTemplate
 {
-    public static string GenerateGetByIdQuery(EntityInfo entity)
+    /// <summary>
+    /// Gera a Query GetById com Handler.
+    /// </summary>
+    public static string GenerateGetByIdQuery(EntityInfo info)
     {
-        var sb = new StringBuilder();
-        var pk = entity.PrimaryKey;
-        var pkName = pk?.Name ?? "Id";
-        var pkType = pk?.TypeName ?? "int";
+        var pkType = info.PrimaryKeyType;
 
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - GetById Query");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using AutoMapper;");
-        sb.AppendLine("using MediatR;");
-        sb.AppendLine($"using {entity.DtoNamespace};");
-        sb.AppendLine($"using {entity.RepositoryInterfaceNamespace};");
-        sb.AppendLine("using RhSensoERP.Shared.Core.Common;");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.QueriesNamespace};");
-        sb.AppendLine();
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
+using AutoMapper;
+using MediatR;
+using Microsoft.Extensions.Logging;
+using {{info.DtoNamespace}};
+using {{info.RepositoryInterfaceNamespace}};
+using RhSensoERP.Shared.Core.Common;
 
-        // Query Record
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Query para obter {entity.DisplayName} por código.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed record Get{entity.ClassName}ByIdQuery({pkType} {pkName}) : IRequest<Result<{entity.ClassName}Dto>>;");
-        sb.AppendLine();
+namespace {{info.QueriesNamespace}};
 
-        // Handler
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Handler do Get{entity.ClassName}ByIdQuery.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class Get{entity.ClassName}ByIdQueryHandler : IRequestHandler<Get{entity.ClassName}ByIdQuery, Result<{entity.ClassName}Dto>>");
-        sb.AppendLine("{");
-        sb.AppendLine($"    private readonly I{entity.ClassName}Repository _repository;");
-        sb.AppendLine("    private readonly IMapper _mapper;");
-        sb.AppendLine();
-        sb.AppendLine($"    public Get{entity.ClassName}ByIdQueryHandler(I{entity.ClassName}Repository repository, IMapper mapper)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        _repository = repository;");
-        sb.AppendLine("        _mapper = mapper;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine($"    public async Task<Result<{entity.ClassName}Dto>> Handle(Get{entity.ClassName}ByIdQuery query, CancellationToken ct)");
-        sb.AppendLine("    {");
-        sb.AppendLine($"        var entity = await _repository.GetBy{pkName}Async(query.{pkName}, ct);");
-        sb.AppendLine();
-        sb.AppendLine("        if (entity == null)");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            return Result<{entity.ClassName}Dto>.Failure(\"NOT_FOUND\", \"{entity.DisplayName} não encontrado.\");");
-        sb.AppendLine("        }");
-        sb.AppendLine();
-        sb.AppendLine($"        var dto = _mapper.Map<{entity.ClassName}Dto>(entity);");
-        sb.AppendLine();
-        sb.AppendLine($"        return Result<{entity.ClassName}Dto>.Success(dto);");
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
+/// <summary>
+/// Query para buscar {{info.DisplayName}} por ID.
+/// </summary>
+public sealed record GetBy{{info.EntityName}}IdQuery({{pkType}} Id)
+    : IRequest<Result<{{info.EntityName}}Dto>>;
 
-        return sb.ToString();
+/// <summary>
+/// Handler da query de busca por ID.
+/// </summary>
+public sealed class GetBy{{info.EntityName}}IdHandler
+    : IRequestHandler<GetBy{{info.EntityName}}IdQuery, Result<{{info.EntityName}}Dto>>
+{
+    private readonly I{{info.EntityName}}Repository _repository;
+    private readonly IMapper _mapper;
+    private readonly ILogger<GetBy{{info.EntityName}}IdHandler> _logger;
+
+    public GetBy{{info.EntityName}}IdHandler(
+        I{{info.EntityName}}Repository repository,
+        IMapper mapper,
+        ILogger<GetBy{{info.EntityName}}IdHandler> logger)
+    {
+        _repository = repository;
+        _mapper = mapper;
+        _logger = logger;
     }
 
-    public static string GenerateGetPagedQuery(EntityInfo entity)
+    public async Task<Result<{{info.EntityName}}Dto>> Handle(
+        GetBy{{info.EntityName}}IdQuery query,
+        CancellationToken cancellationToken)
     {
-        var sb = new StringBuilder();
+        try
+        {
+            _logger.LogDebug("Buscando {{info.DisplayName}} {Id}...", query.Id);
 
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - GetPaged Query");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using AutoMapper;");
-        sb.AppendLine("using MediatR;");
-        sb.AppendLine($"using {entity.DtoNamespace};");
-        sb.AppendLine($"using {entity.RepositoryInterfaceNamespace};");
-        sb.AppendLine("using RhSensoERP.Shared.Contracts.Common;");
-        sb.AppendLine("using RhSensoERP.Shared.Core.Common;");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.QueriesNamespace};");
-        sb.AppendLine();
+            var entity = await _repository.GetByIdAsync(query.Id, cancellationToken);
 
-        // Query Record
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Query para listar {entity.PluralName} com paginação.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed record Get{entity.PluralName}PagedQuery(PagedRequest Request) : IRequest<Result<PagedResult<{entity.ClassName}Dto>>>;");
-        sb.AppendLine();
+            if (entity == null)
+            {
+                _logger.LogWarning("{{info.DisplayName}} {Id} não encontrado", query.Id);
+                return Result<{{info.EntityName}}Dto>.Failure(
+                    Error.NotFound("{{info.EntityName}}.NotFound", "{{info.DisplayName}} não encontrado"));
+            }
 
-        // Handler
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Handler do Get{entity.PluralName}PagedQuery.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class Get{entity.PluralName}PagedQueryHandler : IRequestHandler<Get{entity.PluralName}PagedQuery, Result<PagedResult<{entity.ClassName}Dto>>>");
-        sb.AppendLine("{");
-        sb.AppendLine($"    private readonly I{entity.ClassName}Repository _repository;");
-        sb.AppendLine("    private readonly IMapper _mapper;");
-        sb.AppendLine();
-        sb.AppendLine($"    public Get{entity.PluralName}PagedQueryHandler(I{entity.ClassName}Repository repository, IMapper mapper)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        _repository = repository;");
-        sb.AppendLine("        _mapper = mapper;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine($"    public async Task<Result<PagedResult<{entity.ClassName}Dto>>> Handle(Get{entity.PluralName}PagedQuery query, CancellationToken ct)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        var req = query.Request;");
-        sb.AppendLine();
-        sb.AppendLine("        var (items, totalCount) = await _repository.GetPagedAsync(");
-        sb.AppendLine("            req.Page,");
-        sb.AppendLine("            req.PageSize,");
-        sb.AppendLine("            req.Search,");
-        sb.AppendLine("            req.SortBy,");
-        sb.AppendLine("            req.Desc,");
-        sb.AppendLine("            ct);");
-        sb.AppendLine();
-        sb.AppendLine($"        var dtos = _mapper.Map<IEnumerable<{entity.ClassName}Dto>>(items);");
-        sb.AppendLine();
-        sb.AppendLine($"        var result = new PagedResult<{entity.ClassName}Dto>(");
-        sb.AppendLine("            dtos,");
-        sb.AppendLine("            totalCount,");
-        sb.AppendLine("            req.Page,");
-        sb.AppendLine("            req.PageSize);");
-        sb.AppendLine();
-        sb.AppendLine($"        return Result<PagedResult<{entity.ClassName}Dto>>.Success(result);");
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
+            var dto = _mapper.Map<{{info.EntityName}}Dto>(entity);
 
-        return sb.ToString();
+            return Result<{{info.EntityName}}Dto>.Success(dto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar {{info.DisplayName}} {Id}", query.Id);
+            return Result<{{info.EntityName}}Dto>.Failure(
+                Error.Failure("{{info.EntityName}}.Error", $"Erro ao buscar {{info.DisplayName}}: {ex.Message}"));
+        }
+    }
+}
+""";
+    }
+
+    /// <summary>
+    /// Gera a Query GetPaged com Handler.
+    /// </summary>
+    public static string GenerateGetPagedQuery(EntityInfo info)
+    {
+        // Determina o campo de busca principal (primeiro campo string não-PK)
+        var searchField = info.Properties
+            .FirstOrDefault(p => p.IsString && !p.IsPrimaryKey)?.Name ?? info.PrimaryKeyProperty;
+
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
+using AutoMapper;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using {{info.DtoNamespace}};
+using {{info.RepositoryInterfaceNamespace}};
+using RhSensoERP.Shared.Contracts.Common;
+using RhSensoERP.Shared.Core.Common;
+
+namespace {{info.QueriesNamespace}};
+
+/// <summary>
+/// Query para listagem paginada de {{info.DisplayName}}.
+/// </summary>
+public sealed record Get{{info.PluralName}}PagedQuery(PagedRequest Request)
+    : IRequest<Result<PagedResult<{{info.EntityName}}Dto>>>;
+
+/// <summary>
+/// Handler da query de listagem paginada.
+/// </summary>
+public sealed class Get{{info.PluralName}}PagedHandler
+    : IRequestHandler<Get{{info.PluralName}}PagedQuery, Result<PagedResult<{{info.EntityName}}Dto>>>
+{
+    private readonly I{{info.EntityName}}Repository _repository;
+    private readonly IMapper _mapper;
+    private readonly ILogger<Get{{info.PluralName}}PagedHandler> _logger;
+
+    public Get{{info.PluralName}}PagedHandler(
+        I{{info.EntityName}}Repository repository,
+        IMapper mapper,
+        ILogger<Get{{info.PluralName}}PagedHandler> logger)
+    {
+        _repository = repository;
+        _mapper = mapper;
+        _logger = logger;
+    }
+
+    public async Task<Result<PagedResult<{{info.EntityName}}Dto>>> Handle(
+        Get{{info.PluralName}}PagedQuery query,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var request = query.Request;
+            _logger.LogDebug(
+                "Buscando {{info.DisplayName}} - Página {Page}, Tamanho {Size}, Busca '{Search}'",
+                request.Page,
+                request.PageSize,
+                request.Search);
+
+            // Query base
+            var queryable = _repository.Query();
+
+            // Aplica filtro de busca
+            if (!string.IsNullOrWhiteSpace(request.Search))
+            {
+                var search = request.Search.ToLower();
+                queryable = queryable.Where(e =>
+                    EF.Functions.Like(e.{{searchField}}.ToLower(), $"%{search}%"));
+            }
+
+            // Conta total
+            var totalCount = await queryable.CountAsync(cancellationToken);
+
+            // Aplica paginação
+            var items = await queryable
+                .OrderBy(e => e.{{info.PrimaryKeyProperty}})
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync(cancellationToken);
+
+            // Mapeia para DTO
+            var dtos = _mapper.Map<List<{{info.EntityName}}Dto>>(items);
+
+            // PagedResult usa construtor: (items, totalCount, pageNumber, pageSize)
+            var result = new PagedResult<{{info.EntityName}}Dto>(
+                dtos,
+                totalCount,
+                request.Page,
+                request.PageSize);
+
+            return Result<PagedResult<{{info.EntityName}}Dto>>.Success(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar {{info.DisplayName}} paginado");
+            return Result<PagedResult<{{info.EntityName}}Dto>>.Failure(
+                Error.Failure("{{info.EntityName}}.Error", $"Erro ao buscar {{info.DisplayName}}: {ex.Message}"));
+        }
+    }
+}
+""";
     }
 }

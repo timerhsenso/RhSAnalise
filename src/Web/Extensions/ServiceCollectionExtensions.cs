@@ -92,7 +92,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthApiService, AuthApiService>();
 
         // Serviço de Sistemas
-        services.AddScoped<ISistemaApiService, SistemaApiService>();
+        //services.AddScoped<ISistemaApiService, SistemaApiService>();
+        // ✅ CORRETO
+        services.AddHttpClient<ISistemaApiService, SistemaApiService>(client =>
+        {
+            client.BaseAddress = new Uri(apiSettings.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(apiSettings.TimeoutSeconds);
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("RhSensoERP.Web/2.0");
+        });
+
 
         // Serviço de Bancos
         services.AddScoped<IBancoApiService, BancoApiService>();

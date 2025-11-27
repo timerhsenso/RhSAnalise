@@ -1,139 +1,123 @@
 // =============================================================================
-// RHSENSOERP SOURCE GENERATOR - TEMPLATE DE VALIDATORS
+// RHSENSOERP GENERATOR v3.0 - VALIDATORS TEMPLATE
 // =============================================================================
-
-using System.Text;
 using RhSensoERP.Generators.Models;
 
 namespace RhSensoERP.Generators.Templates;
 
+/// <summary>
+/// Template para geração de Validators (FluentValidation).
+/// </summary>
 public static class ValidatorsTemplate
 {
-    private static readonly string[] BaseEntityProps = { "Id", "CreatedAt", "CreatedBy", "UpdatedAt", "UpdatedBy" };
-
-    public static string GenerateCreateValidator(EntityInfo entity)
+    /// <summary>
+    /// Gera o Validator para CreateRequest.
+    /// </summary>
+    public static string GenerateCreateValidator(EntityInfo info)
     {
-        var sb = new StringBuilder();
+        var rules = GenerateValidationRules(info.CreateProperties, info);
 
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - Create Request Validator");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using FluentValidation;");
-        sb.AppendLine($"using {entity.DtoNamespace};");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.ValidatorsNamespace};");
-        sb.AppendLine();
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
+using FluentValidation;
+using {{info.DtoNamespace}};
 
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Validador do request de criação de {entity.DisplayName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class Create{entity.ClassName}RequestValidator : AbstractValidator<Create{entity.ClassName}Request>");
-        sb.AppendLine("{");
-        sb.AppendLine($"    public Create{entity.ClassName}RequestValidator()");
-        sb.AppendLine("    {");
+namespace {{info.ValidatorsNamespace}};
 
-        foreach (var prop in entity.ScalarProperties.Where(p => 
-            !p.IgnoreInAllDtos && !p.IgnoreInCreateDto && !p.IsReadOnly && !IsBaseEntity(p.Name) &&
-            (p.IsRequired || p.MaxLength.HasValue || p.MinLength.HasValue)))
-        {
-            AppendPropertyRules(sb, prop);
-        }
-
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
-
-        return sb.ToString();
+/// <summary>
+/// Validator para criação de {{info.DisplayName}}.
+/// </summary>
+public sealed class Create{{info.EntityName}}RequestValidator
+    : AbstractValidator<Create{{info.EntityName}}Request>
+{
+    public Create{{info.EntityName}}RequestValidator()
+    {
+{{rules}}
+    }
+}
+""";
     }
 
-    public static string GenerateUpdateValidator(EntityInfo entity)
+    /// <summary>
+    /// Gera o Validator para UpdateRequest.
+    /// </summary>
+    public static string GenerateUpdateValidator(EntityInfo info)
     {
-        var sb = new StringBuilder();
+        var rules = GenerateValidationRules(info.UpdateProperties, info);
 
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - Update Request Validator");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using FluentValidation;");
-        sb.AppendLine($"using {entity.DtoNamespace};");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.ValidatorsNamespace};");
-        sb.AppendLine();
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
+using FluentValidation;
+using {{info.DtoNamespace}};
 
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Validador do request de atualização de {entity.DisplayName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class Update{entity.ClassName}RequestValidator : AbstractValidator<Update{entity.ClassName}Request>");
-        sb.AppendLine("{");
-        sb.AppendLine($"    public Update{entity.ClassName}RequestValidator()");
-        sb.AppendLine("    {");
+namespace {{info.ValidatorsNamespace}};
 
-        foreach (var prop in entity.ScalarProperties.Where(p => 
-            !p.IgnoreInAllDtos && !p.IgnoreInUpdateDto && !p.IsReadOnly && !p.IsKey && !IsBaseEntity(p.Name) &&
-            (p.IsRequired || p.MaxLength.HasValue || p.MinLength.HasValue)))
-        {
-            AppendPropertyRules(sb, prop);
-        }
-
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
-
-        return sb.ToString();
+/// <summary>
+/// Validator para atualização de {{info.DisplayName}}.
+/// </summary>
+public sealed class Update{{info.EntityName}}RequestValidator
+    : AbstractValidator<Update{{info.EntityName}}Request>
+{
+    public Update{{info.EntityName}}RequestValidator()
+    {
+{{rules}}
+    }
+}
+""";
     }
 
-    private static void AppendPropertyRules(StringBuilder sb, PropertyInfo prop)
+    /// <summary>
+    /// Gera as regras de validação para as propriedades.
+    /// </summary>
+    private static string GenerateValidationRules(
+        IEnumerable<PropertyInfo> properties,
+        EntityInfo info)
     {
-        sb.AppendLine();
-        sb.AppendLine($"        // {prop.DisplayName}");
-        sb.Append($"        RuleFor(x => x.{prop.Name})");
+        var rules = new List<string>();
 
-        // NotEmpty para strings, NotNull para outros
-        if (prop.IsRequired && !prop.IsNullable)
+        foreach (var prop in properties)
         {
-            sb.AppendLine();
-            if (prop.IsString)
+            var ruleBuilder = new List<string>();
+
+            // NotEmpty para campos obrigatórios
+            if (prop.IsRequired || prop.RequiredOnCreate)
             {
-                var msg = prop.Messages.RequiredMessage ?? $"{prop.DisplayName} é obrigatório.";
-                sb.Append($"            .NotEmpty().WithMessage(\"{Escape(msg)}\")");
+                if (prop.IsString)
+                    ruleBuilder.Add($".NotEmpty().WithMessage(\"{prop.DisplayName} é obrigatório\")");
+                else
+                    ruleBuilder.Add($".NotNull().WithMessage(\"{prop.DisplayName} é obrigatório\")");
             }
-            else
+
+            // MaxLength para strings
+            if (prop.IsString && prop.MaxLength.HasValue)
             {
-                var msg = prop.Messages.RequiredMessage ?? $"{prop.DisplayName} é obrigatório.";
-                sb.Append($"            .NotNull().WithMessage(\"{Escape(msg)}\")");
+                ruleBuilder.Add($".MaximumLength({prop.MaxLength.Value}).WithMessage(\"{prop.DisplayName} deve ter no máximo {prop.MaxLength.Value} caracteres\")");
+            }
+
+            // MinLength para strings
+            if (prop.IsString && prop.MinLength.HasValue)
+            {
+                ruleBuilder.Add($".MinimumLength({prop.MinLength.Value}).WithMessage(\"{prop.DisplayName} deve ter no mínimo {prop.MinLength.Value} caracteres\")");
+            }
+
+            // Só adiciona se tem alguma regra
+            if (ruleBuilder.Count > 0)
+            {
+                var rule = $"        RuleFor(x => x.{prop.Name})\n            {string.Join("\n            ", ruleBuilder)};";
+                rules.Add(rule);
             }
         }
 
-        // Length
-        if (prop.IsString)
-        {
-            if (prop.MaxLength.HasValue && prop.MinLength.HasValue)
-            {
-                var msg = prop.Messages.LengthMessage ?? 
-                    $"{prop.DisplayName} deve ter entre {prop.MinLength} e {prop.MaxLength} caracteres.";
-                sb.AppendLine();
-                sb.Append($"            .Length({prop.MinLength}, {prop.MaxLength}).WithMessage(\"{Escape(msg)}\")");
-            }
-            else if (prop.MaxLength.HasValue)
-            {
-                var msg = prop.Messages.LengthMessage ?? 
-                    $"{prop.DisplayName} deve ter no máximo {prop.MaxLength} caracteres.";
-                sb.AppendLine();
-                sb.Append($"            .MaximumLength({prop.MaxLength}).WithMessage(\"{Escape(msg)}\")");
-            }
-            else if (prop.MinLength.HasValue)
-            {
-                var msg = prop.Messages.LengthMessage ?? 
-                    $"{prop.DisplayName} deve ter no mínimo {prop.MinLength} caracteres.";
-                sb.AppendLine();
-                sb.Append($"            .MinimumLength({prop.MinLength}).WithMessage(\"{Escape(msg)}\")");
-            }
-        }
-
-        sb.AppendLine(";");
+        return rules.Count > 0
+            ? string.Join("\n\n", rules)
+            : "        // Nenhuma regra de validação configurada";
     }
-
-    private static bool IsBaseEntity(string name) => BaseEntityProps.Contains(name);
-    private static string Escape(string s) => s.Replace("\"", "\\\"");
 }

@@ -104,4 +104,8 @@
 		<InternalsVisibleTo Include="RhSensoERP.UnitTests" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="logs\" />
+	</ItemGroup>
+
 </Project>

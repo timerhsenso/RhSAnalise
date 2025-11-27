@@ -1,5 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+	<!-- ✅ Source Generator -->
+	<ItemGroup>
+		<ProjectReference Include="..\..\Generators\RhSensoERP.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	</ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\Core\RhSensoERP.Shared.Core.csproj" />
     <ProjectReference Include="..\..\Shared\Application\RhSensoERP.Shared.Application.csproj" />
@@ -15,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Application\Services\" />
     <Folder Include="Core\Entities\Tabelas\Folha\" />
     <Folder Include="Core\Entities\Tabelas\Eventos\" />
     <Folder Include="Infrastructure\Persistence\Configurations\Tabelas\Folha\" />

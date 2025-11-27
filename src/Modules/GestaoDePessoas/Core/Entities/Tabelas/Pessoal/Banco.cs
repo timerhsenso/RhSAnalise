@@ -1,24 +1,37 @@
-﻿// src/Modules/GestaoDePessoas/Core/Entities/Banco.cs
+﻿// src/Modules/GestaoDePessoas/Core/Entities/Tabelas/Pessoal/Banco.cs
 
-using RhSensoERP.Shared.Core.Primitives;
-using System;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using RhSensoERP.Shared.Core.Attributes;
 
-namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal
+namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
+
+[GenerateCrud(
+    TableName = "tbanco",
+    DisplayName = "Banco",
+    CdSistema = "RHU",
+    CdFuncao = "RHU_FM_TBANCO",
+    IsLegacyTable = true
+)]
+public class Banco
 {
-    public class Banco : BaseEntity
-    {
-        public string CodigoBanco { get; set; }
-        public string DescricaoBanco { get; set; }
+    [Key]  // ← Define CodigoBanco como chave primária
+    [Required]
+    [Column("codigobanco")]
+    [StringLength(10)]
+    [FieldDisplayName("Código do Banco")]
+    public string CodigoBanco { get; set; } = string.Empty;
 
-        // Navegação
-        public virtual ICollection<Agencia> Agencias { get; set; }
-        public virtual ICollection<Funcionario> Funcionarios { get; set; }
+    [Required]
+    [Column("descricaobanco")]
+    [StringLength(150)]
+    [FieldDisplayName("Descrição do Banco")]
+    public string DescricaoBanco { get; set; } = string.Empty;
 
-        public Banco()
-        {
-            Agencias = new HashSet<Agencia>();
-            Funcionarios = new HashSet<Funcionario>();
-        }
-    }
+    // ═══════════════════════════════════════════════════════════════
+    // NAVEGAÇÃO - Relacionamentos 1:N
+    // ═══════════════════════════════════════════════════════════════
+
+    public virtual ICollection<Agencia> Agencias { get; set; } = new HashSet<Agencia>();
+    public virtual ICollection<Funcionario> Funcionarios { get; set; } = new HashSet<Funcionario>();
 }

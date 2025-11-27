@@ -1,290 +1,173 @@
 // =============================================================================
-// RHSENSOERP SOURCE GENERATOR - TEMPLATE DE REPOSITORY
+// RHSENSOERP GENERATOR v3.0 - REPOSITORY TEMPLATE
 // =============================================================================
-
-using System.Text;
+// Arquivo: src/Generators/Templates/RepositoryTemplate.cs
+// Versão: 3.0 - Com suporte a múltiplos DbContexts
+// =============================================================================
 using RhSensoERP.Generators.Models;
 
 namespace RhSensoERP.Generators.Templates;
 
+/// <summary>
+/// Template para geração de Repository (Interface + Implementação).
+/// </summary>
 public static class RepositoryTemplate
 {
-    public static string GenerateInterface(EntityInfo entity)
+    /// <summary>
+    /// Gera a Interface do Repository.
+    /// </summary>
+    public static string GenerateInterface(EntityInfo info)
     {
-        var sb = new StringBuilder();
-        var pk = entity.PrimaryKey;
-        var pkName = pk?.Name ?? "Id";
-        var pkType = pk?.TypeName ?? "int";
+        var pkType = info.PrimaryKeyType;
+        var entityNs = info.Namespace;
 
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - Repository Interface");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine($"using {entity.Namespace};");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.RepositoryInterfaceNamespace};");
-        sb.AppendLine();
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
+using {{entityNs}};
 
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Interface do repositório de {entity.DisplayName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public interface I{entity.ClassName}Repository");
-        sb.AppendLine("{");
+namespace {{info.RepositoryInterfaceNamespace}};
 
-        // GetById
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Obtém {entity.DisplayName} pelo código.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    Task<{entity.ClassName}?> GetBy{pkName}Async({pkType} {ToCamelCase(pkName)}, CancellationToken ct = default);");
-        sb.AppendLine();
+/// <summary>
+/// Interface do repositório de {{info.DisplayName}}.
+/// </summary>
+public interface I{{info.EntityName}}Repository
+{
+    /// <summary>
+    /// Retorna um IQueryable para consultas customizadas.
+    /// </summary>
+    IQueryable<{{info.EntityName}}> Query();
 
-        // GetPaged
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Lista {entity.PluralName} com paginação.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    Task<(IEnumerable<{entity.ClassName}> Items, int TotalCount)> GetPagedAsync(");
-        sb.AppendLine("        int page,");
-        sb.AppendLine("        int pageSize,");
-        sb.AppendLine("        string? search = null,");
-        sb.AppendLine("        string? sortBy = null,");
-        sb.AppendLine("        bool desc = false,");
-        sb.AppendLine("        CancellationToken ct = default);");
-        sb.AppendLine();
+    /// <summary>
+    /// Busca por ID.
+    /// </summary>
+    Task<{{info.EntityName}}?> GetByIdAsync({{pkType}} id, CancellationToken ct = default);
 
-        // Search
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Busca {entity.PluralName} por termo.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    Task<List<{entity.ClassName}>> SearchAsync(string? term, int take, CancellationToken ct = default);");
-        sb.AppendLine();
+    /// <summary>
+    /// Busca todos os registros.
+    /// </summary>
+    Task<IEnumerable<{{info.EntityName}}>> GetAllAsync(CancellationToken ct = default);
 
-        // Exists
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Verifica se {entity.DisplayName} existe.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    Task<bool> ExistsAsync({pkType} {ToCamelCase(pkName)}, CancellationToken ct = default);");
-        sb.AppendLine();
+    /// <summary>
+    /// Adiciona um novo registro.
+    /// </summary>
+    Task AddAsync({{info.EntityName}} entity, CancellationToken ct = default);
 
-        // Add
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Adiciona {entity.DisplayName}.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    Task AddAsync({entity.ClassName} entity, CancellationToken ct = default);");
-        sb.AppendLine();
+    /// <summary>
+    /// Atualiza um registro existente.
+    /// </summary>
+    Task UpdateAsync({{info.EntityName}} entity, CancellationToken ct = default);
 
-        // Update
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Atualiza {entity.DisplayName}.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    void Update({entity.ClassName} entity);");
-        sb.AppendLine();
+    /// <summary>
+    /// Remove um registro.
+    /// </summary>
+    Task DeleteAsync({{info.EntityName}} entity, CancellationToken ct = default);
 
-        // Remove
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Remove {entity.DisplayName}.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    void Remove({entity.ClassName} entity);");
-        sb.AppendLine();
-
-        // SaveChanges
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine("    /// Salva as alterações.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine("    Task<int> SaveChangesAsync(CancellationToken ct = default);");
-
-        sb.AppendLine("}");
-
-        return sb.ToString();
+    /// <summary>
+    /// Verifica se existe um registro com o ID especificado.
+    /// </summary>
+    Task<bool> ExistsAsync({{pkType}} id, CancellationToken ct = default);
+}
+""";
     }
 
-    public static string GenerateImplementation(EntityInfo entity)
+    /// <summary>
+    /// Gera a Implementação do Repository.
+    /// </summary>
+    public static string GenerateImplementation(EntityInfo info)
     {
-        var sb = new StringBuilder();
-        var pk = entity.PrimaryKey;
-        var pkName = pk?.Name ?? "Id";
-        var pkType = pk?.TypeName ?? "int";
-        var camelPk = ToCamelCase(pkName);
+        var pkType = info.PrimaryKeyType;
+        var pkProp = info.PrimaryKeyProperty;
+        var entityNs = info.Namespace;
 
-        // Propriedades string para busca
-        var searchableProps = entity.ScalarProperties
-            .Where(p => p.IsString && !p.IsKey)
-            .Take(3)
-            .ToList();
+        return $$"""
+// =============================================================================
+// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
+// Generator: RhSensoERP.Generators v3.0
+// Entity: {{info.EntityName}}
+// =============================================================================
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using {{entityNs}};
+using {{info.RepositoryInterfaceNamespace}};
+using {{info.DbContextNamespace}};
 
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine("// ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR!");
-        sb.AppendLine($"// Entity: {entity.ClassName} - Repository Implementation");
-        sb.AppendLine("// =============================================================================");
-        sb.AppendLine();
-        sb.AppendLine("using Microsoft.EntityFrameworkCore;");
-        sb.AppendLine($"using {entity.Namespace};");
-        sb.AppendLine($"using {entity.RepositoryInterfaceNamespace};");
-        sb.AppendLine($"using {entity.DbContextNamespace};");
-        sb.AppendLine();
-        sb.AppendLine($"namespace {entity.RepositoryImplementationNamespace};");
-        sb.AppendLine();
+namespace {{info.RepositoryImplNamespace}};
 
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// Repositório de {entity.DisplayName}.");
-        sb.AppendLine("/// </summary>");
-        sb.AppendLine($"public sealed class {entity.ClassName}Repository : I{entity.ClassName}Repository");
-        sb.AppendLine("{");
-        sb.AppendLine($"    private readonly {entity.DbContextName} _db;");
-        sb.AppendLine();
-        sb.AppendLine($"    public {entity.ClassName}Repository({entity.DbContextName} db) => _db = db;");
-        sb.AppendLine();
+/// <summary>
+/// Implementação do repositório de {{info.DisplayName}}.
+/// </summary>
+public sealed class {{info.EntityName}}Repository : I{{info.EntityName}}Repository
+{
+    private readonly {{info.DbContextName}} _context;
+    private readonly ILogger<{{info.EntityName}}Repository> _logger;
 
-        // GetById
-        sb.AppendLine($"    /// <inheritdoc />");
-        sb.AppendLine($"    public Task<{entity.ClassName}?> GetBy{pkName}Async({pkType} {camelPk}, CancellationToken ct) =>");
-        sb.AppendLine($"        _db.Set<{entity.ClassName}>()");
-        sb.AppendLine("           .AsNoTracking()");
-        sb.AppendLine($"           .FirstOrDefaultAsync(e => e.{pkName} == {camelPk}, ct);");
-        sb.AppendLine();
-
-        // GetPaged
-        sb.AppendLine($"    /// <inheritdoc />");
-        sb.AppendLine($"    public async Task<(IEnumerable<{entity.ClassName}> Items, int TotalCount)> GetPagedAsync(");
-        sb.AppendLine("        int page,");
-        sb.AppendLine("        int pageSize,");
-        sb.AppendLine("        string? search,");
-        sb.AppendLine("        string? sortBy,");
-        sb.AppendLine("        bool desc,");
-        sb.AppendLine("        CancellationToken ct)");
-        sb.AppendLine("    {");
-        sb.AppendLine($"        var query = _db.Set<{entity.ClassName}>().AsNoTracking();");
-        sb.AppendLine();
-
-        // Search filter
-        if (searchableProps.Any())
-        {
-            sb.AppendLine("        // Filtro de busca");
-            sb.AppendLine("        if (!string.IsNullOrWhiteSpace(search))");
-            sb.AppendLine("        {");
-            sb.AppendLine("            var term = search.Trim().ToLower();");
-            sb.Append("            query = query.Where(e => ");
-            
-            var conditions = new List<string>();
-            if (pk?.IsString == true)
-                conditions.Add($"e.{pkName}.ToLower().Contains(term)");
-            
-            foreach (var prop in searchableProps)
-                conditions.Add($"e.{prop.Name}.ToLower().Contains(term)");
-            
-            sb.Append(string.Join(" || ", conditions));
-            sb.AppendLine(");");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-        }
-
-        // Total count
-        sb.AppendLine("        var totalCount = await query.CountAsync(ct);");
-        sb.AppendLine();
-
-        // Sorting
-        sb.AppendLine("        // Ordenação");
-        sb.AppendLine("        query = ApplySorting(query, sortBy, desc);");
-        sb.AppendLine();
-
-        // Pagination
-        sb.AppendLine("        // Paginação");
-        sb.AppendLine("        var items = await query");
-        sb.AppendLine("            .Skip((page - 1) * pageSize)");
-        sb.AppendLine("            .Take(pageSize)");
-        sb.AppendLine("            .ToListAsync(ct);");
-        sb.AppendLine();
-        sb.AppendLine("        return (items, totalCount);");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-
-        // Search
-        sb.AppendLine($"    /// <inheritdoc />");
-        sb.AppendLine($"    public async Task<List<{entity.ClassName}>> SearchAsync(string? term, int take, CancellationToken ct)");
-        sb.AppendLine("    {");
-        sb.AppendLine($"        var query = _db.Set<{entity.ClassName}>().AsNoTracking();");
-        sb.AppendLine();
-        if (searchableProps.Any())
-        {
-            sb.AppendLine("        if (!string.IsNullOrWhiteSpace(term))");
-            sb.AppendLine("        {");
-            sb.AppendLine("            term = term.Trim();");
-            sb.Append("            query = query.Where(e => ");
-            
-            var conditions = new List<string>();
-            if (pk?.IsString == true)
-                conditions.Add($"e.{pkName}.Contains(term)");
-            
-            foreach (var prop in searchableProps)
-                conditions.Add($"e.{prop.Name}.Contains(term)");
-            
-            sb.Append(string.Join(" || ", conditions));
-            sb.AppendLine(");");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-        }
-        sb.AppendLine($"        return await query.OrderBy(e => e.{pkName}).Take(take <= 0 ? 20 : take).ToListAsync(ct);");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-
-        // Exists
-        sb.AppendLine($"    /// <inheritdoc />");
-        sb.AppendLine($"    public Task<bool> ExistsAsync({pkType} {camelPk}, CancellationToken ct) =>");
-        sb.AppendLine($"        _db.Set<{entity.ClassName}>().AsNoTracking().AnyAsync(e => e.{pkName} == {camelPk}, ct);");
-        sb.AppendLine();
-
-        // Add
-        sb.AppendLine($"    /// <inheritdoc />");
-        sb.AppendLine($"    public async Task AddAsync({entity.ClassName} entity, CancellationToken ct)");
-        sb.AppendLine("    {");
-        sb.AppendLine($"        await _db.Set<{entity.ClassName}>().AddAsync(entity, ct);");
-        sb.AppendLine("        await _db.SaveChangesAsync(ct);");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-
-        // Update
-        sb.AppendLine($"    /// <inheritdoc />");
-        sb.AppendLine($"    public void Update({entity.ClassName} entity) => _db.Set<{entity.ClassName}>().Update(entity);");
-        sb.AppendLine();
-
-        // Remove
-        sb.AppendLine($"    /// <inheritdoc />");
-        sb.AppendLine($"    public void Remove({entity.ClassName} entity) => _db.Set<{entity.ClassName}>().Remove(entity);");
-        sb.AppendLine();
-
-        // SaveChanges
-        sb.AppendLine($"    /// <inheritdoc />");
-        sb.AppendLine("    public Task<int> SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);");
-        sb.AppendLine();
-
-        // ApplySorting helper
-        sb.AppendLine("    // Helper de ordenação");
-        sb.AppendLine($"    private static IQueryable<{entity.ClassName}> ApplySorting(IQueryable<{entity.ClassName}> query, string? sortBy, bool desc)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        if (string.IsNullOrWhiteSpace(sortBy))");
-        sb.AppendLine($"            return query.OrderBy(e => e.{pkName});");
-        sb.AppendLine();
-        sb.AppendLine("        return sortBy.ToLower() switch");
-        sb.AppendLine("        {");
-
-        foreach (var prop in entity.ScalarProperties.Where(p => !p.IsNavigation))
-        {
-            var propLower = prop.Name.ToLower();
-            sb.AppendLine($"            \"{propLower}\" => desc ? query.OrderByDescending(e => e.{prop.Name}) : query.OrderBy(e => e.{prop.Name}),");
-        }
-
-        sb.AppendLine($"            _ => query.OrderBy(e => e.{pkName})");
-        sb.AppendLine("        };");
-        sb.AppendLine("    }");
-
-        sb.AppendLine("}");
-
-        return sb.ToString();
+    public {{info.EntityName}}Repository(
+        {{info.DbContextName}} context,
+        ILogger<{{info.EntityName}}Repository> logger)
+    {
+        _context = context;
+        _logger = logger;
     }
 
-    private static string ToCamelCase(string name)
+    /// <inheritdoc/>
+    public IQueryable<{{info.EntityName}}> Query()
     {
-        if (string.IsNullOrEmpty(name)) return name;
-        return char.ToLowerInvariant(name[0]) + name.Substring(1);
+        return _context.Set<{{info.EntityName}}>().AsNoTracking();
+    }
+
+    /// <inheritdoc/>
+    public async Task<{{info.EntityName}}?> GetByIdAsync({{pkType}} id, CancellationToken ct = default)
+    {
+        return await _context.Set<{{info.EntityName}}>()
+            .FirstOrDefaultAsync(e => e.{{pkProp}} == id, ct);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<{{info.EntityName}}>> GetAllAsync(CancellationToken ct = default)
+    {
+        return await _context.Set<{{info.EntityName}}>()
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
+    /// <inheritdoc/>
+    public async Task AddAsync({{info.EntityName}} entity, CancellationToken ct = default)
+    {
+        await _context.Set<{{info.EntityName}}>().AddAsync(entity, ct);
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogDebug("{{info.DisplayName}} adicionado: {Id}", entity.{{pkProp}});
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateAsync({{info.EntityName}} entity, CancellationToken ct = default)
+    {
+        _context.Set<{{info.EntityName}}>().Update(entity);
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogDebug("{{info.DisplayName}} atualizado: {Id}", entity.{{pkProp}});
+    }
+
+    /// <inheritdoc/>
+    public async Task DeleteAsync({{info.EntityName}} entity, CancellationToken ct = default)
+    {
+        _context.Set<{{info.EntityName}}>().Remove(entity);
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogDebug("{{info.DisplayName}} removido: {Id}", entity.{{pkProp}});
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> ExistsAsync({{pkType}} id, CancellationToken ct = default)
+    {
+        return await _context.Set<{{info.EntityName}}>()
+            .AnyAsync(e => e.{{pkProp}} == id, ct);
+    }
+}
+""";
     }
 }

@@ -252,41 +252,6 @@
             Opções de configuração do SqlLogging.
             </summary>
         </member>
-        <member name="T:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController">
-            <summary>
-            Controller para gerenciamento de bancos.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.GetPaged(System.Int32,System.Int32,System.String)">
-            <summary>
-            Lista bancos paginados.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.GetAll">
-            <summary>
-            Lista todos os bancos (para combos/dropdowns).
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.GetById(System.String)">
-            <summary>
-            Obtém banco por código.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.Create(RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.CreateBancoDto)">
-            <summary>
-            Cria novo banco.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.Update(System.String,RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.UpdateBancoDto)">
-            <summary>
-            Atualiza banco existente.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.mTabelas.Pessoal.BancosController.Delete(System.String)">
-            <summary>
-            Remove banco.
-            </summary>
-        </member>
         <member name="T:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController">
             <summary>
             Controller para gerenciamento de municípios.
@@ -594,37 +559,37 @@
         </member>
         <member name="T:RhSensoERP.API.Controllers.Identity.SistemasController">
             <summary>
-            Controller para gerenciamento de sistemas do ERP.
+            Controller para gerenciamento de Sistema.
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.GetById(System.String,System.Threading.CancellationToken)">
             <summary>
-            Obtem um sistema pelo codigo.
+            Obtém Sistema pelo código.
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.GetPaged(RhSensoERP.Shared.Contracts.Common.PagedRequest,System.Threading.CancellationToken)">
             <summary>
-            Lista sistemas com paginacao.
+            Lista Sistema com paginação.
             </summary>
         </member>
-        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Create(RhSensoERP.Identity.Application.DTOs.Sistema.CreateSistemaRequest,System.Threading.CancellationToken)">
+        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Create(RhSensoERP.Identity.Application.DTOs.Sistemas.CreateSistemaRequest,System.Threading.CancellationToken)">
             <summary>
-            Cria novo sistema.
+            Cria novo Sistema.
             </summary>
         </member>
-        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Update(System.String,RhSensoERP.Identity.Application.DTOs.Sistema.UpdateSistemaRequest,System.Threading.CancellationToken)">
+        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Update(System.String,RhSensoERP.Identity.Application.DTOs.Sistemas.UpdateSistemaRequest,System.Threading.CancellationToken)">
             <summary>
-            Atualiza sistema existente.
+            Atualiza Sistema existente.
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Delete(System.String,System.Threading.CancellationToken)">
             <summary>
-            Remove sistema.
+            Remove Sistema.
             </summary>
         </member>
         <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.DeleteMultiple(System.Collections.Generic.List{System.String},System.Threading.CancellationToken)">
             <summary>
-            Remove multiplos sistemas em lote.
+            Remove múltiplos Sistema em lote.
             </summary>
         </member>
         <member name="T:RhSensoERP.API.Controllers.Identity.UsuariosController">

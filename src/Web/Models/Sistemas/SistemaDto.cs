@@ -1,29 +1,32 @@
-// src/Web/Models/Sistemas/SistemaDto.cs
+// =============================================================================
+// ARQUIVO GERADO POR RhSensoERP.CrudTool
+// Entity: Sistema
+// Data: 2025-11-27 01:25:15
+// =============================================================================
+using System.Text.Json.Serialization;
 
 namespace RhSensoERP.Web.Models.Sistemas;
 
 /// <summary>
-/// DTO para representação de Sistema.
+/// DTO de leitura para Sistema.
 /// </summary>
-public sealed class SistemaDto
+public class SistemaDto
 {
     /// <summary>
-    /// Código do sistema (PK).
+    /// Código
     /// </summary>
+    [JsonPropertyName("cdSistema")]
     public string CdSistema { get; set; } = string.Empty;
 
     /// <summary>
-    /// Descrição do sistema.
+    /// Descrição
     /// </summary>
+    [JsonPropertyName("dcSistema")]
     public string DcSistema { get; set; } = string.Empty;
 
     /// <summary>
-    /// Indica se o sistema está ativo.
+    /// Ativo
     /// </summary>
+    [JsonPropertyName("ativo")]
     public bool Ativo { get; set; } = true;
-
-    /// <summary>
-    /// Data de criação (se disponível na API).
-    /// </summary>
-    public DateTime? DataCriacao { get; set; }
 }
