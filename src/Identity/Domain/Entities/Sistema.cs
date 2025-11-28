@@ -10,7 +10,9 @@ namespace RhSensoERP.Identity.Domain.Entities;
     DisplayName = "Sistema",
     CdSistema = "SEG",
     CdFuncao = "SEG_FM_TSISTEMA",
-    IsLegacyTable = true
+    IsLegacyTable = true,
+    GenerateApiController = true  // ← ADICIONAR ISSO!
+
 )]
 public class Sistema
 {

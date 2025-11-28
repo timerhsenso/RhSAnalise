@@ -1,29 +1,18 @@
 // =============================================================================
 // RHSENSOERP - SHARED CORE
 // =============================================================================
-// Arquivo: src/Shared/RhSensoERP.Shared.Core/Abstractions/IUnitOfWork.cs
-// Descrição: Interface simples de Unit of Work (compatível com DbContext)
+// Arquivo: src/Shared/RhSensoERP.Shared.Core/Abstractions/IUnitOfWorkExtended.cs
+// Descrição: Interface estendida de Unit of Work
+// NOTA: Complementa IUnitOfWork existente, NÃO substitui
 // =============================================================================
 
 namespace RhSensoERP.Shared.Core.Abstractions;
 
 /// <summary>
-/// Interface simples de Unit of Work.
-/// Pode ser implementada diretamente pelo DbContext.
+/// Interface estendida de Unit of Work com funcionalidades adicionais.
+/// Use esta interface quando precisar de transações e repositórios tipados.
 /// </summary>
-public interface IUnitOfWork : IDisposable
-{
-    /// <summary>
-    /// Salva todas as alterações pendentes.
-    /// </summary>
-    Task<int> SaveChangesAsync(CancellationToken ct = default);
-}
-
-/// <summary>
-/// Interface estendida de Unit of Work com suporte a transações.
-/// Use a classe UnitOfWork&lt;TContext&gt; para implementação completa.
-/// </summary>
-public interface IUnitOfWorkWithTransaction : IUnitOfWork
+public interface IUnitOfWorkExtended : IUnitOfWork
 {
     /// <summary>
     /// Inicia uma transação.

@@ -1,43 +1,42 @@
-﻿// =============================================================================
-// RhSensoERP - Módulo GestaoDePessoas - Dependency Injection
 // =============================================================================
-// Arquivo: src/Modules/GestaoDePessoas/DependencyInjection.cs
+// RhSensoERP - Módulo ControleDePonto - Dependency Injection
+// =============================================================================
+// Arquivo: src/Modules/ControleDePonto/DependencyInjection.cs
 // Registra DbContext, AutoMapper, Repositórios e MediatR handlers
 // =============================================================================
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence;
-using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Contexts;
-using System.Reflection;
+using RhSensoERP.Modules.ControleDePonto.Core.Entities;
+using RhSensoERP.Modules.ControleDePonto.Infrastructure.Persistence.Contexts;
 
-namespace RhSensoERP.Modules.GestaoDePessoas;
+namespace RhSensoERP.Modules.ControleDePonto;
 
 /// <summary>
-/// Extensões de DI para o módulo GestaoDePessoas.
+/// Extensões de DI para o módulo ControleDePonto.
 /// </summary>
 public static class DependencyInjection
 {
     /// <summary>
-    /// Adiciona os serviços do módulo GestaoDePessoas ao container de DI.
+    /// Adiciona os serviços do módulo ControleDePonto ao container de DI.
     /// </summary>
-    public static IServiceCollection AddGestaoDePessoasModule(
+    public static IServiceCollection AddControleDePontoModule(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Assembly onde entidades e arquivos gerados estão
-        var moduleAssembly = typeof(DependencyInjection).Assembly;
+        // Obter assembly onde entidades e arquivos gerados estão
+        var moduleAssembly = typeof(Sitc2).Assembly;
 
         // =====================================================================
         // 1. DbContext
         // =====================================================================
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        services.AddDbContext<GestaoDePessoasDbContext>((sp, options) =>
+        services.AddDbContext<ControleDePontoDbContext>((sp, options) =>
         {
             options.UseSqlServer(connectionString, sqlOptions =>
             {
-                sqlOptions.MigrationsAssembly(typeof(GestaoDePessoasDbContext).Assembly.FullName);
+                sqlOptions.MigrationsAssembly(typeof(ControleDePontoDbContext).Assembly.FullName);
                 sqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 3,
                     maxRetryDelay: TimeSpan.FromSeconds(5),
@@ -45,7 +44,6 @@ public static class DependencyInjection
                 sqlOptions.CommandTimeout(60);
             });
 
-            // Logging em desenvolvimento
             var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
             if (env == "Development")
             {
@@ -57,14 +55,14 @@ public static class DependencyInjection
         // =====================================================================
         // 2. AutoMapper - Escaneia Profiles GERADOS pelo Source Generator
         // =====================================================================
-        // O Source Generator cria arquivos como BancoProfile.g.cs automaticamente
+        // O Source Generator cria arquivos como Sitc2Profile.g.cs automaticamente
         // Basta escanear o assembly para encontrá-los
         services.AddAutoMapper(moduleAssembly);
 
         // =====================================================================
         // 3. Repositórios Gerados Automaticamente
         // =====================================================================
-        services.AddGestaoDePessoasRepositories();
+        services.AddControleDePontoRepositories();
 
         // =====================================================================
         // 4. MediatR - Handlers do módulo (Commands, Queries)
@@ -80,12 +78,11 @@ public static class DependencyInjection
     /// <summary>
     /// Registra automaticamente todos os repositórios gerados pelo Source Generator.
     /// </summary>
-    public static IServiceCollection AddGestaoDePessoasRepositories(this IServiceCollection services)
+    public static IServiceCollection AddControleDePontoRepositories(this IServiceCollection services)
     {
-        var assembly = typeof(DependencyInjection).Assembly;
+        var assembly = typeof(Sitc2).Assembly;
         var types = assembly.GetTypes();
 
-        // Busca interfaces de repositório
         var repoInterfaces = types
             .Where(t => t.IsInterface
                      && t.Name.StartsWith("I")

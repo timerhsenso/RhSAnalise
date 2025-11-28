@@ -15,14 +15,13 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="MediatR" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
+	  <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
+
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Application\Services\" />
     <Folder Include="Core\Entities\Tabelas\Folha\" />
     <Folder Include="Core\Entities\Tabelas\Eventos\" />
-    <Folder Include="Infrastructure\Persistence\Configurations\Tabelas\Folha\" />
-    <Folder Include="Infrastructure\Persistence\Configurations\Tabelas\Eventos\" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -15,7 +15,9 @@ namespace RhSensoERP.Modules.ControleDePonto.Core.Entities;
     DisplayName = "Situação de Frequência",
     CdSistema = "FRE",
     CdFuncao = "CPT_FM_SITC2",
-    IsLegacyTable = true
+    IsLegacyTable = true,
+    GenerateApiController = true  // ← ADICIONAR ISSO!
+
 )]
 public class Sitc2
 {

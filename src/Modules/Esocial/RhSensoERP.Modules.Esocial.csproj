@@ -15,10 +15,8 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="MediatR" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
-  </ItemGroup>
+	  <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
 
-  <ItemGroup>
-    <Folder Include="Infrastructure\Persistence\Configurations\" />
   </ItemGroup>
 
   <PropertyGroup>

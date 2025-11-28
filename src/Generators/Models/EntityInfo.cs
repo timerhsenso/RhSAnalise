@@ -3,6 +3,7 @@
 // =============================================================================
 // Arquivo: src/Generators/Models/EntityInfo.cs
 // Versão: 3.1 - Com suporte a MetadataProvider para UI dinâmica
+// CORRIGIDO: GenerateApiController = true por padrão
 // =============================================================================
 
 namespace RhSensoERP.Generators.Models;
@@ -152,7 +153,12 @@ public class EntityInfo
     // FLAGS DE GERAÇÃO - API/WEB
     // =========================================================================
 
-    public bool GenerateApiController { get; set; } = false;
+    /// <summary>
+    /// Gera o API Controller.
+    /// CORRIGIDO: Agora é TRUE por padrão!
+    /// </summary>
+    public bool GenerateApiController { get; set; } = true;  // ← MUDOU DE false PARA true
+
     public bool GenerateWebController { get; set; } = false;
     public bool GenerateWebModels { get; set; } = false;
     public bool GenerateWebServices { get; set; } = false;

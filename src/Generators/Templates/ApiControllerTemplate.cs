@@ -1,5 +1,8 @@
 // =============================================================================
-// RHSENSOERP GENERATOR v3.0 - API CONTROLLER TEMPLATE
+// RHSENSOERP GENERATOR v3.1 - API CONTROLLER TEMPLATE
+// =============================================================================
+// Arquivo: src/Generators/Templates/ApiControllerTemplate.cs
+// CORRIGIDO: Usa PagedRequest no construtor da Query (alinhado com QueriesTemplate)
 // =============================================================================
 using RhSensoERP.Generators.Models;
 
@@ -7,7 +10,6 @@ namespace RhSensoERP.Generators.Templates;
 
 /// <summary>
 /// Template para geração de API Controller.
-/// NOVO no v3.0!
 /// </summary>
 public static class ApiControllerTemplate
 {
@@ -24,7 +26,7 @@ public static class ApiControllerTemplate
         return $$"""
 // =============================================================================
 // ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
-// Generator: RhSensoERP.Generators v3.0
+// Generator: RhSensoERP.Generators v3.1
 // Entity: {{info.EntityName}}
 // =============================================================================
 using MediatR;
@@ -33,9 +35,8 @@ using Microsoft.AspNetCore.Mvc;{{authUsing}}
 using {{info.DtoNamespace}};
 using {{info.CommandsNamespace}};
 using {{info.QueriesNamespace}};
-using RhSensoERP.Identity.Application.DTOs.Common;
-using RhSensoERP.Shared.Contracts.Common;
 using RhSensoERP.Shared.Core.Common;
+using RhSensoERP.Shared.Contracts.Common;
 
 namespace {{info.ApiControllerNamespace}};
 
@@ -77,17 +78,19 @@ public sealed class {{info.PluralName}}Controller : ControllerBase
     /// <summary>
     /// Lista {{info.DisplayName}} com paginação.
     /// </summary>
-    /// <param name="req">Parâmetros de paginação</param>
+    /// <param name="request">Parâmetros de paginação</param>
     /// <param name="ct">Token de cancelamento</param>
     /// <returns>Lista paginada de {{info.DisplayName}}</returns>
     [HttpGet]
-    [ProducesResponseType(typeof(Result<PagedResult<{{info.EntityName}}Dto>>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(Result<PagedResult<{{info.EntityName}}Dto>>), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Result<PagedResult<{{info.EntityName}}Dto>>>> GetPaged(
-        [FromQuery] PagedRequest req,
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetPaged(
+        [FromQuery] PagedRequest request,
         CancellationToken ct)
     {
-        var result = await _mediator.Send(new Get{{info.PluralName}}PagedQuery(req), ct);
+        var query = new Get{{info.PluralName}}PagedQuery(request);
+
+        var result = await _mediator.Send(query, ct);
 
         if (!result.IsSuccess)
         {
@@ -189,9 +192,9 @@ public sealed class {{info.PluralName}}Controller : ControllerBase
     /// <param name="ct">Token de cancelamento</param>
     /// <returns>Resultado da operação em lote</returns>
     [HttpDelete("batch")]
-    [ProducesResponseType(typeof(Result<BatchDeleteResult>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(Result<BatchDeleteResult>), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Result<BatchDeleteResult>>> DeleteMultiple(
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteMultiple(
         [FromBody] List<{{pkType}}> ids,
         CancellationToken ct)
     {

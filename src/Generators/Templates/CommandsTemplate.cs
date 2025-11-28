@@ -1,8 +1,9 @@
 // =============================================================================
-// RHSENSOERP GENERATOR v3.0 - COMMANDS TEMPLATE
+// RHSENSOERP GENERATOR v3.1 - COMMANDS TEMPLATE
 // =============================================================================
 // Arquivo: src/Generators/Templates/CommandsTemplate.cs
-// Versão: 3.0 - Com suporte a CQRS completo
+// CORRIGIDO: BatchDeleteResult inline, sem dependências externas
+// CORRIGIDO: Removido operador ?. de Guid (value type não nullable)
 // =============================================================================
 using RhSensoERP.Generators.Models;
 
@@ -25,7 +26,7 @@ public static class CommandsTemplate
         return $$"""
 // =============================================================================
 // ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
-// Generator: RhSensoERP.Generators v3.0
+// Generator: RhSensoERP.Generators v3.1
 // Entity: {{info.EntityName}}
 // =============================================================================
 using AutoMapper;
@@ -105,7 +106,7 @@ public sealed class Create{{info.EntityName}}Handler
         return $$"""
 // =============================================================================
 // ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
-// Generator: RhSensoERP.Generators v3.0
+// Generator: RhSensoERP.Generators v3.1
 // Entity: {{info.EntityName}}
 // =============================================================================
 using AutoMapper;
@@ -192,7 +193,7 @@ public sealed class Update{{info.EntityName}}Handler
         return $$"""
 // =============================================================================
 // ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
-// Generator: RhSensoERP.Generators v3.0
+// Generator: RhSensoERP.Generators v3.1
 // Entity: {{info.EntityName}}
 // =============================================================================
 using MediatR;
@@ -262,6 +263,7 @@ public sealed class Delete{{info.EntityName}}Handler
 
     /// <summary>
     /// Gera o DeleteMultipleCommand (Batch) com Handler.
+    /// Retorna Result com contagem simples em vez de BatchDeleteResult.
     /// </summary>
     public static string GenerateBatchDeleteCommand(EntityInfo info)
     {
@@ -270,28 +272,54 @@ public sealed class Delete{{info.EntityName}}Handler
         return $$"""
 // =============================================================================
 // ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
-// Generator: RhSensoERP.Generators v3.0
+// Generator: RhSensoERP.Generators v3.1
 // Entity: {{info.EntityName}}
 // =============================================================================
 using MediatR;
 using Microsoft.Extensions.Logging;
 using {{info.RepositoryInterfaceNamespace}};
 using RhSensoERP.Shared.Core.Common;
-using RhSensoERP.Shared.Application.DTOs.Common;
 
 namespace {{info.CommandsNamespace}};
+
+/// <summary>
+/// Resultado da exclusão em lote.
+/// </summary>
+public sealed class {{info.EntityName}}BatchDeleteResult
+{
+    public int SuccessCount { get; set; }
+    public int FailureCount { get; set; }
+    public List<{{info.EntityName}}BatchDeleteError> Errors { get; set; } = new();
+}
+
+/// <summary>
+/// Erro de exclusão individual.
+/// </summary>
+public sealed class {{info.EntityName}}BatchDeleteError
+{
+    public string Id { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+
+    public {{info.EntityName}}BatchDeleteError() { }
+
+    public {{info.EntityName}}BatchDeleteError(string id, string message)
+    {
+        Id = id;
+        Message = message;
+    }
+}
 
 /// <summary>
 /// Command para exclusão em lote de {{info.DisplayName}}.
 /// </summary>
 public sealed record Delete{{info.PluralName}}Command(List<{{pkType}}> Ids)
-    : IRequest<Result<BatchDeleteResult>>;
+    : IRequest<Result<{{info.EntityName}}BatchDeleteResult>>;
 
 /// <summary>
 /// Handler do comando de exclusão em lote.
 /// </summary>
 public sealed class Delete{{info.PluralName}}Handler
-    : IRequestHandler<Delete{{info.PluralName}}Command, Result<BatchDeleteResult>>
+    : IRequestHandler<Delete{{info.PluralName}}Command, Result<{{info.EntityName}}BatchDeleteResult>>
 {
     private readonly I{{info.EntityName}}Repository _repository;
     private readonly ILogger<Delete{{info.PluralName}}Handler> _logger;
@@ -304,11 +332,11 @@ public sealed class Delete{{info.PluralName}}Handler
         _logger = logger;
     }
 
-    public async Task<Result<BatchDeleteResult>> Handle(
+    public async Task<Result<{{info.EntityName}}BatchDeleteResult>> Handle(
         Delete{{info.PluralName}}Command command,
         CancellationToken cancellationToken)
     {
-        var errors = new List<BatchDeleteError>();
+        var errors = new List<{{info.EntityName}}BatchDeleteError>();
         var successCount = 0;
 
         _logger.LogInformation("Excluindo {Count} {{info.DisplayName}}(s) em lote...", command.Ids.Count);
@@ -320,7 +348,7 @@ public sealed class Delete{{info.PluralName}}Handler
                 var entity = await _repository.GetByIdAsync(id, cancellationToken);
                 if (entity == null)
                 {
-                    errors.Add(new BatchDeleteError(id.ToString()!, "Registro não encontrado"));
+                    errors.Add(new {{info.EntityName}}BatchDeleteError(id.ToString(), "Registro não encontrado"));
                     continue;
                 }
 
@@ -330,11 +358,11 @@ public sealed class Delete{{info.PluralName}}Handler
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao excluir {{info.DisplayName}} {Id}", id);
-                errors.Add(new BatchDeleteError(id.ToString()!, ex.Message));
+                errors.Add(new {{info.EntityName}}BatchDeleteError(id.ToString(), ex.Message));
             }
         }
 
-        var result = new BatchDeleteResult
+        var result = new {{info.EntityName}}BatchDeleteResult
         {
             SuccessCount = successCount,
             FailureCount = errors.Count,
@@ -346,7 +374,7 @@ public sealed class Delete{{info.PluralName}}Handler
             result.SuccessCount,
             result.FailureCount);
 
-        return Result<BatchDeleteResult>.Success(result);
+        return Result<{{info.EntityName}}BatchDeleteResult>.Success(result);
     }
 }
 """;

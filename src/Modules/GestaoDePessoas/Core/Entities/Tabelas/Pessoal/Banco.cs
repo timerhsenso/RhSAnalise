@@ -11,7 +11,8 @@ namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
     DisplayName = "Banco",
     CdSistema = "RHU",
     CdFuncao = "RHU_FM_TBANCO",
-    IsLegacyTable = true
+    IsLegacyTable = true,
+    GenerateApiController = true  // ← ADICIONAR ISSO!
 )]
 public class Banco
 {
@@ -32,6 +33,6 @@ public class Banco
     // NAVEGAÇÃO - Relacionamentos 1:N
     // ═══════════════════════════════════════════════════════════════
 
-    public virtual ICollection<Agencia> Agencias { get; set; } = new HashSet<Agencia>();
-    public virtual ICollection<Funcionario> Funcionarios { get; set; } = new HashSet<Funcionario>();
+   // public virtual ICollection<Agencia> Agencias { get; set; } = new HashSet<Agencia>();
+   // public virtual ICollection<Funcionario> Funcionarios { get; set; } = new HashSet<Funcionario>();
 }

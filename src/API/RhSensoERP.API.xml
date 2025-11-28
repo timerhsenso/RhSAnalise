@@ -205,6 +205,297 @@
             <param name="hours">Período em horas (padrão: 24)</param>
             <param name="ct">Token de cancelamento</param>
         </member>
+        <member name="T:RhSensoERP.API.Controllers.Base.DataTablesRequest">
+            <summary>
+            Request do DataTables jQuery.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesRequest.Draw">
+            <summary>
+            Draw counter para sincronização.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesRequest.Start">
+            <summary>
+            Índice do primeiro registro.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesRequest.Length">
+            <summary>
+            Número de registros por página.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesRequest.Search">
+            <summary>
+            Busca global.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesRequest.Order">
+            <summary>
+            Ordenação.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesRequest.Columns">
+            <summary>
+            Colunas.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.DataTablesRequest.ToPagedRequest">
+            <summary>
+            Converte para ServicePagedRequest.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.Base.DataTablesSearch">
+            <summary>
+            Busca do DataTables.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesSearch.Value">
+            <summary>
+            Valor da busca.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesSearch.Regex">
+            <summary>
+            Se é regex.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.Base.DataTablesOrder">
+            <summary>
+            Ordenação do DataTables.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesOrder.Column">
+            <summary>
+            Índice da coluna.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesOrder.Dir">
+            <summary>
+            Direção (asc/desc).
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.Base.DataTablesColumn">
+            <summary>
+            Coluna do DataTables.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesColumn.Data">
+            <summary>
+            Nome do campo de dados.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesColumn.Name">
+            <summary>
+            Nome da coluna.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesColumn.Searchable">
+            <summary>
+            Se é pesquisável.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesColumn.Orderable">
+            <summary>
+            Se é ordenável.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesColumn.Search">
+            <summary>
+            Busca específica da coluna.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.Base.DataTablesResponse`1">
+            <summary>
+            Response do DataTables jQuery.
+            </summary>
+            <typeparam name="T">Tipo dos dados</typeparam>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesResponse`1.Draw">
+            <summary>
+            Draw counter.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesResponse`1.RecordsTotal">
+            <summary>
+            Total de registros sem filtro.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesResponse`1.RecordsFiltered">
+            <summary>
+            Total de registros após filtro.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesResponse`1.Data">
+            <summary>
+            Dados.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.API.Controllers.Base.DataTablesResponse`1.Error">
+            <summary>
+            Erro (se houver).
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.DataTablesResponse`1.FromPagedResult(RhSensoERP.Shared.Application.Interfaces.ServicePagedResult{`0},System.Int32,System.Nullable{System.Int32})">
+            <summary>
+            Cria uma resposta do DataTables.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.DataTablesResponse`1.FromError(System.Int32,System.String)">
+            <summary>
+            Cria uma resposta de erro.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.Base.DataTablesApiController`3">
+            <summary>
+            Controller base com suporte a DataTables jQuery.
+            Herda de GenericApiController e adiciona endpoint para DataTables.
+            </summary>
+            <typeparam name="TEntity">Tipo da entidade</typeparam>
+            <typeparam name="TKey">Tipo da chave primária</typeparam>
+            <typeparam name="TDto">Tipo do DTO</typeparam>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.DataTablesApiController`3.#ctor(RhSensoERP.Shared.Application.Interfaces.ICrudService{`0,`1,`2},Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Construtor.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.DataTablesApiController`3.DataTables(RhSensoERP.API.Controllers.Base.DataTablesRequest,System.Threading.CancellationToken)">
+            <summary>
+            Endpoint para DataTables jQuery (server-side processing).
+            </summary>
+            <param name="request">Request do DataTables</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Response formatado para DataTables</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.DataTablesApiController`3.DataTablesGet(System.Int32,System.Int32,System.Int32,System.String,System.Int32,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Endpoint GET para DataTables (alternativa ao POST).
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.Base.GenericApiController`3">
+            <summary>
+            Controller base genérico com operações CRUD.
+            </summary>
+            <typeparam name="TEntity">Tipo da entidade</typeparam>
+            <typeparam name="TKey">Tipo da chave primária</typeparam>
+            <typeparam name="TDto">Tipo do DTO</typeparam>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`3.#ctor(RhSensoERP.Shared.Application.Interfaces.ICrudService{`0,`1,`2},Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Construtor.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`3.GetAll(System.Int32,System.Int32,System.String,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Lista todos os registros com paginação.
+            </summary>
+            <param name="pageNumber">Número da página (1-based)</param>
+            <param name="pageSize">Tamanho da página</param>
+            <param name="sortField">Campo para ordenação</param>
+            <param name="sortDirection">Direção (asc/desc)</param>
+            <param name="searchTerm">Termo de busca global</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Lista paginada de registros</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`3.GetById(`1,System.Threading.CancellationToken)">
+            <summary>
+            Obtém um registro pelo ID.
+            </summary>
+            <param name="id">ID do registro</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Registro encontrado ou 404</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`3.Create(`2,System.Threading.CancellationToken)">
+            <summary>
+            Cria um novo registro.
+            </summary>
+            <param name="dto">Dados do registro</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Registro criado</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`3.Update(`1,`2,System.Threading.CancellationToken)">
+            <summary>
+            Atualiza um registro existente.
+            </summary>
+            <param name="id">ID do registro</param>
+            <param name="dto">Dados atualizados</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Registro atualizado</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`3.Delete(`1,System.Threading.CancellationToken)">
+            <summary>
+            Remove um registro.
+            </summary>
+            <param name="id">ID do registro</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>204 No Content ou erro</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`3.Exists(`1,System.Threading.CancellationToken)">
+            <summary>
+            Verifica se um registro existe.
+            </summary>
+            <param name="id">ID do registro</param>
+            <param name="ct">Token de cancelamento</param>
+            <returns>200 OK com true/false</returns>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`3.Count(System.Threading.CancellationToken)">
+            <summary>
+            Conta o total de registros.
+            </summary>
+            <param name="ct">Token de cancelamento</param>
+            <returns>Total de registros</returns>
+        </member>
+        <member name="T:RhSensoERP.API.Controllers.Base.GenericApiController`5">
+            <summary>
+            Controller base genérico com DTOs separados para Create e Update.
+            </summary>
+            <typeparam name="TEntity">Tipo da entidade</typeparam>
+            <typeparam name="TKey">Tipo da chave primária</typeparam>
+            <typeparam name="TDto">Tipo do DTO de leitura</typeparam>
+            <typeparam name="TCreateDto">Tipo do DTO de criação</typeparam>
+            <typeparam name="TUpdateDto">Tipo do DTO de atualização</typeparam>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`5.#ctor(RhSensoERP.Shared.Application.Interfaces.ICrudService{`0,`1,`2,`3,`4},Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Construtor.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`5.GetAll(System.Int32,System.Int32,System.String,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Lista todos os registros com paginação.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`5.GetById(`1,System.Threading.CancellationToken)">
+            <summary>
+            Obtém um registro pelo ID.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`5.Create(`3,System.Threading.CancellationToken)">
+            <summary>
+            Cria um novo registro.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`5.Update(`1,`4,System.Threading.CancellationToken)">
+            <summary>
+            Atualiza um registro existente.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`5.Delete(`1,System.Threading.CancellationToken)">
+            <summary>
+            Remove um registro.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`5.Exists(`1,System.Threading.CancellationToken)">
+            <summary>
+            Verifica se um registro existe.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.API.Controllers.Base.GenericApiController`5.Count(System.Threading.CancellationToken)">
+            <summary>
+            Conta o total de registros.
+            </summary>
+        </member>
         <member name="T:RhSensoERP.API.Controllers.DiagnosticsController">
             <summary>
             Controller para diagnósticos e testes do sistema.
@@ -250,71 +541,6 @@
         <member name="T:RhSensoERP.API.Controllers.SqlLoggingOptions">
             <summary>
             Opções de configuração do SqlLogging.
-            </summary>
-        </member>
-        <member name="T:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController">
-            <summary>
-            Controller para gerenciamento de municípios.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.GetAll">
-            <summary>
-            Lista todos os municípios.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.GetByEstado(System.String)">
-            <summary>
-            Lista municípios por estado.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.GetById(System.String)">
-            <summary>
-            Busca município por código.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.Create(RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.MunicipioDto)">
-            <summary>
-            Cria novo município.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.Update(System.String,RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.MunicipioDto)">
-            <summary>
-            Atualiza município.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.MunicipiosController.Delete(System.String)">
-            <summary>
-            Remove município.
-            </summary>
-        </member>
-        <member name="T:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController">
-            <summary>
-            Controller para gerenciamento de sindicatos.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController.GetAll">
-            <summary>
-            Lista todos os sindicatos.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController.GetById(System.String)">
-            <summary>
-            Busca sindicato por código.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController.Create(RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.CreateSindicatoDto)">
-            <summary>
-            Cria novo sindicato.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController.Update(System.String,RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.UpdateSindicatoDto)">
-            <summary>
-            Atualiza sindicato.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.GestaoDePessoas.Tabelas.Pessoal.SindicatoController.Delete(System.String)">
-            <summary>
-            Remove sindicato.
             </summary>
         </member>
         <member name="T:RhSensoERP.API.Controllers.HealthCheckController">
@@ -557,41 +783,6 @@
             afetando todos os usuários deste grupo.
             </remarks>
         </member>
-        <member name="T:RhSensoERP.API.Controllers.Identity.SistemasController">
-            <summary>
-            Controller para gerenciamento de Sistema.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.GetById(System.String,System.Threading.CancellationToken)">
-            <summary>
-            Obtém Sistema pelo código.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.GetPaged(RhSensoERP.Shared.Contracts.Common.PagedRequest,System.Threading.CancellationToken)">
-            <summary>
-            Lista Sistema com paginação.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Create(RhSensoERP.Identity.Application.DTOs.Sistemas.CreateSistemaRequest,System.Threading.CancellationToken)">
-            <summary>
-            Cria novo Sistema.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Update(System.String,RhSensoERP.Identity.Application.DTOs.Sistemas.UpdateSistemaRequest,System.Threading.CancellationToken)">
-            <summary>
-            Atualiza Sistema existente.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.Delete(System.String,System.Threading.CancellationToken)">
-            <summary>
-            Remove Sistema.
-            </summary>
-        </member>
-        <member name="M:RhSensoERP.API.Controllers.Identity.SistemasController.DeleteMultiple(System.Collections.Generic.List{System.String},System.Threading.CancellationToken)">
-            <summary>
-            Remove múltiplos Sistema em lote.
-            </summary>
-        </member>
         <member name="T:RhSensoERP.API.Controllers.Identity.UsuariosController">
             <summary>
             Controller para gerenciamento de usuários.
@@ -798,6 +989,107 @@
         <member name="T:RhSensoERP.API.SecretsConfig">
             <summary>
             Classe marcadora para User Secrets
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.Shared.Api.Responses.ApiResponse`1">
+            <summary>
+            Resposta padrão da API.
+            </summary>
+            <typeparam name="T">Tipo dos dados</typeparam>
+        </member>
+        <member name="P:RhSensoERP.Shared.Api.Responses.ApiResponse`1.Success">
+            <summary>
+            Indica se a operação foi bem-sucedida.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.Shared.Api.Responses.ApiResponse`1.Data">
+            <summary>
+            Dados retornados.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.Shared.Api.Responses.ApiResponse`1.Message">
+            <summary>
+            Mensagem de sucesso ou erro.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.Shared.Api.Responses.ApiResponse`1.ErrorCode">
+            <summary>
+            Código do erro (se houver).
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.Shared.Api.Responses.ApiResponse`1.ValidationErrors">
+            <summary>
+            Lista de erros de validação.
+            </summary>
+        </member>
+        <member name="P:RhSensoERP.Shared.Api.Responses.ApiResponse`1.Timestamp">
+            <summary>
+            Timestamp da resposta.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ApiResponse`1.Ok(`0,System.String)">
+            <summary>
+            Cria uma resposta de sucesso.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ApiResponse`1.Fail(System.String,System.String)">
+            <summary>
+            Cria uma resposta de erro.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ApiResponse`1.ValidationFail(System.Collections.Generic.Dictionary{System.String,System.String[]})">
+            <summary>
+            Cria uma resposta de erro de validação.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ApiResponse`1.FromResult(RhSensoERP.Shared.Core.Common.Result{`0},System.String)">
+            <summary>
+            Cria uma resposta a partir de um Result.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.Shared.Api.Responses.ApiResponse">
+            <summary>
+            Resposta padrão sem dados.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ApiResponse.Ok(System.String)">
+            <summary>
+            Cria uma resposta de sucesso sem dados.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ApiResponse.Fail(System.String,System.String)">
+            <summary>
+            Cria uma resposta de erro.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ApiResponse.FromResult(RhSensoERP.Shared.Core.Common.Result,System.String)">
+            <summary>
+            Cria uma resposta a partir de um Result.
+            </summary>
+        </member>
+        <member name="T:RhSensoERP.Shared.Api.Responses.ResultActionExtensions">
+            <summary>
+            Extensões para converter Result em ActionResult.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ResultActionExtensions.ToActionResult(RhSensoERP.Shared.Core.Common.Result)">
+            <summary>
+            Converte um Result em ActionResult.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ResultActionExtensions.ToActionResult``1(RhSensoERP.Shared.Core.Common.Result{``0})">
+            <summary>
+            Converte um Result de T em ActionResult.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ResultActionExtensions.ToApiResponse(RhSensoERP.Shared.Core.Common.Result,System.String)">
+            <summary>
+            Converte um Result em ActionResult com ApiResponse.
+            </summary>
+        </member>
+        <member name="M:RhSensoERP.Shared.Api.Responses.ResultActionExtensions.ToApiResponse``1(RhSensoERP.Shared.Core.Common.Result{``0},System.String)">
+            <summary>
+            Converte um Result de T em ActionResult com ApiResponse.
             </summary>
         </member>
         <member name="T:SecurityHeadersMiddleware">

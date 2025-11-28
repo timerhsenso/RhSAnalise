@@ -1,8 +1,9 @@
 // =============================================================================
-// RHSENSOERP GENERATOR v3.0 - GENERATE CRUD ATTRIBUTE
+// RHSENSOERP GENERATOR v3.1 - GENERATE CRUD ATTRIBUTE
 // =============================================================================
 // Arquivo: src/Generators/Attributes/GenerateCrudAttribute.cs
 // Versão: 3.1 - Com suporte a Metadata-Driven UI
+// CORRIGIDO: GenerateApiController = true por padrão
 // =============================================================================
 
 namespace RhSensoERP.Generators.Attributes;
@@ -126,9 +127,9 @@ public sealed class GenerateCrudAttribute : Attribute
 
     /// <summary>
     /// Gera o API Controller (src/API/Controllers/{Module}/{Entity}Controller.cs).
-    /// PADRÃO: false - Arquivos devem ser copiados manualmente para o projeto API.
+    /// CORRIGIDO: Agora é TRUE por padrão!
     /// </summary>
-    public bool GenerateApiController { get; set; } = false;
+    public bool GenerateApiController { get; set; } = true;  // ← MUDOU DE false PARA true
 
     /// <summary>
     /// Adiciona [Authorize] ao API Controller.
@@ -235,72 +236,62 @@ public sealed class GenerateCrudAttribute : Attribute
 [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
 public sealed class FieldDisplayNameAttribute : Attribute
 {
-    public string DisplayName { get; }
+    public string Name { get; }
 
-    public FieldDisplayNameAttribute(string displayName)
+    public FieldDisplayNameAttribute(string name)
     {
-        DisplayName = displayName;
+        Name = name;
     }
 }
 
 /// <summary>
-/// Atributo para marcar campos que não devem ser incluídos no DTO de leitura.
+/// Marca um campo como somente leitura (não aparece em Create/Update).
 /// </summary>
 [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-public sealed class ExcludeFromDtoAttribute : Attribute { }
-
-/// <summary>
-/// Atributo para marcar campos que não devem ser editáveis (apenas leitura).
-/// </summary>
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-public sealed class ReadOnlyFieldAttribute : Attribute { }
-
-/// <summary>
-/// Atributo para marcar campos obrigatórios na criação.
-/// </summary>
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-public sealed class RequiredOnCreateAttribute : Attribute { }
-
-/// <summary>
-/// Atributo para configurar validação customizada.
-/// </summary>
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = true)]
-public sealed class ValidationRuleAttribute : Attribute
+public sealed class ReadOnlyFieldAttribute : Attribute
 {
-    public string RuleType { get; }
-    public string? Parameter { get; set; }
-    public string? ErrorMessage { get; set; }
+}
 
-    public ValidationRuleAttribute(string ruleType)
-    {
-        RuleType = ruleType;
-    }
+/// <summary>
+/// Exclui o campo do DTO de leitura.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+public sealed class ExcludeFromDtoAttribute : Attribute
+{
+}
+
+/// <summary>
+/// Marca campo como obrigatório apenas na criação.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+public sealed class RequiredOnCreateAttribute : Attribute
+{
 }
 
 // =============================================================================
-// ATRIBUTOS DE UI - LISTAGEM (DataTable) - NOVO v3.1
+// ATRIBUTOS DE UI - DATAGRID/DATATABLE - NOVO v3.1
 // =============================================================================
 
 /// <summary>
-/// Configura o comportamento do campo na listagem (DataTable).
+/// Configura o comportamento do campo no DataTable/Grid.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-public sealed class ListConfigAttribute : Attribute
+public sealed class DataTableConfigAttribute : Attribute
 {
     /// <summary>
-    /// Exibir na listagem. Padrão: true
+    /// Exibir no DataTable. Padrão: true
     /// </summary>
     public bool Show { get; set; } = true;
 
     /// <summary>
-    /// Ordem de exibição na listagem. Menor = mais à esquerda.
+    /// Ordem de exibição da coluna.
     /// </summary>
     public int Order { get; set; } = 0;
 
     /// <summary>
-    /// Largura da coluna em pixels. 0 = automático.
+    /// Largura da coluna (px ou %).
     /// </summary>
-    public int Width { get; set; } = 0;
+    public string Width { get; set; } = string.Empty;
 
     /// <summary>
     /// Permite ordenação por esta coluna.
@@ -308,24 +299,32 @@ public sealed class ListConfigAttribute : Attribute
     public bool Sortable { get; set; } = true;
 
     /// <summary>
-    /// Permite filtro por esta coluna.
+    /// Permite busca/filtro nesta coluna.
     /// </summary>
-    public bool Filterable { get; set; } = true;
+    public bool Searchable { get; set; } = true;
 
     /// <summary>
-    /// Formato de exibição: "date", "datetime", "currency", "percent", "boolean"
-    /// </summary>
-    public string Format { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Classe CSS adicional para a coluna.
+    /// Classe CSS da coluna.
     /// </summary>
     public string CssClass { get; set; } = string.Empty;
 
     /// <summary>
-    /// Alinhamento: "left", "center", "right"
+    /// Template de renderização: "text", "date", "datetime", "currency", 
+    /// "number", "boolean", "badge", "link", "image", "actions"
     /// </summary>
-    public string Align { get; set; } = "left";
+    public string RenderType { get; set; } = "text";
+
+    /// <summary>
+    /// Formato para tipos date/number/currency.
+    /// Exemplos: "dd/MM/yyyy", "N2", "C2"
+    /// </summary>
+    public string Format { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Para RenderType="badge": mapeamento valor→classe CSS.
+    /// Formato: "valor1:badge-success,valor2:badge-danger"
+    /// </summary>
+    public string BadgeMap { get; set; } = string.Empty;
 }
 
 // =============================================================================

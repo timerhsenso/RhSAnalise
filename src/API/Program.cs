@@ -39,12 +39,15 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RhSensoERP.API.BackgroundServices;
 using RhSensoERP.API.Configuration;
+using RhSensoERP.API.Extensions;
 using RhSensoERP.API.Middleware;
 using RhSensoERP.Identity.Application;
 using RhSensoERP.Identity.Application.Configuration;
 using RhSensoERP.Identity.Application.Services;
 using RhSensoERP.Identity.Infrastructure;
-
+using RhSensoERP.Modules.ControleDePonto;
+using RhSensoERP.Modules.Esocial;
+using RhSensoERP.Modules.GestaoDePessoas;
 // ❌ COMENTADO TEMPORARIAMENTE - Erro no EF mapeamento
 /////using RhSensoERP.Modules.GestaoDePessoas;
 using RhSensoERP.Shared.Core.Abstractions;
@@ -53,8 +56,9 @@ using RhSensoERP.Shared.Infrastructure.Services;
 using Serilog;
 using System.Text;
 
-using RhSensoERP.API.Extensions;
-
+using RhSensoERP.Modules.GestaoDePessoas;      // ← já existe
+using RhSensoERP.Modules.ControleDePonto;       // ← ADICIONAR
+using RhSensoERP.Modules.Esocial;               // ← ADICIONAR
 
 // ============================================================================
 // PROGRAM.CS - PONTO DE ENTRADA DA APLICAÇÃO RhSensoERP API
@@ -208,7 +212,13 @@ builder.Services.AddIdentityApplication();
 // Módulo de Gestão de Pessoas (RHU)
 
 // ❌ COMENTADO TEMPORARIAMENTE - Erro no EF mapeamento
-//builder.Services.AddGestaoDePessoasModule(builder.Configuration);
+builder.Services.AddGestaoDePessoasModule(builder.Configuration);
+
+// Módulo de Controle de Ponto
+builder.Services.AddControleDePontoModule(builder.Configuration);
+
+// Módulo eSocial
+builder.Services.AddEsocialModule(builder.Configuration);
 
 // ============================================================================
 // METADATA REGISTRY (UI DINÂMICA)

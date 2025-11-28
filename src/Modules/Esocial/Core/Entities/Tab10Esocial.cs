@@ -14,7 +14,9 @@ namespace RhSensoERP.Modules.Esocial.Core.Entities;
     DisplayName = "Tabela 10 eSocial",
     CdSistema = "RHU",
     CdFuncao = "ESO_FM_TAB10",
-    IsLegacyTable = true
+    IsLegacyTable = true,
+    GenerateApiController = true  // ← ADICIONAR ISSO!
+
 )]
 public class Tab10Esocial
 {
