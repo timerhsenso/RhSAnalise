@@ -3,12 +3,17 @@
  * SISTEMAS - JavaScript com Controle de Permissões
  * ============================================================================
  * Arquivo: wwwroot/js/pages/sistemas.js
- * Versão: 3.0 (Com controle de botões baseado em permissões)
+ * Versão: 3.2 (Corrigido - Trim nos IDs + Debug aprimorado)
  * 
  * Implementação específica do CRUD de Sistemas.
  * Estende a classe CrudBase com customizações necessárias.
  * 
- * NOVO: Desabilita botões automaticamente com base nas permissões do usuário.
+ * CORREÇÕES v3.2:
+ * - Trim em todos os IDs renderizados nos botões de ação
+ * - Trim no checkbox de seleção
+ * - Validação de CdSistema obrigatório no Create
+ * - Debug melhorado para identificar problemas
+ * - Função auxiliar getCleanId para extrair ID com segurança
  * 
  * ============================================================================
  */
@@ -35,12 +40,19 @@ class SistemaCrud extends CrudBase {
 
     /**
      * Customização antes de submeter.
-     * Converte código para maiúsculas.
+     * Converte código para maiúsculas e valida campos obrigatórios.
      */
     beforeSubmit(formData, isEdit) {
-        // Converte código para maiúsculas
+        // Converte código para maiúsculas e faz trim
         if (formData.CdSistema) {
             formData.CdSistema = formData.CdSistema.toUpperCase().trim();
+        }
+
+        // ⭐ CORREÇÃO: Validação de CdSistema obrigatório (apenas no Create)
+        if (!isEdit && (!formData.CdSistema || formData.CdSistema.trim() === '')) {
+            toastr.error('O Código do Sistema é obrigatório!');
+            $('#CdSistema').focus();
+            return false; // Cancela o submit
         }
 
         // Garante que o campo Ativo seja booleano
@@ -56,6 +68,14 @@ class SistemaCrud extends CrudBase {
     afterSubmit(data, isEdit) {
         console.log('✅ Sistema salvo:', data);
     }
+
+    /**
+     * ⭐ CORREÇÃO: Override do método getRowId para fazer trim
+     */
+    getRowId(row) {
+        const id = row[this.config.idField] || row.cdSistema || '';
+        return typeof id === 'string' ? id.trim() : id;
+    }
 }
 
 // Inicialização quando o documento estiver pronto
@@ -64,7 +84,7 @@ $(document).ready(function () {
     // =========================================================================
     // VERIFICAÇÃO DE PERMISSÕES
     // =========================================================================
-    
+
     // Verifica se as permissões foram injetadas pela View
     if (typeof window.crudPermissions === 'undefined') {
         console.error('❌ Permissões não foram carregadas! Usando valores padrão.');
@@ -79,9 +99,30 @@ $(document).ready(function () {
     console.log('🔐 Permissões ativas:', window.crudPermissions);
 
     // =========================================================================
+    // FUNÇÃO AUXILIAR: Extrai ID com trim e validação
+    // =========================================================================
+
+    function getCleanId(row, fieldName) {
+        if (!row) return '';
+
+        // Tenta várias variações do nome do campo
+        let id = row[fieldName] || row[fieldName.toLowerCase()] || row[fieldName.toUpperCase()] || '';
+
+        // Converte para string e faz trim
+        id = String(id).trim();
+
+        // Log para debug
+        if (!id) {
+            console.warn('⚠️ [SISTEMAS] ID vazio para row:', row);
+        }
+
+        return id;
+    }
+
+    // =========================================================================
     // CONFIGURAÇÃO DAS COLUNAS DO DATATABLES
     // =========================================================================
-    
+
     const columns = [
         // Coluna de seleção (checkbox)
         {
@@ -90,10 +131,12 @@ $(document).ready(function () {
             searchable: false,
             className: 'dt-checkboxes-cell',
             width: '40px',
-            render: function () {
+            render: function (data, type, row) {
                 // ⭐ Só mostra checkbox se pode excluir
                 if (window.crudPermissions.canDelete) {
-                    return '<input type="checkbox" class="dt-checkboxes form-check-input">';
+                    // ⭐ CORREÇÃO: Trim no ID do checkbox usando função auxiliar
+                    const id = getCleanId(row, 'cdSistema');
+                    return `<input type="checkbox" class="dt-checkboxes form-check-input" data-id="${id}">`;
                 }
                 return '';
             }
@@ -105,14 +148,20 @@ $(document).ready(function () {
             title: 'Código',
             width: '120px',
             render: function (data) {
-                return `<strong>${data}</strong>`;
+                // ⭐ CORREÇÃO: Trim no código exibido
+                const codigo = String(data || '').trim();
+                return `<strong>${codigo}</strong>`;
             }
         },
         // Descrição do Sistema
         {
             data: 'dcSistema',
             name: 'DcSistema',
-            title: 'Descrição'
+            title: 'Descrição',
+            render: function (data) {
+                // Trim na descrição também
+                return String(data || '').trim();
+            }
         },
         // Status (Ativo/Inativo)
         {
@@ -136,12 +185,18 @@ $(document).ready(function () {
             title: 'Ações',
             width: '130px',
             render: function (data, type, row) {
+                // ⭐ CORREÇÃO: Usa função auxiliar getCleanId
+                const id = getCleanId(row, 'cdSistema');
+
+                // Log para debug
+                console.log('🔧 [SISTEMAS] Renderizando ações | ID:', id, '| Row:', row);
+
                 let actions = '<div class="btn-group btn-group-sm" role="group">';
 
                 // ⭐ Botão Visualizar (sempre visível se pode consultar)
                 if (window.crudPermissions.canView) {
                     actions += `<button type="button" class="btn btn-info btn-view" 
-                        data-id="${row.cdSistema}" 
+                        data-id="${id}" 
                         data-bs-toggle="tooltip" 
                         title="Visualizar">
                         <i class="fas fa-eye"></i>
@@ -151,7 +206,7 @@ $(document).ready(function () {
                 // ⭐ Botão Editar (só aparece se pode editar)
                 if (window.crudPermissions.canEdit) {
                     actions += `<button type="button" class="btn btn-warning btn-edit" 
-                        data-id="${row.cdSistema}" 
+                        data-id="${id}" 
                         data-bs-toggle="tooltip" 
                         title="Editar">
                         <i class="fas fa-edit"></i>
@@ -161,7 +216,7 @@ $(document).ready(function () {
                 // ⭐ Botão Excluir (só aparece se pode excluir)
                 if (window.crudPermissions.canDelete) {
                     actions += `<button type="button" class="btn btn-danger btn-delete" 
-                        data-id="${row.cdSistema}" 
+                        data-id="${id}" 
                         data-bs-toggle="tooltip" 
                         title="Excluir">
                         <i class="fas fa-trash"></i>
@@ -177,7 +232,7 @@ $(document).ready(function () {
     // =========================================================================
     // INICIALIZAÇÃO DO CRUD
     // =========================================================================
-    
+
     window.sistemaCrud = new SistemaCrud({
         controllerName: 'Sistemas',
         entityName: 'Sistema',
@@ -185,7 +240,7 @@ $(document).ready(function () {
         idField: 'cdSistema',
         tableSelector: '#tableCrud',
         columns: columns,
-        
+
         // ⭐ Permissões vindas do backend
         permissions: {
             canCreate: window.crudPermissions.canCreate,
@@ -193,7 +248,7 @@ $(document).ready(function () {
             canDelete: window.crudPermissions.canDelete,
             canView: window.crudPermissions.canView
         },
-        
+
         exportConfig: {
             enabled: true,
             excel: true,
@@ -207,14 +262,14 @@ $(document).ready(function () {
     // =========================================================================
     // CONTROLE DE BOTÕES DA TOOLBAR
     // =========================================================================
-    
+
     // ⭐ Desabilita botão "Novo" se não pode criar
     if (!window.crudPermissions.canCreate) {
         $('#btnNew').prop('disabled', true)
             .addClass('disabled')
             .attr('title', 'Você não tem permissão para criar registros')
             .css('cursor', 'not-allowed');
-        
+
         console.log('🔒 Botão "Novo" desabilitado (sem permissão de inclusão)');
     }
 
@@ -224,24 +279,24 @@ $(document).ready(function () {
             .addClass('disabled')
             .attr('title', 'Você não tem permissão para excluir registros')
             .css('cursor', 'not-allowed');
-        
+
         console.log('🔒 Botão "Excluir Selecionados" desabilitado (sem permissão de exclusão)');
     }
 
     // =========================================================================
     // MÁSCARAS E VALIDAÇÕES
     // =========================================================================
-    
+
     // Máscara para código (apenas maiúsculas e números)
     $('#CdSistema').on('input', function () {
-        this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        this.value = this.value.toUpperCase().replace(/[^A-Z0-9_]/g, '');
     });
 
     // =========================================================================
     // LOG DE INICIALIZAÇÃO
     // =========================================================================
-    
-    console.log('✅ CRUD de Sistemas inicializado com permissões:', {
+
+    console.log('✅ CRUD de Sistemas v3.2 inicializado com permissões:', {
         criar: window.crudPermissions.canCreate,
         editar: window.crudPermissions.canEdit,
         excluir: window.crudPermissions.canDelete,

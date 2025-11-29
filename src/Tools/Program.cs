@@ -1,5 +1,6 @@
 // =============================================================================
 // RHSENSOERP CRUD TOOL - CLI ENTRY POINT
+// Versão: 2.0
 // =============================================================================
 using System.Text.Json;
 using RhSensoERP.CrudTool.Generators;
@@ -19,8 +20,11 @@ class Program
 
     static async Task<int> Main(string[] args)
     {
+        Console.OutputEncoding = System.Text.Encoding.UTF8;
+        
         AnsiConsole.Write(new FigletText("CRUD Tool").Color(Color.Cyan1));
-        AnsiConsole.MarkupLine("[grey]RhSensoERP CRUD Generator v1.0[/]");
+        AnsiConsole.MarkupLine("[grey]RhSensoERP CRUD Generator v2.0 - Frontend Generator[/]");
+        AnsiConsole.MarkupLine("[grey]Compatível com Backend Source Generator[/]");
         AnsiConsole.WriteLine();
 
         try
@@ -61,16 +65,22 @@ class Program
             var table = new Table();
             table.AddColumn("Entity");
             table.AddColumn("Module");
-            table.AddColumn("API");
-            table.AddColumn("Web");
+            table.AddColumn("Controller");
+            table.AddColumn("Models");
+            table.AddColumn("Services");
+            table.AddColumn("View");
+            table.AddColumn("JS");
 
             foreach (var entity in config.Entities)
             {
                 table.AddRow(
                     entity.Name,
                     entity.Module,
-                    entity.Generate.ApiController ? "[green]✓[/]" : "[grey]✗[/]",
-                    entity.Generate.WebController ? "[green]✓[/]" : "[grey]✗[/]"
+                    entity.Generate.WebController ? "[green]✓[/]" : "[grey]✗[/]",
+                    entity.Generate.WebModels ? "[green]✓[/]" : "[grey]✗[/]",
+                    entity.Generate.WebServices ? "[green]✓[/]" : "[grey]✗[/]",
+                    entity.Generate.View ? "[green]✓[/]" : "[grey]✗[/]",
+                    entity.Generate.JavaScript ? "[green]✓[/]" : "[grey]✗[/]"
                 );
             }
 
@@ -108,9 +118,9 @@ class Program
             // Mostra próximos passos
             var panel = new Panel(
                 "[yellow]Próximos passos:[/]\n" +
-                "1. Complete as propriedades nos DTOs gerados\n" +
-                "2. Registre os Services no DI (Program.cs)\n" +
-                "3. Crie as Views e JavaScript manualmente"
+                "1. Registre o Service no DI (Program.cs ou ServiceCollectionExtensions.cs)\n" +
+                "2. Adicione a rota no menu de navegação\n" +
+                "3. Teste a funcionalidade"
             );
             panel.Header = new PanelHeader("[blue]📋 TODO[/]");
             AnsiConsole.Write(panel);

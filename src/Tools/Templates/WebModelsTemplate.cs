@@ -1,30 +1,36 @@
 // =============================================================================
 // RHSENSOERP CRUD TOOL - WEB MODELS TEMPLATE
+// Versão: 2.0 - Compatível com estrutura existente
 // =============================================================================
 using RhSensoERP.CrudTool.Models;
+using System.Text;
 
 namespace RhSensoERP.CrudTool.Templates;
 
+/// <summary>
+/// Gera Models para o projeto Web.
+/// NÃO gera classes base (Result, ApiResponse, etc.) pois já existem.
+/// </summary>
 public static class WebModelsTemplate
 {
     /// <summary>
-    /// Gera o DTO de leitura completo.
+    /// Gera o DTO de leitura.
     /// </summary>
     public static string GenerateDto(EntityConfig entity)
     {
-        var properties = GenerateProperties(entity.Properties, includeAll: true);
+        var properties = GenerateProperties(entity.Properties);
 
         return $@"// =============================================================================
-// ARQUIVO GERADO POR RhSensoERP.CrudTool
+// ARQUIVO GERADO POR RhSensoERP.CrudTool v2.0
 // Entity: {entity.Name}
 // Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
 // =============================================================================
-using System.Text.Json.Serialization;
 
 namespace RhSensoERP.Web.Models.{entity.PluralName};
 
 /// <summary>
 /// DTO de leitura para {entity.DisplayName}.
+/// Compatível com backend: {entity.BackendNamespace ?? $"RhSensoERP.Modules.{entity.Module}.Application.DTOs.{entity.PluralName}"}.{entity.Name}Dto
 /// </summary>
 public class {entity.Name}Dto
 {{
@@ -34,19 +40,18 @@ public class {entity.Name}Dto
     }
 
     /// <summary>
-    /// Gera o DTO de criação.
+    /// Gera o Request de criação.
     /// </summary>
-    public static string GenerateCreateDto(EntityConfig entity)
+    public static string GenerateCreateRequest(EntityConfig entity)
     {
-        // Propriedades para criação (exclui PK se for auto-gerada, inclui se for informada pelo usuário)
         var createProps = entity.Properties
-            .Where(p => !p.IsReadOnly && (!p.IsPrimaryKey || entity.PrimaryKey.Type == "string"))
+            .Where(p => !p.IsReadOnly && !p.IsPrimaryKey)
             .ToList();
 
         var properties = GeneratePropertiesWithValidation(createProps);
 
         return $@"// =============================================================================
-// ARQUIVO GERADO POR RhSensoERP.CrudTool
+// ARQUIVO GERADO POR RhSensoERP.CrudTool v2.0
 // Entity: {entity.Name}
 // Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
 // =============================================================================
@@ -55,9 +60,10 @@ using System.ComponentModel.DataAnnotations;
 namespace RhSensoERP.Web.Models.{entity.PluralName};
 
 /// <summary>
-/// DTO para criação de {entity.DisplayName}.
+/// Request para criação de {entity.DisplayName}.
+/// Compatível com backend: Create{entity.Name}Request
 /// </summary>
-public class Create{entity.Name}Dto
+public class Create{entity.Name}Request
 {{
 {properties}
 }}
@@ -65,11 +71,10 @@ public class Create{entity.Name}Dto
     }
 
     /// <summary>
-    /// Gera o DTO de atualização.
+    /// Gera o Request de atualização.
     /// </summary>
-    public static string GenerateUpdateDto(EntityConfig entity)
+    public static string GenerateUpdateRequest(EntityConfig entity)
     {
-        // Propriedades para atualização (exclui PK e readonly)
         var updateProps = entity.Properties
             .Where(p => !p.IsPrimaryKey && !p.IsReadOnly)
             .ToList();
@@ -77,7 +82,7 @@ public class Create{entity.Name}Dto
         var properties = GeneratePropertiesWithValidation(updateProps);
 
         return $@"// =============================================================================
-// ARQUIVO GERADO POR RhSensoERP.CrudTool
+// ARQUIVO GERADO POR RhSensoERP.CrudTool v2.0
 // Entity: {entity.Name}
 // Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
 // =============================================================================
@@ -86,9 +91,10 @@ using System.ComponentModel.DataAnnotations;
 namespace RhSensoERP.Web.Models.{entity.PluralName};
 
 /// <summary>
-/// DTO para atualização de {entity.DisplayName}.
+/// Request para atualização de {entity.DisplayName}.
+/// Compatível com backend: Update{entity.Name}Request
 /// </summary>
-public class Update{entity.Name}Dto
+public class Update{entity.Name}Request
 {{
 {properties}
 }}
@@ -96,12 +102,12 @@ public class Update{entity.Name}Dto
     }
 
     /// <summary>
-    /// Gera o ListViewModel.
+    /// Gera o ListViewModel que herda de BaseListViewModel.
     /// </summary>
     public static string GenerateListViewModel(EntityConfig entity)
     {
         return $@"// =============================================================================
-// ARQUIVO GERADO POR RhSensoERP.CrudTool
+// ARQUIVO GERADO POR RhSensoERP.CrudTool v2.0
 // Entity: {entity.Name}
 // Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
 // =============================================================================
@@ -111,16 +117,23 @@ namespace RhSensoERP.Web.Models.{entity.PluralName};
 
 /// <summary>
 /// ViewModel para listagem de {entity.DisplayName}.
+/// Herda de BaseListViewModel que já contém permissões e configurações de DataTables.
 /// </summary>
 public class {entity.PluralName}ListViewModel : BaseListViewModel
 {{
     public {entity.PluralName}ListViewModel()
     {{
-        InitializeDefaults(""{entity.PluralName}"", ""{entity.PluralName}"");
+        // Inicializa propriedades padrão
+        InitializeDefaults(""{entity.PluralName}"", ""{entity.DisplayName}"");
+        
+        // Configurações específicas
+        PageTitle = ""{entity.DisplayName}"";
+        PageIcon = ""fas fa-list"";
+        CdFuncao = ""{entity.CdFuncao}"";
     }}
 
     /// <summary>
-    /// Itens da listagem (para uso sem DataTables).
+    /// Itens da listagem (para uso sem DataTables server-side).
     /// </summary>
     public List<{entity.Name}Dto> Items {{ get; set; }} = new();
 }}
@@ -129,75 +142,79 @@ public class {entity.PluralName}ListViewModel : BaseListViewModel
 
     #region Helper Methods
 
-    private static string GenerateProperties(List<PropertyConfig> properties, bool includeAll)
+    /// <summary>
+    /// Gera propriedades sem validação (para DTOs de leitura).
+    /// </summary>
+    private static string GenerateProperties(List<PropertyConfig> properties)
     {
-        var lines = new List<string>();
+        var sb = new StringBuilder();
 
         foreach (var prop in properties)
         {
-            // Display name como comentário
+            // Comentário XML com DisplayName
             if (!string.IsNullOrEmpty(prop.DisplayName))
             {
-                lines.Add($"    /// <summary>");
-                lines.Add($"    /// {prop.DisplayName}");
-                lines.Add($"    /// </summary>");
+                sb.AppendLine($"    /// <summary>");
+                sb.AppendLine($"    /// {prop.DisplayName}");
+                sb.AppendLine($"    /// </summary>");
             }
 
-            // JsonPropertyName para compatibilidade com API
-            var jsonName = char.ToLower(prop.Name[0]) + prop.Name.Substring(1);
-            lines.Add($"    [JsonPropertyName(\"{jsonName}\")]");
-
-            // Propriedade com valor padrão
-            lines.Add($"    {prop.GetPropertyDeclaration()}");
-            lines.Add("");
+            // Propriedade
+            sb.AppendLine($"    {prop.GetPropertyDeclaration()}");
+            sb.AppendLine();
         }
 
-        return string.Join("\n", lines).TrimEnd();
+        return sb.ToString().TrimEnd();
     }
 
+    /// <summary>
+    /// Gera propriedades com validação (para Requests de Create/Update).
+    /// </summary>
     private static string GeneratePropertiesWithValidation(List<PropertyConfig> properties)
     {
-        var lines = new List<string>();
+        var sb = new StringBuilder();
 
         foreach (var prop in properties)
         {
-            // Display name
+            // Comentário XML
             if (!string.IsNullOrEmpty(prop.DisplayName))
             {
-                lines.Add($"    /// <summary>");
-                lines.Add($"    /// {prop.DisplayName}");
-                lines.Add($"    /// </summary>");
-                lines.Add($"    [Display(Name = \"{prop.DisplayName}\")]");
+                sb.AppendLine($"    /// <summary>");
+                sb.AppendLine($"    /// {prop.DisplayName}");
+                sb.AppendLine($"    /// </summary>");
+                sb.AppendLine($"    [Display(Name = \"{prop.DisplayName}\")]");
             }
 
             // Required
-            if (prop.Required)
+            if (prop.Required && !prop.IsNullable)
             {
                 var errorMsg = !string.IsNullOrEmpty(prop.DisplayName)
                     ? prop.DisplayName
                     : prop.Name;
-                lines.Add($"    [Required(ErrorMessage = \"{errorMsg} é obrigatório\")]");
+                sb.AppendLine($"    [Required(ErrorMessage = \"{errorMsg} é obrigatório\")]");
             }
 
             // StringLength
             if (prop.MaxLength.HasValue && prop.IsString)
             {
-                if (prop.MinLength.HasValue)
+                if (prop.MinLength.HasValue && prop.MinLength.Value > 0)
                 {
-                    lines.Add($"    [StringLength({prop.MaxLength.Value}, MinimumLength = {prop.MinLength.Value}, ErrorMessage = \"{prop.DisplayName ?? prop.Name} deve ter entre {prop.MinLength.Value} e {prop.MaxLength.Value} caracteres\")]");
+                    sb.AppendLine($"    [StringLength({prop.MaxLength.Value}, MinimumLength = {prop.MinLength.Value}, " +
+                                 $"ErrorMessage = \"{prop.DisplayName ?? prop.Name} deve ter entre {{2}} e {{1}} caracteres\")]");
                 }
                 else
                 {
-                    lines.Add($"    [StringLength({prop.MaxLength.Value}, ErrorMessage = \"{prop.DisplayName ?? prop.Name} deve ter no máximo {prop.MaxLength.Value} caracteres\")]");
+                    sb.AppendLine($"    [StringLength({prop.MaxLength.Value}, " +
+                                 $"ErrorMessage = \"{prop.DisplayName ?? prop.Name} deve ter no máximo {{1}} caracteres\")]");
                 }
             }
 
-            // Propriedade com valor padrão
-            lines.Add($"    {prop.GetPropertyDeclaration()}");
-            lines.Add("");
+            // Propriedade
+            sb.AppendLine($"    {prop.GetPropertyDeclaration()}");
+            sb.AppendLine();
         }
 
-        return string.Join("\n", lines).TrimEnd();
+        return sb.ToString().TrimEnd();
     }
 
     #endregion

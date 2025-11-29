@@ -3,7 +3,7 @@
  * CRUD BASE - JavaScript Reutilizável para Operações CRUD
  * ============================================================================
  * Arquivo: wwwroot/js/crud-base.js
- * Versão: 3.0 (Corrigido - Case-insensitive field mapping)
+ * Versão: 3.1 (Corrigido - Trim automático nos IDs + Debug aprimorado)
  * 
  * Classe base para implementação de CRUDs com DataTables.
  * Fornece funcionalidades reutilizáveis como:
@@ -13,6 +13,11 @@
  * - Seleção múltipla e exclusão em lote
  * - Validação de formulários
  * - Feedback visual com SweetAlert2
+ * 
+ * CORREÇÕES v3.1:
+ * - Trim automático nos IDs capturados dos botões de ação
+ * - Validação de ID vazio antes de chamar endpoints
+ * - Debug melhorado para identificar problemas
  * 
  * ============================================================================
  */
@@ -188,6 +193,42 @@ class CrudBase {
     }
 
     /**
+     * ⭐ MÉTODO AUXILIAR: Obtém ID do botão com trim e validação
+     * @param {jQuery} $button - Elemento jQuery do botão
+     * @returns {string|null} ID limpo ou null se inválido
+     */
+    getIdFromButton($button) {
+        // Tenta obter via data() primeiro (cache do jQuery)
+        let id = $button.data('id');
+
+        // Se não encontrou ou é undefined, tenta via attr()
+        if (id === undefined || id === null) {
+            id = $button.attr('data-id');
+        }
+
+        // Converte para string e faz trim
+        if (id !== undefined && id !== null) {
+            id = String(id).trim();
+        }
+
+        // Log para debug
+        console.log('🔍 [CRUD-BASE] ID capturado:', {
+            dataId: $button.data('id'),
+            attrId: $button.attr('data-id'),
+            finalId: id,
+            isEmpty: !id || id === ''
+        });
+
+        // Retorna null se vazio
+        if (!id || id === '') {
+            console.warn('⚠️ [CRUD-BASE] ID vazio ou inválido!');
+            return null;
+        }
+
+        return id;
+    }
+
+    /**
      * Vincula eventos aos elementos da página.
      */
     bindEvents() {
@@ -213,20 +254,32 @@ class CrudBase {
             self.dataTable.search($(this).val()).draw();
         });
 
-        // Botões de ação na tabela (delegação de eventos)
+        // ⭐ CORREÇÃO: Botões de ação na tabela com validação de ID
         $(this.tableSelector).on('click', '.btn-view', function () {
-            const id = $(this).data('id');
-            self.view(id);
+            const id = self.getIdFromButton($(this));
+            if (id) {
+                self.view(id);
+            } else {
+                self.showError('Não foi possível identificar o registro. Atualize a página.');
+            }
         });
 
         $(this.tableSelector).on('click', '.btn-edit', function () {
-            const id = $(this).data('id');
-            self.edit(id);
+            const id = self.getIdFromButton($(this));
+            if (id) {
+                self.edit(id);
+            } else {
+                self.showError('Não foi possível identificar o registro. Atualize a página.');
+            }
         });
 
         $(this.tableSelector).on('click', '.btn-delete', function () {
-            const id = $(this).data('id');
-            self.delete(id);
+            const id = self.getIdFromButton($(this));
+            if (id) {
+                self.delete(id);
+            } else {
+                self.showError('Não foi possível identificar o registro. Atualize a página.');
+            }
         });
 
         // Submit do formulário
@@ -284,8 +337,15 @@ class CrudBase {
      */
     async edit(id) {
         const self = this;
+
+        // ⭐ VALIDAÇÃO: ID não pode ser vazio
+        if (!id || String(id).trim() === '') {
+            this.showError('ID do registro não foi informado.');
+            return;
+        }
+
         this.isEditMode = true;
-        this.currentId = id;
+        this.currentId = String(id).trim();
 
         try {
             this.showLoading();
@@ -293,7 +353,7 @@ class CrudBase {
             const response = await $.ajax({
                 url: `/${this.controllerName}/GetById`,
                 type: 'GET',
-                data: { id: id }
+                data: { id: this.currentId }
             });
 
             this.hideLoading();
@@ -319,13 +379,21 @@ class CrudBase {
      * @param {string|number} id - ID do registro
      */
     async view(id) {
+        // ⭐ VALIDAÇÃO: ID não pode ser vazio
+        if (!id || String(id).trim() === '') {
+            this.showError('ID do registro não foi informado.');
+            return;
+        }
+
+        const cleanId = String(id).trim();
+
         try {
             this.showLoading();
 
             const response = await $.ajax({
                 url: `/${this.controllerName}/GetById`,
                 type: 'GET',
-                data: { id: id }
+                data: { id: cleanId }
             });
 
             this.hideLoading();
@@ -458,6 +526,13 @@ class CrudBase {
      * @param {string|number} id - ID do registro
      */
     async delete(id) {
+        // ⭐ VALIDAÇÃO: ID não pode ser vazio
+        if (!id || String(id).trim() === '') {
+            this.showError('ID do registro não foi informado.');
+            return;
+        }
+
+        const cleanId = String(id).trim();
         const self = this;
         const token = $('input[name="__RequestVerificationToken"]').val();
 
@@ -476,9 +551,9 @@ class CrudBase {
             try {
                 this.showLoading();
 
-                // ✅ CORREÇÃO: Envia ID como query parameter, não como body
+                // ✅ Envia ID como query parameter com trim
                 const response = await $.ajax({
-                    url: `/${this.controllerName}/Delete?id=${encodeURIComponent(id)}`,
+                    url: `/${this.controllerName}/Delete?id=${encodeURIComponent(cleanId)}`,
                     type: 'POST',
                     headers: {
                         'RequestVerificationToken': token
@@ -661,7 +736,9 @@ class CrudBase {
                     $field.val(value).trigger('change');
                 } else {
                     // Input text, textarea, hidden, etc.
-                    $field.val(value);
+                    // ⭐ CORREÇÃO: Trim em valores string
+                    const finalValue = typeof value === 'string' ? value.trim() : value;
+                    $field.val(finalValue);
                 }
             }
         });
@@ -686,13 +763,20 @@ class CrudBase {
                 const idField = self.idField.toLowerCase();
                 for (const key in rowData) {
                     if (key.toLowerCase() === idField) {
-                        ids.push(rowData[key]);
+                        // ⭐ CORREÇÃO: Trim no ID
+                        const id = typeof rowData[key] === 'string'
+                            ? rowData[key].trim()
+                            : rowData[key];
+                        if (id && String(id).trim() !== '') {
+                            ids.push(id);
+                        }
                         break;
                     }
                 }
             }
         });
 
+        console.log('✅ [CRUD-BASE] IDs selecionados:', ids);
         return ids;
     }
 

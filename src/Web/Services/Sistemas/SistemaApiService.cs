@@ -1,58 +1,692 @@
 // =============================================================================
-// ARQUIVO GERADO POR RhSensoERP.CrudTool
-// Entity: Sistema
-// Data: 2025-11-27 01:25:15
+// RHSENSOERP WEB - SISTEMA API SERVICE
+// =============================================================================
+// Arquivo: src/Web/Services/Sistemas/SistemaApiService.cs
+// Versão: 3.1 - Corrigido autenticação com GetTokenAsync
 // =============================================================================
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using RhSensoERP.Web.Models.Sistemas;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using RhSensoERP.Web.Models.Common;
+using RhSensoERP.Web.Models.Sistemas;
 using RhSensoERP.Web.Services.Base;
 
 namespace RhSensoERP.Web.Services.Sistemas;
 
 /// <summary>
-/// Implementação do serviço de API para Sistema.
+/// Serviço para comunicação com a API de Sistemas.
 /// </summary>
-public class SistemaApiService : ISistemaApiService
+public sealed class SistemaApiService : ISistemaApiService
 {
-    private readonly HttpClient _httpClient;
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SistemaApiService> _logger;
-    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private const string BaseEndpoint = "/api/identity/sistemas";
 
-    private const string ApiRoute = "api/identity/sistemas";
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
     public SistemaApiService(
-        HttpClient httpClient,
-        IHttpContextAccessor httpContextAccessor,
-        ILogger<SistemaApiService> logger)
+        IHttpClientFactory httpClientFactory,
+        ILogger<SistemaApiService> logger,
+        IHttpContextAccessor httpContextAccessor)
     {
-        _httpClient = httpClient;
-        _httpContextAccessor = httpContextAccessor;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
-        _jsonOptions = new JsonSerializerOptions
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    // =========================================================================
+    // AUTENTICAÇÃO
+    // =========================================================================
+
+    private async Task<HttpClient> GetAuthenticatedClientAsync()
+    {
+        var client = _httpClientFactory.CreateClient("ApiClient");
+
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext != null)
         {
-            PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            // 1. Primeiro tenta via GetTokenAsync (onde StoreTokens salva)
+            var token = await httpContext.GetTokenAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                "access_token");
+
+            // 2. Fallback: tenta via Claims
+            if (string.IsNullOrEmpty(token))
+            {
+                token = httpContext.User.FindFirst("AccessToken")?.Value
+                     ?? httpContext.User.FindFirst("access_token")?.Value;
+            }
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", token);
+                _logger.LogDebug("🔑 [SISTEMAS] Token JWT configurado para requisição");
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ [SISTEMAS] Token JWT não encontrado para usuário autenticado");
+            }
+        }
+
+        return client;
+    }
+
+    // =========================================================================
+    // OPERAÇÕES CRUD
+    // =========================================================================
+
+    /// <inheritdoc/>
+    public async Task<ApiResponse<PagedResult<SistemaDto>>> GetPagedAsync(
+        int page,
+        int pageSize,
+        string? search = null)
+    {
+        try
+        {
+            var client = await GetAuthenticatedClientAsync();
+
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                queryParams.Add($"search={Uri.EscapeDataString(search)}");
+            }
+
+            var url = $"{BaseEndpoint}?{string.Join("&", queryParams)}";
+
+            _logger.LogDebug("[SISTEMAS] GET {Url}", url);
+
+            var response = await client.GetAsync(url);
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                return TryDeserializePagedResult(content);
+            }
+
+            _logger.LogWarning("[SISTEMAS] Erro ao buscar dados: {Status}", response.StatusCode);
+            return CreateErrorResponse<PagedResult<SistemaDto>>("Erro ao buscar dados");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao buscar dados paginados");
+            return CreateErrorResponse<PagedResult<SistemaDto>>(ex.Message);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<ApiResponse<IEnumerable<SistemaDto>>> GetAllAsync()
+    {
+        try
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.GetAsync($"{BaseEndpoint}/all");
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                return TryDeserializeList(content);
+            }
+
+            return CreateErrorResponse<IEnumerable<SistemaDto>>("Erro ao buscar registros");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao buscar todos os registros");
+            return CreateErrorResponse<IEnumerable<SistemaDto>>(ex.Message);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<ApiResponse<SistemaDto>> GetByIdAsync(string id)
+    {
+        try
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var url = $"{BaseEndpoint}/{Uri.EscapeDataString(id)}";
+
+            var response = await client.GetAsync(url);
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                return TryDeserializeSingle(content);
+            }
+
+            return CreateErrorResponse<SistemaDto>("Registro não encontrado");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao buscar registro {Id}", id);
+            return CreateErrorResponse<SistemaDto>(ex.Message);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<ApiResponse<SistemaDto>> CreateAsync(CreateSistemaDto dto)
+    {
+        try
+        {
+            var client = await GetAuthenticatedClientAsync();
+
+            var json = JsonSerializer.Serialize(dto, JsonOptions);
+            var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync(BaseEndpoint, httpContent);
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = TryDeserializeSingle(content);
+
+                if (!result.Success || result.Data == null)
+                {
+                    return new ApiResponse<SistemaDto>
+                    {
+                        Success = true,
+                        Data = new SistemaDto
+                        {
+                            CdSistema = dto.CdSistema,
+                            DcSistema = dto.DcSistema,
+                            Ativo = dto.Ativo
+                        },
+                        Error = new ApiError { Message = "Registro criado com sucesso" }
+                    };
+                }
+
+                return result;
+            }
+
+            var errorMessage = TryExtractErrorMessage(content) ?? "Erro ao criar registro";
+            return CreateErrorResponse<SistemaDto>(errorMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao criar registro");
+            return CreateErrorResponse<SistemaDto>(ex.Message);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<ApiResponse<SistemaDto>> UpdateAsync(string id, UpdateSistemaDto dto)
+    {
+        try
+        {
+            var client = await GetAuthenticatedClientAsync();
+
+            var json = JsonSerializer.Serialize(dto, JsonOptions);
+            var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var url = $"{BaseEndpoint}/{Uri.EscapeDataString(id)}";
+
+            var response = await client.PutAsync(url, httpContent);
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = TryDeserializeSingle(content);
+
+                if (!result.Success || result.Data == null)
+                {
+                    return new ApiResponse<SistemaDto>
+                    {
+                        Success = true,
+                        Data = new SistemaDto
+                        {
+                            CdSistema = id,  // Usa o ID da URL
+                            DcSistema = dto.DcSistema,
+                            Ativo = dto.Ativo
+                        },
+                        Error = new ApiError { Message = "Registro atualizado com sucesso" }
+                    };
+                }
+
+                return result;
+            }
+
+            var errorMessage = TryExtractErrorMessage(content) ?? "Erro ao atualizar registro";
+            return CreateErrorResponse<SistemaDto>(errorMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao atualizar registro {Id}", id);
+            return CreateErrorResponse<SistemaDto>(ex.Message);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<ApiResponse<bool>> DeleteAsync(string id)
+    {
+        try
+        {
+            var client = await GetAuthenticatedClientAsync();
+
+            var url = $"{BaseEndpoint}/{Uri.EscapeDataString(id)}";
+
+            var response = await client.DeleteAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = true,
+                    Data = true,
+                    Error = new ApiError { Message = "Registro excluído com sucesso" }
+                };
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var errorMessage = TryExtractErrorMessage(content) ?? "Erro ao excluir registro";
+
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Error = new ApiError { Message = errorMessage }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao excluir registro {Id}", id);
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Error = new ApiError { Message = ex.Message }
+            };
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<ApiResponse<bool>> DeleteMultipleAsync(IEnumerable<string> ids)
+    {
+        var result = await DeleteBatchAsync(ids);
+        return new ApiResponse<bool>
+        {
+            Success = result.Success,
+            Data = result.Success && (result.Data?.AllSucceeded ?? false),
+            Error = result.Error
         };
     }
 
-    #region Private Methods
-
-    private void SetAuthHeader()
+    /// <inheritdoc/>
+    public async Task<ApiResponse<BatchDeleteResultDto>> DeleteBatchAsync(IEnumerable<string> codigos)
     {
-        var context = _httpContextAccessor.HttpContext;
-        if (context?.User?.Identity?.IsAuthenticated == true)
+        try
         {
-            var token = context.User.FindFirst("AccessToken")?.Value;
-            if (!string.IsNullOrEmpty(token))
+            var client = await GetAuthenticatedClientAsync();
+
+            var codigosList = codigos.ToList();
+            var json = JsonSerializer.Serialize(codigosList, JsonOptions);
+            var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"{BaseEndpoint}/batch")
             {
-                _httpClient.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
+                Content = httpContent
+            };
+
+            _logger.LogDebug("[SISTEMAS] DELETE {Url} | Payload: {Json}",
+                $"{BaseEndpoint}/batch", json);
+
+            var response = await client.SendAsync(request);
+            var content = await response.Content.ReadAsStringAsync();
+
+            _logger.LogDebug("[SISTEMAS] DeleteBatch Response ({Status}): {Content}",
+                response.StatusCode, content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return TryDeserializeBatchResult(content, codigosList.Count);
+            }
+
+            var errorMessage = TryExtractErrorMessage(content) ?? "Erro ao excluir registros";
+
+            return new ApiResponse<BatchDeleteResultDto>
+            {
+                Success = false,
+                Error = new ApiError { Message = errorMessage }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao excluir múltiplos registros");
+            return new ApiResponse<BatchDeleteResultDto>
+            {
+                Success = false,
+                Error = new ApiError { Message = ex.Message }
+            };
+        }
+    }
+
+    // =========================================================================
+    // MÉTODOS AUXILIARES DE DESERIALIZAÇÃO
+    // =========================================================================
+
+    private ApiResponse<SistemaDto> TryDeserializeSingle(string content)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(content);
+            var root = doc.RootElement;
+
+            // Formato 1: Result<T> da API { isSuccess, value, error }
+            if (root.TryGetProperty("isSuccess", out var isSuccessProp) ||
+                root.TryGetProperty("IsSuccess", out isSuccessProp))
+            {
+                var isSuccess = isSuccessProp.GetBoolean();
+
+                if (isSuccess)
+                {
+                    if (root.TryGetProperty("value", out var valueProp) ||
+                        root.TryGetProperty("Value", out valueProp))
+                    {
+                        if (valueProp.ValueKind == JsonValueKind.Object)
+                        {
+                            var dto = JsonSerializer.Deserialize<SistemaDto>(
+                                valueProp.GetRawText(), JsonOptions);
+
+                            return new ApiResponse<SistemaDto>
+                            {
+                                Success = true,
+                                Data = dto
+                            };
+                        }
+                    }
+                }
+                else
+                {
+                    var errorMsg = TryExtractErrorFromElement(root);
+                    return CreateErrorResponse<SistemaDto>(errorMsg ?? "Operação falhou");
+                }
+            }
+
+            // Formato 2: Objeto direto (SistemaDto)
+            if (root.TryGetProperty("cdSistema", out _) ||
+                root.TryGetProperty("CdSistema", out _))
+            {
+                var dto = JsonSerializer.Deserialize<SistemaDto>(content, JsonOptions);
+                return new ApiResponse<SistemaDto>
+                {
+                    Success = true,
+                    Data = dto
+                };
+            }
+
+            // Formato 3: Resposta encapsulada { success, data, message }
+            if (root.TryGetProperty("success", out var successProp) ||
+                root.TryGetProperty("Success", out successProp))
+            {
+                var success = successProp.GetBoolean();
+
+                if (success && (root.TryGetProperty("data", out var dataProp) ||
+                               root.TryGetProperty("Data", out dataProp)))
+                {
+                    if (dataProp.ValueKind == JsonValueKind.Object)
+                    {
+                        var dto = JsonSerializer.Deserialize<SistemaDto>(
+                            dataProp.GetRawText(), JsonOptions);
+
+                        return new ApiResponse<SistemaDto>
+                        {
+                            Success = true,
+                            Data = dto
+                        };
+                    }
+                }
+            }
+
+            return CreateErrorResponse<SistemaDto>("Formato de resposta não reconhecido");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao deserializar resposta");
+            return CreateErrorResponse<SistemaDto>("Erro ao processar resposta da API");
+        }
+    }
+
+    private ApiResponse<PagedResult<SistemaDto>> TryDeserializePagedResult(string content)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(content);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("isSuccess", out var isSuccessProp) ||
+                root.TryGetProperty("IsSuccess", out isSuccessProp))
+            {
+                if (isSuccessProp.GetBoolean())
+                {
+                    if (root.TryGetProperty("value", out var valueProp) ||
+                        root.TryGetProperty("Value", out valueProp))
+                    {
+                        var pagedResult = JsonSerializer.Deserialize<PagedResult<SistemaDto>>(
+                            valueProp.GetRawText(), JsonOptions);
+
+                        return new ApiResponse<PagedResult<SistemaDto>>
+                        {
+                            Success = true,
+                            Data = pagedResult
+                        };
+                    }
+                }
+            }
+
+            if (root.TryGetProperty("items", out _) || root.TryGetProperty("Items", out _))
+            {
+                var pagedResult = JsonSerializer.Deserialize<PagedResult<SistemaDto>>(
+                    content, JsonOptions);
+
+                return new ApiResponse<PagedResult<SistemaDto>>
+                {
+                    Success = true,
+                    Data = pagedResult
+                };
+            }
+
+            return CreateErrorResponse<PagedResult<SistemaDto>>("Formato de resposta não reconhecido");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao deserializar resposta paginada");
+            return CreateErrorResponse<PagedResult<SistemaDto>>("Erro ao processar resposta da API");
+        }
+    }
+
+    private ApiResponse<IEnumerable<SistemaDto>> TryDeserializeList(string content)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(content);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("isSuccess", out var isSuccessProp) ||
+                root.TryGetProperty("IsSuccess", out isSuccessProp))
+            {
+                if (isSuccessProp.GetBoolean())
+                {
+                    if (root.TryGetProperty("value", out var valueProp) ||
+                        root.TryGetProperty("Value", out valueProp))
+                    {
+                        var list = JsonSerializer.Deserialize<IEnumerable<SistemaDto>>(
+                            valueProp.GetRawText(), JsonOptions);
+
+                        return new ApiResponse<IEnumerable<SistemaDto>>
+                        {
+                            Success = true,
+                            Data = list
+                        };
+                    }
+                }
+            }
+
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                var list = JsonSerializer.Deserialize<IEnumerable<SistemaDto>>(
+                    content, JsonOptions);
+
+                return new ApiResponse<IEnumerable<SistemaDto>>
+                {
+                    Success = true,
+                    Data = list
+                };
+            }
+
+            return CreateErrorResponse<IEnumerable<SistemaDto>>("Formato de resposta não reconhecido");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao deserializar lista");
+            return CreateErrorResponse<IEnumerable<SistemaDto>>("Erro ao processar resposta da API");
+        }
+    }
+
+    private ApiResponse<BatchDeleteResultDto> TryDeserializeBatchResult(string content, int requestedCount)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(content);
+            var root = doc.RootElement;
+
+            // Formato Result<BatchDeleteResult>: { isSuccess, value, error }
+            if (root.TryGetProperty("isSuccess", out var isSuccessProp) ||
+                root.TryGetProperty("IsSuccess", out isSuccessProp))
+            {
+                if (isSuccessProp.GetBoolean())
+                {
+                    if (root.TryGetProperty("value", out var valueProp) ||
+                        root.TryGetProperty("Value", out valueProp))
+                    {
+                        var dto = JsonSerializer.Deserialize<BatchDeleteResultDto>(
+                            valueProp.GetRawText(), JsonOptions);
+
+                        var message = dto?.AllSucceeded == true
+                            ? $"{dto.SuccessCount} registro(s) excluído(s) com sucesso."
+                            : $"Excluídos: {dto?.SuccessCount}, Falhas: {dto?.FailureCount}";
+
+                        return new ApiResponse<BatchDeleteResultDto>
+                        {
+                            Success = true,
+                            Data = dto,
+                            Error = new ApiError { Message = message }
+                        };
+                    }
+
+                    // Se isSuccess mas não tem value, assume sucesso total
+                    return new ApiResponse<BatchDeleteResultDto>
+                    {
+                        Success = true,
+                        Data = new BatchDeleteResultDto
+                        {
+                            SuccessCount = requestedCount,
+                            FailureCount = 0
+                        },
+                        Error = new ApiError { Message = $"{requestedCount} registro(s) excluído(s) com sucesso." }
+                    };
+                }
+                else
+                {
+                    var errorMsg = TryExtractErrorFromElement(root);
+                    return new ApiResponse<BatchDeleteResultDto>
+                    {
+                        Success = false,
+                        Error = new ApiError { Message = errorMsg ?? "Erro na exclusão" }
+                    };
+                }
+            }
+
+            // Formato direto BatchDeleteResultDto
+            if (root.TryGetProperty("successCount", out _) ||
+                root.TryGetProperty("SuccessCount", out _))
+            {
+                var dto = JsonSerializer.Deserialize<BatchDeleteResultDto>(content, JsonOptions);
+                return new ApiResponse<BatchDeleteResultDto>
+                {
+                    Success = true,
+                    Data = dto,
+                    Error = new ApiError { Message = $"{dto?.SuccessCount} registro(s) excluído(s)." }
+                };
+            }
+
+            // Fallback: assume sucesso
+            return new ApiResponse<BatchDeleteResultDto>
+            {
+                Success = true,
+                Data = new BatchDeleteResultDto
+                {
+                    SuccessCount = requestedCount,
+                    FailureCount = 0
+                },
+                Error = new ApiError { Message = $"{requestedCount} registro(s) excluído(s)." }
+            };
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[SISTEMAS] Erro ao deserializar resultado batch");
+            return new ApiResponse<BatchDeleteResultDto>
+            {
+                Success = false,
+                Error = new ApiError { Message = "Erro ao processar resposta da API" }
+            };
+        }
+    }
+
+    private string? TryExtractErrorMessage(string content)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(content);
+            return TryExtractErrorFromElement(doc.RootElement);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private string? TryExtractErrorFromElement(JsonElement element)
+    {
+        if (element.TryGetProperty("error", out var errorProp) ||
+            element.TryGetProperty("Error", out errorProp))
+        {
+            if (errorProp.ValueKind == JsonValueKind.Object)
+            {
+                if (errorProp.TryGetProperty("description", out var descProp) ||
+                    errorProp.TryGetProperty("Description", out descProp))
+                {
+                    return descProp.GetString();
+                }
+
+                if (errorProp.TryGetProperty("message", out var msgProp) ||
+                    errorProp.TryGetProperty("Message", out msgProp))
+                {
+                    return msgProp.GetString();
+                }
+            }
+            else if (errorProp.ValueKind == JsonValueKind.String)
+            {
+                return errorProp.GetString();
             }
         }
+
+        if (element.TryGetProperty("message", out var directMsgProp) ||
+            element.TryGetProperty("Message", out directMsgProp))
+        {
+            return directMsgProp.GetString();
+        }
+
+        return null;
     }
 
     private static ApiResponse<T> CreateErrorResponse<T>(string message)
@@ -63,338 +697,4 @@ public class SistemaApiService : ISistemaApiService
             Error = new ApiError { Message = message }
         };
     }
-
-    private static ApiResponse<T> CreateSuccessResponse<T>(T? data)
-    {
-        return new ApiResponse<T>
-        {
-            Success = true,
-            Data = data
-        };
-    }
-
-    private async Task<ApiResponse<T>> DeserializeResponseAsync<T>(
-        HttpResponseMessage response,
-        string operation)
-    {
-        var content = await response.Content.ReadAsStringAsync();
-
-        if (response.IsSuccessStatusCode)
-        {
-            try
-            {
-                // Tenta deserializar como ApiResponse<T> primeiro
-                var apiResponse = JsonSerializer.Deserialize<ApiResponse<T>>(content, _jsonOptions);
-                if (apiResponse != null)
-                    return apiResponse;
-
-                // Se não for ApiResponse, tenta deserializar direto como T
-                var data = JsonSerializer.Deserialize<T>(content, _jsonOptions);
-                return CreateSuccessResponse(data);
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogWarning(ex, "[SISTEMA] Erro ao deserializar resposta de {Operation}", operation);
-                return CreateErrorResponse<T>("Erro ao processar resposta do servidor");
-            }
-        }
-
-        // Tenta extrair mensagem de erro
-        string? errorMessage = null;
-        try
-        {
-            var errorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(content, _jsonOptions);
-            errorMessage = errorResponse?.Message;
-        }
-        catch { }
-
-        _logger.LogWarning("[SISTEMA] Erro em {Operation}: {Status} - {Content}",
-            operation, response.StatusCode, content);
-
-        return CreateErrorResponse<T>(errorMessage ?? $"Erro: {response.StatusCode}");
-    }
-
-    /// <summary>
-    /// Deserializa resposta que retorna apenas o ID (string) da entidade criada.
-    /// A API retorna Result<string> para Create, não Result<SistemaDto>.
-    /// </summary>
-    private async Task<ApiResponse<string>> DeserializeCreateResponseAsync(
-        HttpResponseMessage response)
-    {
-        var content = await response.Content.ReadAsStringAsync();
-
-        if (response.IsSuccessStatusCode)
-        {
-            try
-            {
-                // A API retorna Result<string> com o ID criado
-                using var doc = JsonDocument.Parse(content);
-                var root = doc.RootElement;
-
-                // Verifica se é Result<T> (tem isSuccess e value)
-                if (root.TryGetProperty("isSuccess", out var isSuccessProp) && isSuccessProp.GetBoolean())
-                {
-                    if (root.TryGetProperty("value", out var valueProp))
-                    {
-                        var id = valueProp.GetString() ?? string.Empty;
-                        return CreateSuccessResponse(id);
-                    }
-                }
-
-                // Se tem error
-                if (root.TryGetProperty("error", out var errorProp) &&
-                    errorProp.TryGetProperty("message", out var msgProp))
-                {
-                    return CreateErrorResponse<string>(msgProp.GetString() ?? "Erro desconhecido");
-                }
-
-                return CreateSuccessResponse(string.Empty);
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogWarning(ex, "[SISTEMA] Erro ao deserializar resposta de Create");
-                return CreateErrorResponse<string>("Erro ao processar resposta do servidor");
-            }
-        }
-
-        // Erro - tenta extrair mensagem
-        string? errorMessage = null;
-        try
-        {
-            using var doc = JsonDocument.Parse(content);
-            var root = doc.RootElement;
-
-            if (root.TryGetProperty("error", out var errorProp) &&
-                errorProp.TryGetProperty("message", out var msgProp))
-            {
-                errorMessage = msgProp.GetString();
-            }
-        }
-        catch { }
-
-        _logger.LogWarning("[SISTEMA] Erro em Create: {Status} - {Content}",
-            response.StatusCode, content);
-
-        return CreateErrorResponse<string>(errorMessage ?? $"Erro: {response.StatusCode}");
-    }
-
-    #endregion
-
-    #region IApiService Implementation
-
-    /// <inheritdoc/>
-    public async Task<ApiResponse<PagedResult<SistemaDto>>> GetPagedAsync(
-        int page, int pageSize, string? search = null)
-    {
-        try
-        {
-            SetAuthHeader();
-
-            var queryParams = $"?page={page}&pageSize={pageSize}";
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                queryParams += $"&search={Uri.EscapeDataString(search)}";
-            }
-
-            var response = await _httpClient.GetAsync($"{ApiRoute}{queryParams}");
-            return await DeserializeResponseAsync<PagedResult<SistemaDto>>(response, "GetPaged");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SISTEMA] Exceção em GetPagedAsync");
-            return CreateErrorResponse<PagedResult<SistemaDto>>("Erro de conexão com o servidor");
-        }
-    }
-
-    /// <inheritdoc/>
-    public async Task<ApiResponse<IEnumerable<SistemaDto>>> GetAllAsync()
-    {
-        try
-        {
-            SetAuthHeader();
-
-            var result = await GetPagedAsync(1, 10000, null);
-
-            if (!result.Success || result.Data == null)
-            {
-                return CreateErrorResponse<IEnumerable<SistemaDto>>(result.Message ?? "Erro ao buscar dados");
-            }
-
-            return CreateSuccessResponse<IEnumerable<SistemaDto>>(result.Data.Items);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SISTEMA] Exceção em GetAllAsync");
-            return CreateErrorResponse<IEnumerable<SistemaDto>>("Erro de conexão com o servidor");
-        }
-    }
-
-    /// <inheritdoc/>
-    public async Task<ApiResponse<SistemaDto>> GetByIdAsync(string id)
-    {
-        try
-        {
-            SetAuthHeader();
-
-            var response = await _httpClient.GetAsync($"{ApiRoute}/{id}");
-            return await DeserializeResponseAsync<SistemaDto>(response, "GetById");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SISTEMA] Exceção em GetByIdAsync");
-            return CreateErrorResponse<SistemaDto>("Erro de conexão com o servidor");
-        }
-    }
-
-    /// <inheritdoc/>
-    public async Task<ApiResponse<SistemaDto>> CreateAsync(CreateSistemaDto dto)
-    {
-        try
-        {
-            SetAuthHeader();
-
-            // Log do DTO antes de enviar
-            _logger.LogDebug("[SISTEMA] CreateAsync - DTO recebido: CdSistema={CdSistema}, DcSistema={DcSistema}, Ativo={Ativo}",
-                dto.CdSistema, dto.DcSistema, dto.Ativo);
-
-            var json = JsonSerializer.Serialize(dto, _jsonOptions);
-            _logger.LogDebug("[SISTEMA] CreateAsync - JSON a enviar: {Json}", json);
-
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync(ApiRoute, content);
-
-            // A API retorna Result<string> (o ID criado), não Result<SistemaDto>
-            var createResult = await DeserializeCreateResponseAsync(response);
-
-            if (!createResult.Success)
-            {
-                return CreateErrorResponse<SistemaDto>(createResult.Message ?? "Erro ao criar registro");
-            }
-
-            // Retorna um DTO com o ID criado
-            var createdDto = new SistemaDto
-            {
-                CdSistema = createResult.Data ?? dto.CdSistema,
-                DcSistema = dto.DcSistema,
-                Ativo = dto.Ativo
-            };
-
-            return CreateSuccessResponse(createdDto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SISTEMA] Exceção em CreateAsync");
-            return CreateErrorResponse<SistemaDto>("Erro de conexão com o servidor");
-        }
-    }
-
-    /// <inheritdoc/>
-    public async Task<ApiResponse<SistemaDto>> UpdateAsync(string id, UpdateSistemaDto dto)
-    {
-        try
-        {
-            SetAuthHeader();
-
-            var json = JsonSerializer.Serialize(dto, _jsonOptions);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PutAsync($"{ApiRoute}/{id}", content);
-
-            // Update também pode retornar Result<string> ou Result<SistemaDto>
-            // Vamos tratar de forma similar ao Create
-            if (response.IsSuccessStatusCode)
-            {
-                var updatedDto = new SistemaDto
-                {
-                    CdSistema = id,
-                    DcSistema = dto.DcSistema,
-                    Ativo = dto.Ativo
-                };
-                return CreateSuccessResponse(updatedDto);
-            }
-
-            return await DeserializeResponseAsync<SistemaDto>(response, "Update");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SISTEMA] Exceção em UpdateAsync");
-            return CreateErrorResponse<SistemaDto>("Erro de conexão com o servidor");
-        }
-    }
-
-    /// <inheritdoc/>
-    public async Task<ApiResponse<bool>> DeleteAsync(string id)
-    {
-        try
-        {
-            SetAuthHeader();
-
-            var response = await _httpClient.DeleteAsync($"{ApiRoute}/{id}");
-
-            if (response.IsSuccessStatusCode)
-            {
-                return CreateSuccessResponse(true);
-            }
-
-            return await DeserializeResponseAsync<bool>(response, "Delete");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SISTEMA] Exceção em DeleteAsync");
-            return CreateErrorResponse<bool>("Erro de conexão com o servidor");
-        }
-    }
-
-    /// <inheritdoc/>
-    public async Task<ApiResponse<bool>> DeleteMultipleAsync(IEnumerable<string> ids)
-    {
-        try
-        {
-            var result = await DeleteBatchAsync(ids);
-
-            return new ApiResponse<bool>
-            {
-                Success = result.Success,
-                Data = result.Success && (result.Data?.AllSucceeded ?? false),
-                Error = result.Error
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SISTEMA] Exceção em DeleteMultipleAsync");
-            return CreateErrorResponse<bool>("Erro de conexão com o servidor");
-        }
-    }
-
-    #endregion
-
-    #region IBatchDeleteService Implementation
-
-    /// <inheritdoc/>
-    public async Task<ApiResponse<BatchDeleteResultDto>> DeleteBatchAsync(IEnumerable<string> ids)
-    {
-        try
-        {
-            SetAuthHeader();
-
-            var idsList = ids.ToList();
-            var json = JsonSerializer.Serialize(idsList, _jsonOptions);
-
-            var request = new HttpRequestMessage(HttpMethod.Delete, $"{ApiRoute}/batch")
-            {
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
-            };
-
-            var response = await _httpClient.SendAsync(request);
-            return await DeserializeResponseAsync<BatchDeleteResultDto>(response, "DeleteBatch");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SISTEMA] Exceção em DeleteBatchAsync");
-            return CreateErrorResponse<BatchDeleteResultDto>("Erro de conexão com o servidor");
-        }
-    }
-
-    #endregion
 }
