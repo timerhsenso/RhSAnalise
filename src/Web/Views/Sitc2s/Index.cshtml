@@ -1,0 +1,136 @@
+﻿@model RhSensoERP.Web.Models.Sitc2s.Sitc2sListViewModel
+@{
+    ViewData["Title"] = Model.PageTitle;
+    Layout = "_CrudLayout";
+    ViewData["EntityName"] = "Situação de Frequência";
+    ViewData["IconClass"] = "fas fa-list";
+}
+
+@* ============================================================================
+   Permissões injetadas para JavaScript (ANTES do script específico)
+   ============================================================================ *@
+<script>
+    window.crudPermissions = {
+        canCreate: @Model.CanCreate.ToString().ToLower(),
+        canEdit: @Model.CanEdit.ToString().ToLower(),
+        canDelete: @Model.CanDelete.ToString().ToLower(),
+        canView: @Model.CanView.ToString().ToLower(),
+        actions: "@Model.UserPermissions"
+    };
+</script>
+
+@* ============================================================================
+   Tabela usando partial _CrudTable (toolbar + datatable)
+   ============================================================================ *@
+@await Html.PartialAsync("_CrudTable", Model)
+
+@* ============================================================================
+   Conteúdo do Modal (apenas campos do formulário)
+   O wrapper do modal está no _CrudLayout
+   ============================================================================ *@
+@section ModalContent {
+    <input type="hidden" id="Id" name="Id" />
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label for="CdEmpresa" class="form-label">
+                Código Empresa <span class="text-danger">*</span>
+            </label>
+            <input type="number" class="form-control" id="CdEmpresa" name="CdEmpresa" 
+                   placeholder="Digite o código da empresa" required  />
+            <small class="form-text text-muted">Código numérico da empresa</small>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label for="CdFilial" class="form-label">
+                Código Filial <span class="text-danger">*</span>
+            </label>
+            <input type="number" class="form-control" id="CdFilial" name="CdFilial" 
+                   placeholder="Digite o código da filial" required  />
+            <small class="form-text text-muted">Código numérico da filial</small>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label for="NoMatric" class="form-label">
+                Matrícula <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control" id="NoMatric" name="NoMatric" 
+                   placeholder="Ex: 00001234" required  maxlength="8" />
+            <small class="form-text text-muted">Matrícula do colaborador (8 caracteres)</small>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label for="DtFrequen" class="form-label">
+                Data Frequência <span class="text-danger">*</span>
+            </label>
+            <input type="date" class="form-control" id="DtFrequen" name="DtFrequen" 
+                   placeholder="" required  />
+            <small class="form-text text-muted">Data da frequência do colaborador</small>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label for="FlSituacao" class="form-label">
+                Situação <span class="text-danger">*</span>
+            </label>
+            <input type="number" class="form-control" id="FlSituacao" name="FlSituacao" 
+                   placeholder="Digite o código da situação" required  />
+            <small class="form-text text-muted">Flag de situação (código numérico)</small>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label for="CdUsuario" class="form-label">
+                Código Usuário
+            </label>
+            <input type="text" class="form-control" id="CdUsuario" name="CdUsuario" 
+                   placeholder="Digite o código do usuário"   maxlength="20" />
+            <small class="form-text text-muted">Usuário responsável pela movimentação (opcional)</small>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="DtUltMov" class="form-label">
+                Data Última Movimentação <span class="text-danger">*</span>
+            </label>
+            <input type="datetime-local" class="form-control" id="DtUltMov" name="DtUltMov" 
+                   placeholder="" required  />
+            <small class="form-text text-muted">Data e hora da última movimentação</small>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="FlProcessado" name="FlProcessado"  />
+                <label class="form-check-label" for="FlProcessado">Processado</label>
+            </div>
+            <small class="form-text text-muted">Indica se o registro foi processado (0 = Não, 1 = Sim)</small>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="FlImportado" name="FlImportado"  />
+                <label class="form-check-label" for="FlImportado">Importado</label>
+            </div>
+            <small class="form-text text-muted">Indica se o registro foi importado (0 = Não, 1 = Sim)</small>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="DtImportacao" class="form-label">
+                Data Importação
+            </label>
+            <input type="datetime-local" class="form-control" id="DtImportacao" name="DtImportacao" 
+                   placeholder=""   />
+            <small class="form-text text-muted">Data e hora da importação (opcional)</small>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="DtProcessamento" class="form-label">
+                Data Processamento
+            </label>
+            <input type="datetime-local" class="form-control" id="DtProcessamento" name="DtProcessamento" 
+                   placeholder=""   />
+            <small class="form-text text-muted">Data e hora do processamento (opcional)</small>
+        </div>
+        <div class="col-md-12 mb-3">
+            <label for="IdFuncionario" class="form-label">
+                Id Funcionário
+            </label>
+            <input type="text" class="form-control" id="IdFuncionario" name="IdFuncionario" 
+                   placeholder="Digite o ID do funcionário (GUID)"   />
+            <small class="form-text text-muted">ID do funcionário vinculado (opcional)</small>
+        </div>
+    </div>
+}
+
+@* ============================================================================
+   Script específico da entidade
+   ============================================================================ *@
+@section PageScripts {
+    <script src="~/js/sitc2s/sitc2.js" asp-append-version="true"></script>
+}
