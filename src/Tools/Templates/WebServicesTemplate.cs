@@ -1,6 +1,11 @@
 // =============================================================================
 // RHSENSOERP CRUD TOOL - WEB SERVICES TEMPLATE
-// Versão: 2.5 - CORREÇÃO: Usar GetTokenAsync("access_token") para JWT
+// Versão: 3.0 - Compatível com auto-registro de serviços no DI
+// =============================================================================
+// MUDANÇAS v3.0:
+// - Removido _httpClient.Timeout do construtor (já configurado pelo DI/Polly)
+// - Adicionado comentário sobre auto-registro
+// - Mantida compatibilidade com HttpClient tipado
 // =============================================================================
 using RhSensoERP.CrudTool.Models;
 
@@ -8,6 +13,11 @@ namespace RhSensoERP.CrudTool.Templates;
 
 /// <summary>
 /// Gera Services que implementam IApiService e IBatchDeleteService existentes.
+/// 
+/// IMPORTANTE v3.0 - AUTO-REGISTRO:
+/// - Serviços gerados usam HttpClient TIPADO (não IHttpClientFactory)
+/// - Isso permite auto-registro via ServiceCollectionExtensions.AddCrudToolServicesAutomatically()
+/// - NÃO configurar Timeout no construtor (já configurado pelo DI + Polly)
 /// 
 /// IMPORTANTE v2.5:
 /// - Token JWT está em AuthenticationTokens (via StoreTokens no AccountController)
@@ -25,9 +35,10 @@ public static class WebServicesTemplate
         var pkType = entity.PkTypeSimple;
 
         return $@"// =============================================================================
-// ARQUIVO GERADO POR RhSensoERP.CrudTool v2.5
+// ARQUIVO GERADO POR RhSensoERP.CrudTool v3.0
 // Entity: {entity.Name}
 // Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
+// AUTO-REGISTRO: Compatível com AddCrudToolServicesAutomatically()
 // =============================================================================
 using RhSensoERP.Web.Models.{entity.PluralName};
 using RhSensoERP.Web.Models.Common;
@@ -57,12 +68,38 @@ public interface I{entity.Name}ApiService
         var pluralLower = entity.PluralNameLower;
         var entityUpper = entity.Name.ToUpper();
         var isGuidPk = pkType.Equals("Guid", StringComparison.OrdinalIgnoreCase);
+        var isStringPk = pkType.Equals("string", StringComparison.OrdinalIgnoreCase);
+
+        // Lógica para verificar ID vazio baseado no tipo
+        var idEmptyCheck = isGuidPk
+            ? "createdId == Guid.Empty"
+            : isStringPk
+                ? "string.IsNullOrEmpty(createdId)"
+                : "createdId == default";
+
+        var idNotEmptyCheck = isGuidPk
+            ? "createdId != Guid.Empty"
+            : isStringPk
+                ? "!string.IsNullOrEmpty(createdId)"
+                : "createdId != default";
+
+        var dataDefaultCheck = isGuidPk
+            ? "createResult.Data != default"
+            : isStringPk
+                ? "!string.IsNullOrEmpty(createResult.Data)"
+                : "createResult.Data != null";
+
+        var getByIdParam = isStringPk ? "createdId" : (isGuidPk ? "createdId" : "createdId!.Value");
 
         return $@"// =============================================================================
-// ARQUIVO GERADO POR RhSensoERP.CrudTool v2.5
+// ARQUIVO GERADO POR RhSensoERP.CrudTool v3.0
 // Entity: {entity.Name}
 // Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
-// CORREÇÃO v2.5: Usando GetTokenAsync para obter JWT do AuthenticationTokens
+// AUTO-REGISTRO: Compatível com AddCrudToolServicesAutomatically()
+// =============================================================================
+// NOTA: Este serviço usa HttpClient TIPADO injetado pelo DI.
+// O Timeout e políticas de resiliência (Polly) são configurados em:
+// ServiceCollectionExtensions.AddCrudToolServicesAutomatically()
 // =============================================================================
 using System.Net.Http.Headers;
 using System.Text;
@@ -78,6 +115,16 @@ namespace RhSensoERP.Web.Services.{entity.PluralName};
 /// Implementação do serviço de API para {entity.DisplayName}.
 /// Consome a API backend gerada pelo Source Generator.
 /// </summary>
+/// <remarks>
+/// Este serviço é registrado automaticamente no DI via:
+/// <code>services.AddCrudToolServicesAutomatically(apiSettings)</code>
+/// 
+/// HttpClient já vem configurado com:
+/// - BaseAddress
+/// - Timeout
+/// - Retry Policy (Polly)
+/// - Circuit Breaker (Polly)
+/// </remarks>
 public class {entity.Name}ApiService : I{entity.Name}ApiService
 {{
     private readonly HttpClient _httpClient;
@@ -93,9 +140,11 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
         ILogger<{entity.Name}ApiService> logger)
     {{
         _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromSeconds(30);
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
+        
+        // NOTA: Timeout e BaseAddress já configurados pelo DI (ServiceCollectionExtensions)
+        // NÃO configurar aqui para evitar conflito com Polly
         
         _jsonOptions = new JsonSerializerOptions
         {{
@@ -108,30 +157,30 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
 
     /// <summary>
     /// Configura header de autenticação com token JWT.
-    /// ✅ CORREÇÃO v2.5: Token está em AuthenticationTokens (StoreTokens no AccountController)
+    /// Token está em AuthenticationTokens (StoreTokens no AccountController).
     /// </summary>
     private async Task SetAuthHeaderAsync()
     {{
         var context = _httpContextAccessor.HttpContext;
         if (context?.User?.Identity?.IsAuthenticated == true)
         {{
-            // ✅ Token está em AuthenticationTokens, não em Claims
+            // Token está em AuthenticationTokens, não em Claims
             var token = await context.GetTokenAsync(""access_token"");
             
             if (!string.IsNullOrEmpty(token))
             {{
                 _httpClient.DefaultRequestHeaders.Authorization = 
                     new AuthenticationHeaderValue(""Bearer"", token);
-                _logger.LogDebug(""🔑 [{entityUpper}] Token JWT configurado para requisição"");
+                _logger.LogDebug(""[{entityUpper}] Token JWT configurado"");
             }}
             else
             {{
-                _logger.LogWarning(""⚠️ [{entityUpper}] Token JWT não encontrado nos AuthenticationTokens"");
+                _logger.LogWarning(""[{entityUpper}] Token JWT não encontrado"");
             }}
         }}
         else
         {{
-            _logger.LogWarning(""⚠️ [{entityUpper}] Usuário não autenticado"");
+            _logger.LogWarning(""[{entityUpper}] Usuário não autenticado"");
         }}
     }}
 
@@ -302,11 +351,11 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
             if (createResult?.IsSuccess == true)
             {{
                 var createdId = createResult.Value;
-                if ({(isGuidPk ? "createdId == default" : "createdId == null")} && createResult.Data != {(isGuidPk ? "default" : "null")})
+                if ({idEmptyCheck} && {dataDefaultCheck})
                     createdId = createResult.Data;
                     
-                if ({(isGuidPk ? "createdId != Guid.Empty" : "createdId != default")})
-                    return await GetByIdAsync(createdId{(isGuidPk ? "" : "!.Value")});
+                if ({idNotEmptyCheck})
+                    return await GetByIdAsync({getByIdParam});
             }}
 
             return Fail<{entity.Name}Dto>(createResult?.Error?.Message ?? ""Erro ao criar registro"");
@@ -430,7 +479,7 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
                         {{
                             Code = e.Id ?? e.Code ?? string.Empty,
                             Message = e.Message ?? string.Empty
-                        }}).ToList() ?? new List<BatchDeleteErrorDto>()
+                        }}).ToList() ?? []
                     }};
                     
                     return Success(dto);

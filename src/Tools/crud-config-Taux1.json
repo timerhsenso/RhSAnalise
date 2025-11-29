@@ -5,15 +5,15 @@
   "webProject": "src/Web",
   "entities": [
     {
-      "name": "TabTaux1",
+      "name": "Tabtaux1",
       "displayName": "Tipo de Tabela",
-      "pluralName": "TpTabelas",
+      "pluralName": "Tabtaux1s",
       "module": "GestaoDePessoas",
       "moduleRoute": "gestaodepessoas",
-      "backendNamespace": "RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.TpTabelas",
+      "backendNamespace": "RhSensoERP.Modules.GestaoDePessoas.Application.DTOs.Tabtaux1s",
       "tableName": "taux1",
-      "cdSistema": "SEG",
-      "cdFuncao": "SEG_FM_TSISTEMA",
+      "cdSistema": "RHU",
+      "cdFuncao": "RHU_FM_TAUX1",
 
       "primaryKey": {
         "property": "CdTpTabela",
@@ -62,7 +62,7 @@
             "sortable": true,
             "align": "left",
             "format": "text",
-            "width": "280px"
+            "width": null
           },
           "form": {
             "show": true,
@@ -78,7 +78,7 @@
       ],
 
       "generate": {
-        "apiController": true,
+        "apiController": false,
         "webController": true,
         "webModels": true,
         "webServices": true,
