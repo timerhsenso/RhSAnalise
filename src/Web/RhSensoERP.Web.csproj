@@ -16,6 +16,7 @@
   <ItemGroup>
     <Folder Include="logs\" />
     <Folder Include="Models\Identity\" />
+    <Folder Include="wwwroot\js\pages\" />
   </ItemGroup>
 
   <PropertyGroup>

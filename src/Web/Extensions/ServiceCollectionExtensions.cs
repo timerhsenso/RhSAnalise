@@ -15,8 +15,8 @@ using Polly.Extensions.Http;
 using Polly.Timeout;
 using RhSensoERP.Web.Configuration;
 using RhSensoERP.Web.Services;
-using RhSensoERP.Web.Services.Bancos;
-using RhSensoERP.Web.Services.Sistemas;
+//using RhSensoERP.Web.Services.Bancos;
+//using RhSensoERP.Web.Services.Sistemas;
 using Serilog;
 using ILogger = Serilog.ILogger;
 
@@ -77,8 +77,6 @@ public static class ServiceCollectionExtensions
         // 4. SERVIÇOS MANUAIS (Core - não seguem padrão CrudTool)
         // =====================================================================
         services.AddScoped<IAuthApiService, AuthApiService>();
-        services.AddScoped<ISistemaApiService, SistemaApiService>();
-        services.AddScoped<IBancoApiService, BancoApiService>();
 
         // =====================================================================
         // 5. SERVIÇOS CRUDTOOL (Registro Automático via Reflection)

@@ -24,58 +24,59 @@
             --warning-color: #f59e0b;
             --danger-color: #ef4444;
             --info-color: #3b82f6;
-            
             /* Cores de fundo claras */
             --bg-primary: #f8fafc;
             --bg-secondary: #ffffff;
             --bg-tertiary: #f1f5f9;
             --bg-hover: #e2e8f0;
-            
             /* Cores de texto */
             --text-primary: #1e293b;
             --text-secondary: #64748b;
             --text-muted: #94a3b8;
-            
             /* Bordas */
             --border-color: #e2e8f0;
             --border-light: #f1f5f9;
         }
-        
-        * { box-sizing: border-box; }
-        
-        body { 
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
             background: var(--bg-primary);
             min-height: 100vh;
             color: var(--text-primary);
             font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
             font-size: 14px;
         }
-        
+
         /* Navbar */
-        .navbar { 
+        .navbar {
             background: var(--bg-secondary) !important;
             border-bottom: 1px solid var(--border-color);
             padding: 0.5rem 0;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
-        
+
         .navbar-brand {
             font-weight: 700;
             font-size: 1.1rem;
             color: var(--primary-color) !important;
         }
-        
-        .navbar-brand i { color: var(--primary-color); }
-        
+
+            .navbar-brand i {
+                color: var(--primary-color);
+            }
+
         /* Cards */
-        .card { 
+        .card {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
-        
-        .card-header { 
+
+        .card-header {
             background: var(--bg-tertiary);
             border-bottom: 1px solid var(--border-color);
             color: var(--text-primary);
@@ -84,17 +85,23 @@
             border-radius: 12px 12px 0 0;
             font-size: 0.85rem;
         }
-        
+
         .card-body {
             padding: 0.75rem;
         }
-        
+
         /* Tabela de Seleção */
-        .table { color: var(--text-primary); font-size: 0.8rem; margin-bottom: 0; }
-        .table-hover tbody tr:hover { 
+        .table {
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            margin-bottom: 0;
+        }
+
+        .table-hover tbody tr:hover {
             background-color: var(--bg-hover);
             cursor: pointer;
         }
+
         .table thead th {
             background: var(--bg-tertiary);
             border-color: var(--border-color);
@@ -105,29 +112,70 @@
             letter-spacing: 0.05em;
             padding: 0.4rem 0.5rem;
         }
-        .table td { 
+
+        .table td {
             border-color: var(--border-light);
             vertical-align: middle;
             color: var(--text-primary);
             padding: 0.35rem 0.5rem;
         }
-        .selected-row { 
+
+        .selected-row {
             background-color: rgba(99, 102, 241, 0.08) !important;
             border-left: 3px solid var(--primary-color);
         }
-        
+
         /* Badges */
-        .badge { font-weight: 500; font-size: 0.65rem; padding: 0.2em 0.5em; }
-        .badge-pk { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; }
-        .badge-fk { background: linear-gradient(135deg, #60a5fa, #3b82f6); color: #fff; }
-        .badge-fk-guid { background: linear-gradient(135deg, #34d399, #10b981); color: #fff; }
-        .badge-identity { background: linear-gradient(135deg, #a78bfa, #8b5cf6); color: #fff; }
-        .badge-nav { background: linear-gradient(135deg, #f472b6, #ec4899); color: #fff; }
-        .badge-warning { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; }
-        .badge-danger { background: linear-gradient(135deg, #f87171, #ef4444); color: #fff; }
-        .badge-info { background: linear-gradient(135deg, #60a5fa, #3b82f6); color: #fff; }
-        .bg-secondary { background: var(--text-muted) !important; }
-        
+        .badge {
+            font-weight: 500;
+            font-size: 0.65rem;
+            padding: 0.2em 0.5em;
+        }
+
+        .badge-pk {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #000;
+        }
+
+        .badge-fk {
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            color: #fff;
+        }
+
+        .badge-fk-guid {
+            background: linear-gradient(135deg, #34d399, #10b981);
+            color: #fff;
+        }
+
+        .badge-identity {
+            background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+            color: #fff;
+        }
+
+        .badge-nav {
+            background: linear-gradient(135deg, #f472b6, #ec4899);
+            color: #fff;
+        }
+
+        .badge-warning {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #000;
+        }
+
+        .badge-danger {
+            background: linear-gradient(135deg, #f87171, #ef4444);
+            color: #fff;
+        }
+
+        .badge-info {
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            color: #fff;
+        }
+
+        .bg-secondary {
+            background: var(--text-muted) !important;
+        }
+
         /* Alertas visuais - mais compactos */
         .alert-no-pk, .alert-composite-pk, .alert-composite-fk {
             border-radius: 6px;
@@ -135,37 +183,45 @@
             margin-bottom: 0.5rem;
             font-size: 0.8rem;
         }
+
         .alert-no-pk {
             background: #fef2f2;
             border: 1px solid #fecaca;
             border-left: 3px solid #ef4444;
             color: #991b1b;
         }
+
         .alert-composite-pk {
             background: #fffbeb;
             border: 1px solid #fde68a;
             border-left: 3px solid #f59e0b;
             color: #92400e;
         }
+
         .alert-composite-fk {
             background: #fff7ed;
             border: 1px solid #fed7aa;
             border-left: 3px solid #f97316;
             color: #9a3412;
         }
-        
+
         /* Preview de Código */
-        .code-preview { 
-            max-height: 350px; 
-            overflow: auto; 
-            background: #1e293b; 
+        .code-preview {
+            max-height: 350px;
+            overflow: auto;
+            background: #1e293b;
             border-radius: 8px;
             border: 1px solid var(--border-color);
         }
-        .code-preview pre { margin: 0; padding: 0.75rem; font-size: 0.75rem; }
-        
+
+            .code-preview pre {
+                margin: 0;
+                padding: 0.75rem;
+                font-size: 0.75rem;
+            }
+
         /* Botões */
-        .btn-generate { 
+        .btn-generate {
             background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
             border: none;
             padding: 0.5rem 1rem;
@@ -175,24 +231,26 @@
             font-size: 0.85rem;
             transition: all 0.2s ease;
         }
-        .btn-generate:hover { 
-            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-            color: #fff;
-        }
-        
+
+            .btn-generate:hover {
+                background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+                color: #fff;
+            }
+
         .btn-outline-secondary {
             border-color: var(--border-color);
             color: var(--text-secondary);
             font-size: 0.85rem;
         }
-        .btn-outline-secondary:hover {
-            background: var(--bg-tertiary);
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-        }
-        
+
+            .btn-outline-secondary:hover {
+                background: var(--bg-tertiary);
+                border-color: var(--primary-color);
+                color: var(--primary-color);
+            }
+
         /* Inputs */
         .form-control, .form-select {
             background: var(--bg-secondary);
@@ -202,37 +260,55 @@
             font-size: 0.85rem;
             padding: 0.4rem 0.6rem;
         }
-        .form-control:focus, .form-select:focus {
-            background: var(--bg-secondary);
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
-            color: var(--text-primary);
+
+            .form-control:focus, .form-select:focus {
+                background: var(--bg-secondary);
+                border-color: var(--primary-color);
+                box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+                color: var(--text-primary);
+            }
+
+            .form-control::placeholder {
+                color: var(--text-muted);
+            }
+
+        .form-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
         }
-        .form-control::placeholder { color: var(--text-muted); }
-        .form-label { color: var(--text-secondary); font-weight: 500; font-size: 0.8rem; margin-bottom: 0.25rem; }
+
         .form-check-input {
             background-color: var(--bg-secondary);
             border-color: var(--border-color);
             width: 1rem;
             height: 1rem;
         }
-        .form-check-input:checked {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
+
+            .form-check-input:checked {
+                background-color: var(--primary-color);
+                border-color: var(--primary-color);
+            }
+
         /* Search Box */
-        .search-box { position: relative; }
-        .search-box i {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: 0.8rem;
+        .search-box {
+            position: relative;
         }
-        .search-box input { padding-left: 32px; }
-        
+
+            .search-box i {
+                position: absolute;
+                left: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: var(--text-muted);
+                font-size: 0.8rem;
+            }
+
+            .search-box input {
+                padding-left: 32px;
+            }
+
         /* Accordion/Seções Colapsáveis */
         .config-section {
             background: var(--bg-secondary);
@@ -241,6 +317,7 @@
             margin-bottom: 0.5rem;
             overflow: hidden;
         }
+
         .config-section-header {
             background: var(--bg-tertiary);
             padding: 0.5rem 0.75rem;
@@ -249,32 +326,41 @@
             justify-content: space-between;
             align-items: center;
         }
-        .config-section-header:hover {
-            background: var(--bg-hover);
-        }
-        .config-section-header h6 {
-            margin: 0;
-            font-weight: 600;
-            font-size: 0.8rem;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            color: var(--text-primary);
-        }
-        .config-section-header h6 i { color: var(--primary-color); font-size: 0.75rem; }
-        .config-section-header .toggle-icon {
-            transition: transform 0.3s;
-            color: var(--text-muted);
-            font-size: 0.7rem;
-        }
-        .config-section-header.collapsed .toggle-icon {
-            transform: rotate(-90deg);
-        }
+
+            .config-section-header:hover {
+                background: var(--bg-hover);
+            }
+
+            .config-section-header h6 {
+                margin: 0;
+                font-weight: 600;
+                font-size: 0.8rem;
+                display: flex;
+                align-items: center;
+                gap: 0.4rem;
+                color: var(--text-primary);
+            }
+
+                .config-section-header h6 i {
+                    color: var(--primary-color);
+                    font-size: 0.75rem;
+                }
+
+            .config-section-header .toggle-icon {
+                transition: transform 0.3s;
+                color: var(--text-muted);
+                font-size: 0.7rem;
+            }
+
+            .config-section-header.collapsed .toggle-icon {
+                transform: rotate(-90deg);
+            }
+
         .config-section-body {
             padding: 0.75rem;
             border-top: 1px solid var(--border-light);
         }
-        
+
         /* FK Cards */
         .fk-card {
             background: var(--bg-tertiary);
@@ -284,55 +370,76 @@
             border-radius: 0 6px 6px 0;
             font-size: 0.8rem;
         }
-        .fk-card .fk-title { font-weight: 600; color: var(--primary-color); }
-        .fk-card .fk-detail { font-size: 0.7rem; color: var(--text-secondary); }
-        
+
+            .fk-card .fk-title {
+                font-weight: 600;
+                color: var(--primary-color);
+            }
+
+            .fk-card .fk-detail {
+                font-size: 0.7rem;
+                color: var(--text-secondary);
+            }
+
         /* Modal */
         .modal-content {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 12px;
         }
+
         .modal-header {
             background: var(--bg-tertiary);
             border-bottom: 1px solid var(--border-color);
             border-radius: 12px 12px 0 0;
             padding: 0.75rem 1rem;
         }
+
         .modal-footer {
             border-top: 1px solid var(--border-color);
             padding: 0.75rem 1rem;
         }
-        .modal-title { color: var(--text-primary); font-size: 1rem; }
-        .modal-body { padding: 1rem; }
-        
+
+        .modal-title {
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .modal-body {
+            padding: 1rem;
+        }
+
         /* Nav Tabs */
         .nav-tabs {
             border-bottom: 1px solid var(--border-color);
         }
-        .nav-tabs .nav-link {
-            color: var(--text-secondary);
-            border: none;
-            padding: 0.5rem 1rem;
-            font-weight: 500;
-            font-size: 0.8rem;
-        }
-        .nav-tabs .nav-link:hover {
-            color: var(--primary-color);
-            border-color: transparent;
-        }
-        .nav-tabs .nav-link.active {
-            background: transparent;
-            color: var(--primary-color);
-            border: none;
-            border-bottom: 2px solid var(--primary-color);
-        }
+
+            .nav-tabs .nav-link {
+                color: var(--text-secondary);
+                border: none;
+                padding: 0.5rem 1rem;
+                font-weight: 500;
+                font-size: 0.8rem;
+            }
+
+                .nav-tabs .nav-link:hover {
+                    color: var(--primary-color);
+                    border-color: transparent;
+                }
+
+                .nav-tabs .nav-link.active {
+                    background: transparent;
+                    color: var(--primary-color);
+                    border: none;
+                    border-bottom: 2px solid var(--primary-color);
+                }
+
         .tab-content {
             background: var(--bg-secondary);
             border-radius: 0 0 8px 8px;
             padding: 0.75rem;
         }
-        
+
         /* Loading Overlay */
         #loadingOverlay {
             position: fixed;
@@ -346,9 +453,17 @@
             align-items: center;
             z-index: 9999;
         }
-        #loadingOverlay h5 { color: var(--text-primary); font-size: 1rem; }
-        #loadingOverlay p { color: var(--text-secondary); font-size: 0.85rem; }
-        
+
+            #loadingOverlay h5 {
+                color: var(--text-primary);
+                font-size: 1rem;
+            }
+
+            #loadingOverlay p {
+                color: var(--text-secondary);
+                font-size: 0.85rem;
+            }
+
         /* Stats Cards - MENORES */
         .stats-card {
             background: var(--bg-secondary);
@@ -357,51 +472,57 @@
             padding: 0.6rem 0.5rem;
             text-align: center;
         }
-        .stats-card .stats-number {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: var(--primary-color);
-            line-height: 1.2;
-        }
-        .stats-card .stats-label {
-            font-size: 0.6rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            font-weight: 600;
-        }
-        
+
+            .stats-card .stats-number {
+                font-size: 1.4rem;
+                font-weight: 700;
+                color: var(--primary-color);
+                line-height: 1.2;
+            }
+
+            .stats-card .stats-label {
+                font-size: 0.6rem;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                font-weight: 600;
+            }
+
         /* Toast */
         .toast {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
+
         .toast-header {
             background: var(--bg-tertiary);
             border-bottom: 1px solid var(--border-color);
             padding: 0.5rem 0.75rem;
         }
-        
+
         /* Column Config Table */
         .column-config-table {
             font-size: 0.75rem;
         }
-        .column-config-table th {
-            font-size: 0.6rem;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            padding: 0.3rem;
-        }
-        .column-config-table td {
-            padding: 0.3rem;
-        }
-        .column-config-table .form-control,
-        .column-config-table .form-select {
-            font-size: 0.75rem;
-            padding: 0.2rem 0.4rem;
-        }
-        
+
+            .column-config-table th {
+                font-size: 0.6rem;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                padding: 0.3rem;
+            }
+
+            .column-config-table td {
+                padding: 0.3rem;
+            }
+
+            .column-config-table .form-control,
+            .column-config-table .form-select {
+                font-size: 0.75rem;
+                padding: 0.2rem 0.4rem;
+            }
+
         /* Code elements */
         code {
             background: var(--bg-tertiary);
@@ -410,52 +531,285 @@
             font-size: 0.8em;
             color: var(--primary-dark);
         }
-        .text-info code { color: var(--accent-color); background: rgba(6, 182, 212, 0.1); }
-        
+
+        .text-info code {
+            color: var(--accent-color);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
         /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-tertiary); }
-        ::-webkit-scrollbar-thumb { 
-            background: var(--border-color); 
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
             border-radius: 3px;
         }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-        
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: var(--text-muted);
+            }
+
         /* Texto muted */
-        .text-muted { color: var(--text-secondary) !important; }
-        
+        .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
         /* Links */
-        a { color: var(--primary-color); }
-        a:hover { color: var(--primary-dark); }
-        
+        a {
+            color: var(--primary-color);
+        }
+
+            a:hover {
+                color: var(--primary-dark);
+            }
+
         /* Spinner */
-        .spinner-border { color: var(--primary-color) !important; width: 2rem; height: 2rem; }
-        
+        .spinner-border {
+            color: var(--primary-color) !important;
+            width: 2rem;
+            height: 2rem;
+        }
+
         /* Header da tabela detalhes - mais compacto */
-        .table-header-card .card-body { padding: 0.75rem 1rem; }
-        .table-header-card h4 { font-size: 1.1rem; margin-bottom: 0.25rem; }
-        .table-header-card p { font-size: 0.8rem; margin-bottom: 0; }
-        
+        .table-header-card .card-body {
+            padding: 0.75rem 1rem;
+        }
+
+        .table-header-card h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .table-header-card p {
+            font-size: 0.8rem;
+            margin-bottom: 0;
+        }
+
         /* Espaçamento entre elementos */
-        .mb-4 { margin-bottom: 1rem !important; }
-        .mb-3 { margin-bottom: 0.75rem !important; }
-        .gap-3 { gap: 0.75rem !important; }
-        .py-5 { padding-top: 2rem !important; padding-bottom: 2rem !important; }
-        
+        .mb-4 {
+            margin-bottom: 1rem !important;
+        }
+
+        .mb-3 {
+            margin-bottom: 0.75rem !important;
+        }
+
+        .gap-3 {
+            gap: 0.75rem !important;
+        }
+
+        .py-5 {
+            padding-top: 2rem !important;
+            padding-bottom: 2rem !important;
+        }
+
         /* Ícones de status na lista - sem pintar linha */
         .status-icon {
             width: 18px;
             text-align: center;
             flex-shrink: 0;
         }
-        .status-icon .fa-exclamation-circle { color: #ef4444; }
-        .status-icon .fa-exclamation-triangle { color: #f59e0b; }
-        
+
+            .status-icon .fa-exclamation-circle {
+                color: #ef4444;
+            }
+
+            .status-icon .fa-exclamation-triangle {
+                color: #f59e0b;
+            }
+
         /* Placeholder */
-        #placeholderPanel .card-body { padding: 2rem; }
-        #placeholderPanel i { font-size: 2.5rem; }
-        #placeholderPanel h4 { font-size: 1rem; margin-top: 1rem; }
-        #placeholderPanel p { font-size: 0.85rem; }
+        #placeholderPanel .card-body {
+            padding: 2rem;
+        }
+
+        #placeholderPanel i {
+            font-size: 2.5rem;
+        }
+
+        #placeholderPanel h4 {
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+
+        #placeholderPanel p {
+            font-size: 0.85rem;
+        }
+
+        /* ==================== DARK MODE ==================== */
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --bg-hover: #475569;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #475569;
+            --border-light: #334155;
+        }
+
+            /* Tabela no dark mode - texto mais visível */
+            [data-theme="dark"] .table {
+                color: var(--text-primary);
+            }
+
+                [data-theme="dark"] .table td {
+                    color: var(--text-primary);
+                }
+
+                [data-theme="dark"] .table thead th {
+                    color: var(--text-secondary);
+                    background: var(--bg-tertiary);
+                }
+
+            [data-theme="dark"] .fw-medium,
+            [data-theme="dark"] .tabela-row td {
+                color: #e2e8f0 !important;
+            }
+
+            [data-theme="dark"] .tabela-row:hover td {
+                color: #fff !important;
+            }
+
+            /* Header da tabela selecionada */
+            [data-theme="dark"] .table-header-card h4,
+            [data-theme="dark"] #tabelaNome {
+                color: var(--text-primary) !important;
+            }
+
+            /* Stats cards no dark */
+            [data-theme="dark"] .stats-card {
+                background: var(--bg-secondary);
+            }
+
+                [data-theme="dark"] .stats-card .stats-number {
+                    color: var(--primary-light);
+                }
+
+            /* Nav tabs no dark */
+            [data-theme="dark"] .nav-tabs .nav-link {
+                color: var(--text-secondary);
+            }
+
+                [data-theme="dark"] .nav-tabs .nav-link.active {
+                    color: var(--primary-light);
+                }
+
+            [data-theme="dark"] .alert-no-pk {
+                background: rgba(239, 68, 68, 0.15);
+                border-color: rgba(239, 68, 68, 0.3);
+                color: #fca5a5;
+            }
+
+            [data-theme="dark"] .alert-composite-pk {
+                background: rgba(245, 158, 11, 0.15);
+                border-color: rgba(245, 158, 11, 0.3);
+                color: #fcd34d;
+            }
+
+            [data-theme="dark"] .alert-composite-fk {
+                background: rgba(249, 115, 22, 0.15);
+                border-color: rgba(249, 115, 22, 0.3);
+                color: #fdba74;
+            }
+
+            [data-theme="dark"] #loadingOverlay {
+                background: rgba(15, 23, 42, 0.95);
+            }
+
+            [data-theme="dark"] code {
+                background: var(--bg-tertiary);
+                color: #a5b4fc;
+            }
+
+            [data-theme="dark"] .text-info code {
+                color: #22d3ee;
+                background: rgba(6, 182, 212, 0.15);
+            }
+
+            [data-theme="dark"] .form-check-input {
+                background-color: var(--bg-tertiary);
+                border-color: var(--border-color);
+            }
+
+            [data-theme="dark"] .btn-outline-secondary {
+                border-color: var(--border-color);
+                color: var(--text-secondary);
+            }
+
+                [data-theme="dark"] .btn-outline-secondary:hover {
+                    background: var(--bg-tertiary);
+                    color: var(--text-primary);
+                }
+
+            [data-theme="dark"] .modal-header .btn-close {
+                filter: invert(1) grayscale(100%) brightness(200%);
+            }
+
+            /* Card header no dark */
+            [data-theme="dark"] .card-header {
+                background: var(--bg-tertiary);
+                color: var(--text-primary);
+            }
+
+            /* Badges no dark - manter cores */
+            [data-theme="dark"] .bg-secondary {
+                background: var(--text-muted) !important;
+            }
+
+            /* Linha selecionada mais visível */
+            [data-theme="dark"] .selected-row {
+                background-color: rgba(99, 102, 241, 0.2) !important;
+            }
+
+            /* Texto muted no dark */
+            [data-theme="dark"] .text-muted {
+                color: var(--text-muted) !important;
+            }
+
+            /* Descrição da tabela */
+            [data-theme="dark"] #tabelaDescricao {
+                color: var(--text-secondary) !important;
+            }
+
+        /* Dark Mode Toggle Button */
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+            .theme-toggle:hover {
+                background: var(--bg-hover);
+                color: var(--primary-color);
+                border-color: var(--primary-color);
+            }
+
+            .theme-toggle i {
+                font-size: 0.9rem;
+            }
+
+        /* Transição suave entre temas */
+        body, .card, .navbar, .modal-content, .form-control, .form-select,
+        .btn, .table, .badge, .stats-card, .config-section, .fk-card {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -475,13 +829,16 @@
                 <i class="fas fa-rocket me-2"></i>
                 Gerador Full-Stack v3.0
             </a>
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-muted">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted" style="font-size: 0.8rem;">
                     <i class="fas fa-database me-1"></i>
                     <span id="totalTabelas">@ViewBag.TotalTabelas</span> tabelas
                 </span>
                 <button class="btn btn-sm btn-outline-secondary" onclick="refreshCache()" title="Recarregar Cache">
                     <i class="fas fa-sync-alt"></i>
+                </button>
+                <button class="theme-toggle" onclick="toggleDarkMode()" title="Alternar tema" id="themeToggle">
+                    <i class="fas fa-moon" id="themeIcon"></i>
                 </button>
             </div>
         </div>
@@ -500,17 +857,17 @@
                         <!-- Busca -->
                         <div class="search-box mb-2">
                             <i class="fas fa-search"></i>
-                            <input type="text" id="searchInput" class="form-control form-control-sm" 
+                            <input type="text" id="searchInput" class="form-control form-control-sm"
                                    placeholder="Buscar tabela..." onkeyup="filtrarTabelas()" />
                         </div>
-                        
+
                         <!-- Lista de Tabelas -->
                         <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
                             <table class="table table-hover table-sm mb-0" id="tabelasTable">
                                 <thead class="sticky-top">
                                     <tr>
                                         <th style="width: 28px;">
-                                            <input type="checkbox" class="form-check-input" id="selectAll" 
+                                            <input type="checkbox" class="form-check-input" id="selectAll"
                                                    onchange="toggleSelectAll(this)" />
                                         </th>
                                         <th>Tabela</th>
@@ -522,15 +879,15 @@
                                     {
                                         var hasNoPk = !tabela.HasPrimaryKey;
                                         var hasCompositePk = tabela.HasCompositePrimaryKey;
-                                        
-                                        <tr class="tabela-row" 
-                                            data-tabela="@tabela.NomeTabela" 
+
+                                        <tr class="tabela-row"
+                                            data-tabela="@tabela.NomeTabela"
                                             data-has-pk="@tabela.HasPrimaryKey.ToString().ToLower()"
                                             data-composite-pk="@tabela.HasCompositePrimaryKey.ToString().ToLower()"
                                             onclick="selectTabela('@tabela.NomeTabela', this)">
                                             <td onclick="event.stopPropagation();">
-                                                <input type="checkbox" class="form-check-input tabela-check" 
-                                                       value="@tabela.NomeTabela" 
+                                                <input type="checkbox" class="form-check-input tabela-check"
+                                                       value="@tabela.NomeTabela"
                                                        @(hasNoPk ? "disabled" : "") />
                                             </td>
                                             <td>
@@ -562,7 +919,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Ações em Lote -->
                 <div class="card">
                     <div class="card-body p-2">
@@ -613,7 +970,7 @@
                                     <i class="fas fa-rocket me-1"></i>Gerar Full-Stack
                                 </button>
                             </div>
-                            
+
                             <!-- Alertas -->
                             <div id="alertasContainer" class="mt-2"></div>
                         </div>
@@ -687,12 +1044,12 @@
                                         </table>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Tab FKs -->
                                 <div class="tab-pane fade" id="tabFks">
                                     <div id="fksContainer"></div>
                                 </div>
-                                
+
                                 <!-- Tab Índices -->
                                 <div class="tab-pane fade" id="tabIndices">
                                     <div class="table-responsive">
@@ -732,7 +1089,7 @@
                 <div class="modal-body">
                     <!-- Alertas no Modal -->
                     <div id="modalAlertas"></div>
-                    
+
                     <!-- SEÇÃO 1: IDENTIFICAÇÃO -->
                     <div class="config-section">
                         <div class="config-section-header" onclick="toggleSection(this)">
@@ -744,9 +1101,9 @@
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Código da Função *</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="cfgCdFuncao" 
+                                        <input type="text" class="form-control" id="cfgCdFuncao"
                                                placeholder="Ex: SISCARGO" required />
-                                        <button class="btn btn-outline-light" type="button" 
+                                        <button class="btn btn-outline-light" type="button"
                                                 onclick="abrirModalFuncoes()">
                                             <i class="fas fa-search"></i>
                                         </button>
@@ -766,14 +1123,14 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Título / Display Name *</label>
-                                    <input type="text" class="form-control" id="cfgDisplayName" 
+                                    <input type="text" class="form-control" id="cfgDisplayName"
                                            placeholder="Ex: Cadastro de Cargos" />
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-12 mb-3">
                                     <label class="form-label">Descrição</label>
-                                    <input type="text" class="form-control" id="cfgDescricao" 
+                                    <input type="text" class="form-control" id="cfgDescricao"
                                            placeholder="Descrição da funcionalidade..." />
                                 </div>
                             </div>
@@ -801,7 +1158,7 @@
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Rota</label>
-                                    <input type="text" class="form-control" id="cfgModuloRota" 
+                                    <input type="text" class="form-control" id="cfgModuloRota"
                                            placeholder="gestaodepessoas" />
                                 </div>
                                 <div class="col-md-2 mb-3">
@@ -810,7 +1167,7 @@
                                 </div>
                                 <div class="col-md-2 mb-3">
                                     <label class="form-label">Ícone</label>
-                                    <input type="text" class="form-control" id="cfgIcone" 
+                                    <input type="text" class="form-control" id="cfgIcone"
                                            value="fas fa-table" placeholder="fas fa-xxx" />
                                 </div>
                             </div>
@@ -835,7 +1192,7 @@
                                     <thead class="sticky-top" style="background: rgba(15, 23, 42, 0.9);">
                                         <tr>
                                             <th style="width: 40px;">
-                                                <input type="checkbox" class="form-check-input" 
+                                                <input type="checkbox" class="form-check-input"
                                                        id="selectAllListagem" onchange="toggleAllListagem(this)" checked />
                                             </th>
                                             <th>Coluna</th>
@@ -864,7 +1221,7 @@
                                     <thead class="sticky-top" style="background: rgba(15, 23, 42, 0.9);">
                                         <tr>
                                             <th style="width: 40px;">
-                                                <input type="checkbox" class="form-check-input" 
+                                                <input type="checkbox" class="form-check-input"
                                                        id="selectAllFormulario" onchange="toggleAllFormulario(this)" checked />
                                             </th>
                                             <th>Campo</th>
@@ -1006,8 +1363,8 @@
                 <div class="modal-body">
                     <div class="search-box mb-3">
                         <i class="fas fa-search"></i>
-                        <input type="text" class="form-control" id="filtroFuncao" 
-                               placeholder="Buscar por código ou descrição..." 
+                        <input type="text" class="form-control" id="filtroFuncao"
+                               placeholder="Buscar por código ou descrição..."
                                onkeyup="filtrarFuncoes()" />
                     </div>
                     <div class="table-responsive" style="max-height: 400px;">
@@ -1046,7 +1403,7 @@
                 <div class="modal-body p-0">
                     <!-- Warnings -->
                     <div id="previewWarnings" class="p-3"></div>
-                    
+
                     <!-- Tabs de arquivos -->
                     <ul class="nav nav-tabs px-3" id="previewTabs" role="tablist"></ul>
                     <div class="tab-content p-3" id="previewTabContent"></div>
@@ -1082,8 +1439,38 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
-    
+
     <script>
+        // =====================================================================
+        // DARK MODE
+        // =====================================================================
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+
+            // Atualizar ícone
+            const icon = document.getElementById('themeIcon');
+            icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        // Aplicar tema salvo ao carregar
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+
+            // Atualizar ícone após DOM carregar
+            document.addEventListener('DOMContentLoaded', function() {
+                const icon = document.getElementById('themeIcon');
+                if (icon) {
+                    icon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+                }
+            });
+        })();
+
         // =====================================================================
         // VARIÁVEIS GLOBAIS
         // =====================================================================
@@ -1101,9 +1488,9 @@
             modalConfiguracao = new bootstrap.Modal(document.getElementById('modalConfiguracao'));
             modalFuncoes = new bootstrap.Modal(document.getElementById('modalFuncoes'));
             modalPreview = new bootstrap.Modal(document.getElementById('modalPreview'));
-            
+
             hljs.highlightAll();
-            
+
             // Atualizar contador de selecionadas
             $(document).on('change', '.tabela-check', atualizarContadorSelecionadas);
         });
@@ -1114,14 +1501,14 @@
         function filtrarTabelas() {
             const termo = $('#searchInput').val().toLowerCase();
             let count = 0;
-            
+
             $('.tabela-row').each(function() {
                 const nome = $(this).data('tabela').toLowerCase();
                 const match = nome.includes(termo);
                 $(this).toggle(match);
                 if (match) count++;
             });
-            
+
             $('#tabelasCount').text(count);
         }
 
@@ -1141,18 +1528,18 @@
             // Remove seleção anterior
             $('.tabela-row').removeClass('selected-row');
             $(row).addClass('selected-row');
-            
+
             tabelaSelecionada = nome;
-            
+
             // Mostra loading
             $('#placeholderPanel').hide();
             $('#detailsPanel').show();
             $('#tabelaNome').html('<i class="fas fa-spinner fa-spin"></i> Carregando...');
-            
+
             try {
                 const response = await fetch(`/Home/GetTabela?nome=${encodeURIComponent(nome)}`);
                 if (!response.ok) throw new Error('Tabela não encontrada');
-                
+
                 tabelaDetalhes = await response.json();
                 renderizarDetalhes(tabelaDetalhes);
             } catch (error) {
@@ -1165,29 +1552,29 @@
             console.log('📊 [DEBUG] Colunas:', tabela.colunas);
             console.log('📊 [DEBUG] FKs:', tabela.foreignKeys);
             console.log('📊 [DEBUG] Indices:', tabela.indices);
-            
+
             // Garantir arrays válidos
             const colunas = tabela.colunas || [];
             const foreignKeys = tabela.foreignKeys || [];
             const indices = tabela.indices || [];
             const primaryKeyColumns = tabela.primaryKeyColumns || [];
-            
+
             // Header
             $('#tabelaNome').text(tabela.nomeTabela || '-');
             $('#tabelaDescricao').text(tabela.descricao || 'Sem descrição');
-            
+
             // Stats
             $('#statsColunas').text(colunas.length);
             $('#statsFks').text(foreignKeys.length);
             $('#statsIndices').text(indices.length);
             $('#statsPk').text(tabela.primaryKey ? tabela.primaryKey.nomePascalCase : '❌');
-            
+
             // Alertas
             let alertas = '';
             if (!tabela.hasPrimaryKey) {
                 alertas += `<div class="alert-no-pk">
                     <i class="fas fa-exclamation-circle me-2"></i>
-                    <strong>Sem Primary Key:</strong> Esta tabela não possui chave primária definida. 
+                    <strong>Sem Primary Key:</strong> Esta tabela não possui chave primária definida.
                     A geração de código está bloqueada.
                 </div>`;
             }
@@ -1195,7 +1582,7 @@
                 const pkCols = primaryKeyColumns.map(c => c.nome).join(', ');
                 alertas += `<div class="alert-composite-pk">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>PK Composta:</strong> Esta tabela possui chave primária composta (${pkCols}). 
+                    <strong>PK Composta:</strong> Esta tabela possui chave primária composta (${pkCols}).
                     Algumas funcionalidades podem ter limitações.
                 </div>`;
             }
@@ -1206,7 +1593,7 @@
                 </div>`;
             }
             $('#alertasContainer').html(alertas);
-            
+
             // Colunas
             let colunasHtml = '';
             for (const col of colunas) {
@@ -1217,7 +1604,7 @@
                     const fkBadge = col.foreignKey.isFkByGuid ? 'badge-fk-guid' : 'badge-fk';
                     flags += `<span class="badge ${fkBadge} me-1" title="→ ${col.foreignKey.tabelaDestino}">FK</span>`;
                 }
-                
+
                 colunasHtml += `<tr>
                     <td><code>${col.nome}</code></td>
                     <td><span class="text-muted">${col.tipo}</span></td>
@@ -1229,20 +1616,20 @@
                 </tr>`;
             }
             $('#colunasBody').html(colunasHtml);
-            
+
             // FKs
             let fksHtml = '';
             if (foreignKeys.length === 0) {
                 fksHtml = '<p class="text-muted text-center py-4">Nenhuma Foreign Key encontrada</p>';
             } else {
                 for (const fk of foreignKeys) {
-                    const tipoFk = fk.isFkByGuid ? 
-                        '<span class="badge badge-fk-guid">Por Guid</span>' : 
+                    const tipoFk = fk.isFkByGuid ?
+                        '<span class="badge badge-fk-guid">Por Guid</span>' :
                         '<span class="badge badge-fk">Por Código</span>';
-                    
-                    const composta = fk.isParteDeFkComposta ? 
+
+                    const composta = fk.isParteDeFkComposta ?
                         '<span class="badge badge-warning ms-2">FK Composta</span>' : '';
-                    
+
                     fksHtml += `<div class="fk-card">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -1251,7 +1638,7 @@
                             </div>
                         </div>
                         <div class="fk-detail mt-1">
-                            <code>${fk.colunaOrigem}</code> → 
+                            <code>${fk.colunaOrigem}</code> →
                             <code>${fk.tabelaDestino}.${fk.colunaDestino}</code>
                             ${fk.colunaDisplay ? ` | Display: <code>${fk.colunaDisplay}</code>` : ''}
                         </div>
@@ -1259,7 +1646,7 @@
                 }
             }
             $('#fksContainer').html(fksHtml);
-            
+
             // Índices
             let indicesHtml = '';
             if (indices.length === 0) {
@@ -1283,14 +1670,14 @@
         function abrirModalConfiguracao() {
             // Pode ser chamado para uma única tabela ou para múltiplas
             const selecionadas = $('.tabela-check:checked').map(function() { return $(this).val(); }).get();
-            
+
             if (selecionadas.length === 0 && !tabelaSelecionada) {
                 showToast('Atenção', 'Selecione uma ou mais tabelas', 'warning');
                 return;
             }
-            
+
             const tabela = selecionadas.length === 1 ? selecionadas[0] : (tabelaSelecionada || selecionadas[0]);
-            
+
             // Carrega detalhes se necessário
             if (!tabelaDetalhes || tabelaDetalhes.nomeTabela !== tabela) {
                 selectTabela(tabela, $(`.tabela-row[data-tabela="${tabela}"]`)[0]).then(() => {
@@ -1305,12 +1692,12 @@
 
         function preencherModalConfiguracao() {
             if (!tabelaDetalhes) return;
-            
+
             const tabela = tabelaDetalhes;
-            
+
             // Header
             $('#modalTabelaNome').text(tabela.nomeTabela);
-            
+
             // Alertas
             let alertas = '';
             if (!tabela.hasPrimaryKey) {
@@ -1320,24 +1707,24 @@
                 </div>`;
             }
             $('#modalAlertas').html(alertas);
-            
+
             // Identificação
             $('#cfgDisplayName').val(formatDisplayName(tabela.nomePascalCase));
             $('#cfgDescricao').val(tabela.descricao || '');
-            
+
             // Colunas de Listagem
             let listagemHtml = '';
             let order = 0;
             for (const col of tabela.colunas) {
                 if (col.isPrimaryKey && col.isGuid) continue; // Pula GUID PKs da listagem
-                
+
                 const checked = !col.isPrimaryKey ? 'checked' : '';
                 const format = getDefaultFormat(col);
-                
+
                 listagemHtml += `<tr>
                     <td><input type="checkbox" class="form-check-input listagem-check" data-col="${col.nome}" ${checked} /></td>
                     <td><code>${col.nome}</code></td>
-                    <td><input type="text" class="form-control form-control-sm listagem-title" data-col="${col.nome}" 
+                    <td><input type="text" class="form-control form-control-sm listagem-title" data-col="${col.nome}"
                                value="${formatDisplayName(col.nomePascalCase)}" /></td>
                     <td>
                         <select class="form-select form-select-sm listagem-format" data-col="${col.nome}">
@@ -1348,7 +1735,7 @@
                             <option value="boolean" ${format === 'boolean' ? 'selected' : ''}>Sim/Não</option>
                         </select>
                     </td>
-                    <td><input type="text" class="form-control form-control-sm listagem-width" data-col="${col.nome}" 
+                    <td><input type="text" class="form-control form-control-sm listagem-width" data-col="${col.nome}"
                                placeholder="auto" /></td>
                     <td>
                         <select class="form-select form-select-sm listagem-align" data-col="${col.nome}">
@@ -1361,21 +1748,21 @@
                 </tr>`;
             }
             $('#listagemColunasBody').html(listagemHtml);
-            
+
             // Colunas de Formulário
             let formularioHtml = '';
             order = 0;
             for (const col of tabela.colunas) {
                 if (col.isPrimaryKey || col.isComputed) continue;
-                
+
                 const inputType = getDefaultInputType(col);
                 const colSize = getDefaultColSize(col);
                 const required = !col.isNullable ? 'checked' : '';
-                
+
                 formularioHtml += `<tr>
                     <td><input type="checkbox" class="form-check-input formulario-check" data-col="${col.nome}" checked /></td>
                     <td><code>${col.nome}</code></td>
-                    <td><input type="text" class="form-control form-control-sm formulario-label" data-col="${col.nome}" 
+                    <td><input type="text" class="form-control form-control-sm formulario-label" data-col="${col.nome}"
                                value="${formatDisplayName(col.nomePascalCase)}" /></td>
                     <td>
                         <select class="form-select form-select-sm formulario-type" data-col="${col.nome}">
@@ -1403,23 +1790,23 @@
                 </tr>`;
             }
             $('#formularioColunasBody').html(formularioHtml);
-            
+
             // FKs
             let fksHtml = '';
             if (tabela.foreignKeys.length === 0) {
                 fksHtml = '<p class="text-muted">Nenhuma Foreign Key encontrada</p>';
             } else {
                 for (const fk of tabela.foreignKeys) {
-                    const tipoFk = fk.isFkByGuid ? 
-                        '<span class="badge badge-fk-guid">Guid</span>' : 
+                    const tipoFk = fk.isFkByGuid ?
+                        '<span class="badge badge-fk-guid">Guid</span>' :
                         '<span class="badge badge-fk">Código</span>';
-                    
+
                     const ignorar = fk.isParteDeFkComposta ? 'checked disabled' : '';
-                    
+
                     fksHtml += `<div class="fk-card d-flex justify-content-between align-items-center">
                         <div>
-                            <input type="text" class="form-control form-control-sm d-inline-block fk-navname" 
-                                   data-col="${fk.colunaOrigem}" value="${fk.navigationPropertyName}" 
+                            <input type="text" class="form-control form-control-sm d-inline-block fk-navname"
+                                   data-col="${fk.colunaOrigem}" value="${fk.navigationPropertyName}"
                                    style="width: 150px;" ${fk.isParteDeFkComposta ? 'disabled' : ''} />
                             ${tipoFk}
                             <span class="fk-detail ms-2">
@@ -1439,7 +1826,7 @@
         function toggleSection(header) {
             const body = $(header).next('.config-section-body');
             const isCollapsed = $(header).hasClass('collapsed');
-            
+
             if (isCollapsed) {
                 $(header).removeClass('collapsed');
                 body.slideDown(200);
@@ -1483,7 +1870,7 @@
                     sortable: true
                 });
             });
-            
+
             // Coleta configurações de formulário
             const colunasFormulario = [];
             order = 0;
@@ -1500,7 +1887,7 @@
                     disabled: $(`.formulario-disabled[data-col="${col}"]`).is(':checked')
                 });
             });
-            
+
             // Coleta configurações de FKs
             const configuracoesFk = [];
             $('.fk-ignorar').each(function() {
@@ -1511,7 +1898,7 @@
                     ignorar: $(this).is(':checked')
                 });
             });
-            
+
             return {
                 nomeTabela: tabelaDetalhes.nomeTabela,
                 cdFuncao: $('#cfgCdFuncao').val(),
@@ -1541,30 +1928,30 @@
 
         async function previewFullStack() {
             const config = coletarConfiguracao();
-            
+
             if (!config.cdFuncao) {
                 showToast('Atenção', 'Informe o código da função', 'warning');
                 return;
             }
-            
+
             try {
                 $('#loadingOverlay').css('display', 'flex');
-                
+
                 const response = await fetch('/Home/PreviewFullStack', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(config)
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (!result.success) {
                     throw new Error(result.error);
                 }
-                
+
                 // Renderiza preview
                 $('#previewEntidade').text(result.nomeEntidade);
-                
+
                 // Warnings
                 let warningsHtml = '';
                 if (result.warnings && result.warnings.length > 0) {
@@ -1575,28 +1962,28 @@
                     warningsHtml += '</div>';
                 }
                 $('#previewWarnings').html(warningsHtml);
-                
+
                 // Tabs
                 let tabsHtml = '';
                 let tabContentHtml = '';
                 let first = true;
-                
+
                 for (const file of result.files) {
                     const tabId = file.fileName.replace(/\./g, '-');
                     const active = first ? 'active' : '';
                     const show = first ? 'show active' : '';
                     first = false;
-                    
+
                     tabsHtml += `<li class="nav-item">
                         <button class="nav-link ${active}" data-bs-toggle="tab" data-bs-target="#tab-${tabId}">
                             ${file.fileName}
                         </button>
                     </li>`;
-                    
-                    const lang = file.fileName.endsWith('.cs') ? 'csharp' : 
-                                 file.fileName.endsWith('.js') ? 'javascript' : 
+
+                    const lang = file.fileName.endsWith('.cs') ? 'csharp' :
+                                 file.fileName.endsWith('.js') ? 'javascript' :
                                  file.fileName.endsWith('.cshtml') ? 'xml' : 'plaintext';
-                    
+
                     tabContentHtml += `<div class="tab-pane fade ${show}" id="tab-${tabId}">
                         <small class="text-muted d-block mb-2">${file.relativePath}</small>
                         <div class="code-preview">
@@ -1604,17 +1991,17 @@
                         </div>
                     </div>`;
                 }
-                
+
                 $('#previewTabs').html(tabsHtml);
                 $('#previewTabContent').html(tabContentHtml);
-                
+
                 // Aplica syntax highlighting
                 document.querySelectorAll('#previewTabContent pre code').forEach((block) => {
                     hljs.highlightElement(block);
                 });
-                
+
                 modalPreview.show();
-                
+
             } catch (error) {
                 showToast('Erro', error.message, 'error');
             } finally {
@@ -1624,26 +2011,26 @@
 
         async function gerarFullStack() {
             const config = coletarConfiguracao();
-            
+
             if (!config.cdFuncao) {
                 showToast('Atenção', 'Informe o código da função', 'warning');
                 return;
             }
-            
+
             try {
                 $('#loadingOverlay').css('display', 'flex');
-                
+
                 const response = await fetch('/Home/DownloadFullStackZip', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(config)
                 });
-                
+
                 if (!response.ok) {
                     const error = await response.text();
                     throw new Error(error);
                 }
-                
+
                 // Download do arquivo
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
@@ -1652,13 +2039,13 @@
                 a.download = `${tabelaDetalhes.nomePascalCase}_FullStack.zip`;
                 a.click();
                 window.URL.revokeObjectURL(url);
-                
+
                 showToast('Sucesso', 'Arquivos gerados com sucesso!', 'success');
-                
+
                 // Fecha modais
                 modalConfiguracao.hide();
                 if (modalPreview._isShown) modalPreview.hide();
-                
+
             } catch (error) {
                 showToast('Erro', error.message, 'error');
             } finally {
@@ -1668,16 +2055,16 @@
 
         async function gerarLoteFullStack() {
             const selecionadas = $('.tabela-check:checked').map(function() { return $(this).val(); }).get();
-            
+
             if (selecionadas.length === 0) {
                 showToast('Atenção', 'Selecione pelo menos uma tabela', 'warning');
                 return;
             }
-            
+
             // Para lote, usa configurações padrão
             const cdFuncao = prompt('Informe o prefixo do CdFuncao (ex: SIS):', 'SIS');
             if (!cdFuncao) return;
-            
+
             const requests = selecionadas.map(tabela => ({
                 nomeTabela: tabela,
                 cdFuncao: cdFuncao + tabela.toUpperCase().substring(0, 5),
@@ -1685,29 +2072,29 @@
                 modulo: 'GestaoDePessoas',
                 moduloRota: 'gestaodepessoas'
             }));
-            
+
             try {
                 $('#loadingOverlay').css('display', 'flex');
-                
+
                 const response = await fetch('/Home/DownloadLoteFullStackZip', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requests)
                 });
-                
+
                 if (!response.ok) {
                     throw new Error('Erro ao gerar arquivos em lote');
                 }
-                
+
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = 'FullStack_Lote.zip';
                 a.click();
-                
+
                 showToast('Sucesso', `${selecionadas.length} entidades geradas!`, 'success');
-                
+
             } catch (error) {
                 showToast('Erro', error.message, 'error');
             } finally {
@@ -1756,7 +2143,7 @@
         function filtrarFuncoes() {
             const termo = $('#filtroFuncao').val().toLowerCase();
             let count = 0;
-            
+
             $('.funcao-row').each(function() {
                 const codigo = $(this).data('codigo') || '';
                 const descricao = $(this).data('descricao') || '';
@@ -1764,7 +2151,7 @@
                 $(this).toggle(match);
                 if (match) count++;
             });
-            
+
             $('#funcoesCount').text(count);
         }
 
@@ -1783,7 +2170,7 @@
             try {
                 const response = await fetch('/Home/RefreshCache', { method: 'POST' });
                 const result = await response.json();
-                
+
                 if (result.success) {
                     showToast('Cache Atualizado', `${result.count} tabelas recarregadas`, 'success');
                     location.reload();
@@ -1799,11 +2186,11 @@
                 warning: 'fas fa-exclamation-triangle text-warning',
                 error: 'fas fa-times-circle text-danger'
             };
-            
+
             $('#toastIcon').attr('class', icons[type] || icons.success);
             $('#toastTitle').text(title);
             $('#toastBody').text(message);
-            
+
             const toast = new bootstrap.Toast($('#toast')[0]);
             toast.show();
         }
