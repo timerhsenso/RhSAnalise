@@ -1,4 +1,25 @@
 @* src/Web/Views/Shared/_Layout.cshtml *@
+@*
+    =============================================================================
+    LAYOUT PRINCIPAL DO SISTEMA (AdminLTE + Menu Dinâmico)
+    -----------------------------------------------------------------------------
+    - Este layout usa o ViewComponent "DynamicMenu" para renderizar o menu lateral
+      com base no MenuDiscoveryService e nos controllers marcados com [MenuItem].
+
+    - Pontos principais:
+        1) Cabeçalho (navbar superior)
+        2) Menu lateral (sidebar) -> @await Component.InvokeAsync("DynamicMenu")
+        3) Área de conteúdo -> @RenderBody()
+        4) Rodapé
+        5) Seções opcionais de scripts -> @RenderSection("Scripts", required: false)
+
+    - Ajuste os caminhos de CSS/JS conforme seu projeto (wwwroot/lib, wwwroot/css, etc).
+    =============================================================================
+*@
+
+@using RhSensoERP.Web.Services.Menu
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -206,7 +227,11 @@
                         </ul>
                     }
                 </div>
+               
             </div>
+        </nav>
+        <nav class="mt-2">
+            @await Component.InvokeAsync("DynamicMenu")
         </nav>
     </header>
 

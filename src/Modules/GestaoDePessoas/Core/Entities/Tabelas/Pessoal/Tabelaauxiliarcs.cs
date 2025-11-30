@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using RhSensoERP.Shared.Core.Attributes;
 
-namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Auxiliares;
+namespace RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
 
 [GenerateCrud(
     TableName = "taux1",

@@ -1,0 +1,68 @@
+﻿@* =============================================================================
+    RHSENSOERP WEB - DYNAMIC MENU VIEW
+    =============================================================================
+    Arquivo: src/Web/Views/Shared/Components/DynamicMenu/Default.cshtml
+    Descrição: Renderiza o menu dinâmico no layout
+    ============================================================================= *@
+
+@model IReadOnlyList<RhSensoERP.Web.Services.Menu.MenuModuleViewModel>
+
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+}
+
+@foreach (var module in Model)
+{
+    var isModuleActive = module.Items.Any(i =>
+        i.Controller.Equals(currentController, StringComparison.OrdinalIgnoreCase));
+
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle @(isModuleActive ? "active" : "")"
+           href="#"
+           id="menu-@module.Module"
+           role="button"
+           data-bs-toggle="dropdown"
+           aria-expanded="false">
+            <i class="@module.Icon me-1"></i>
+            @module.DisplayName
+        </a>
+
+        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="menu-@module.Module">
+            @foreach (var item in module.Items)
+            {
+                var isActive = item.Controller.Equals(currentController, StringComparison.OrdinalIgnoreCase);
+
+                @if (item.ComingSoon || !item.HasPermission)
+                {
+                    <li>
+                        <span class="dropdown-item disabled text-muted"
+                              title="@(item.ComingSoon ? "Funcionalidade em desenvolvimento" : "Sem permissão de acesso")">
+                            <i class="@item.Icon me-2 opacity-50"></i>
+                            @item.DisplayName
+                            @if (!string.IsNullOrEmpty(item.Badge))
+                            {
+                                <span class="badge bg-@item.BadgeColor ms-2">@item.Badge</span>
+                            }
+                        </span>
+                    </li>
+                }
+                else
+                {
+                    <li>
+                        <a class="dropdown-item @(isActive ? "active" : "")"
+                           href="@item.Url"
+                           title="@item.Description">
+                            <i class="@item.Icon me-2"></i>
+                            @item.DisplayName
+                            @if (!string.IsNullOrEmpty(item.Badge))
+                            {
+                                <span class="badge bg-@item.BadgeColor ms-2">@item.Badge</span>
+                            }
+                        </a>
+                    </li>
+                }
+            }
+        </ul>
+    </li>
+}

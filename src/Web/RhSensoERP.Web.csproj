@@ -16,8 +16,6 @@
   <ItemGroup>
     <Folder Include="logs\" />
     <Folder Include="Models\Identity\" />
-    <Folder Include="Models\Sistemas\" />
-    <Folder Include="Services\Sistemas\" />
   </ItemGroup>
 
   <PropertyGroup>

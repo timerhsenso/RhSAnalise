@@ -3,12 +3,13 @@
 // =============================================================================
 // Arquivo: Program.cs
 // Descrição: Ponto de entrada da aplicação Web ASP.NET Core 8
-// Versão: 4.0 (Refatorado - Sem duplicações, Areas, Serilog centralizado)
+// Versão: 4.1 (Refatorado + Registro de Menu Dinâmico)
 // =============================================================================
 
 using Microsoft.AspNetCore.Authentication.Cookies;
 using RhSensoERP.Web.Extensions;
 using RhSensoERP.Web.Filters;
+using RhSensoERP.Web.Services.Menu; // <<< [NOVO] - Serviço de menu dinâmico
 using Serilog;
 
 namespace RhSensoERP.Web;
@@ -113,6 +114,32 @@ public static class Program
         // CACHE DE PERMISSÕES (usar método existente do projeto)
         // =====================================================================
         services.AddPermissionsCaching(configuration.GetValue("PermissionsCache:MaxSize", 1000));
+
+        // =====================================================================
+        // MENU DINÂMICO (NOVO BLOCO)
+        // ---------------------------------------------------------------------
+        // - AddHttpContextAccessor:
+        //     Necessário para o MenuDiscoveryService descobrir o usuário
+        //     logado a partir do HttpContext (User.Identity.Name).
+        //
+        // - AddScoped<IMenuDiscoveryService, MenuDiscoveryService>:
+        //     Serviço responsável por:
+        //       * Descobrir controllers com [MenuItem]
+        //       * Consultar permissões do usuário
+        //       * Montar a estrutura de módulos/itens para o menu
+        //
+        // - AddMemoryCache:
+        //     Opcional, mas recomendado. Permite que tanto o cache de
+        //     permissões quanto o menu usem memória compartilhada,
+        //     melhorando a performance em produção.
+        //
+        // IMPORTANTE:
+        //   Este bloco NÃO altera nenhum comportamento existente; apenas
+        //   adiciona infraestrutura para o menu lateral dinâmico.
+        // =====================================================================
+        services.AddHttpContextAccessor();
+        services.AddScoped<IMenuDiscoveryService, MenuDiscoveryService>();
+        services.AddMemoryCache();
 
         // =====================================================================
         // AUTENTICAÇÃO (Cookie)
