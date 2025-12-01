@@ -1,6 +1,7 @@
 // =============================================================================
 // GERADOR FULL-STACK v3.0 - VIEW TEMPLATE
-// Migrado e adaptado de RhSensoERP.CrudTool
+// Baseado em RhSensoERP.CrudTool v2.5
+// CORREÇÕES: _CrudLayout, _CrudTable, sections, crudPermissions
 // =============================================================================
 
 using GeradorEntidades.Models;
@@ -10,13 +11,25 @@ namespace GeradorEntidades.Templates;
 
 /// <summary>
 /// Gera View Razor compatível com CrudBase.js e BaseListViewModel.
+/// 
+/// CORREÇÕES v2.5:
+/// - Layout = "_CrudLayout" (não "_Layout")
+/// - Usa @await Html.PartialAsync("_CrudTable", Model)
+/// - window.crudPermissions (não pagePermissions)
+/// - Campos do modal em @section ModalContent
+/// - Script em @section PageScripts
 /// </summary>
 public static class ViewTemplate
 {
     /// <summary>
+    /// Alias para GenerateIndex - mantém compatibilidade com FullStackGeneratorService.
+    /// </summary>
+    public static GeneratedFile Generate(EntityConfig entity) => GenerateIndex(entity);
+
+    /// <summary>
     /// Gera a View Index.cshtml seguindo o padrão do projeto.
     /// </summary>
-    public static GeneratedFile Generate(EntityConfig entity)
+    public static GeneratedFile GenerateIndex(EntityConfig entity)
     {
         var formFields = GenerateFormFields(entity);
         var iconClass = "fas fa-list";

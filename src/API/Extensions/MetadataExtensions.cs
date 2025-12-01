@@ -42,13 +42,13 @@ public static class MetadataExtensions
         // IDENTITY MODULE
         // =====================================================================
         // TODO: Descomentar quando o módulo Identity tiver entidades com [GenerateCrud]
-         registry.Register(RhSensoERP.Identity.Application.Metadata.SistemaMetadataProvider.GetMetadata());
+       /////////  registry.Register(RhSensoERP.Identity.Application.Metadata.SistemaMetadataProvider.GetMetadata());
         // registry.Register(RhSensoERP.Identity.Application.Metadata.FuncaoMetadataProvider.GetMetadata());
 
         // =====================================================================
         // GESTÃO DE PESSOAS MODULE
         // =====================================================================
-        registry.Register(RhSensoERP.Modules.GestaoDePessoas.Application.Metadata.BancoMetadataProvider.GetMetadata());
+      //  registry.Register(RhSensoERP.Modules.GestaoDePessoas.Application.Metadata.BancoMetadataProvider.GetMetadata());
 
         // TODO: Adicionar outras entidades conforme forem criadas
         // registry.Register(RhSensoERP.Modules.GestaoDePessoas.Application.Metadata.AgenciaMetadataProvider.GetMetadata());

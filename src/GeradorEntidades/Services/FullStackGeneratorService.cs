@@ -45,7 +45,7 @@ public class FullStackGeneratorService
             }
 
             // Warnings
-            result.Warnings = GetWarnings(tabela);
+            result.Warnings = GetWarnings(tabela, request);
 
             // Preenche configurações default se não fornecidas
             EnsureDefaultConfigurations(tabela, request);
@@ -144,10 +144,10 @@ public class FullStackGeneratorService
     {
         var errors = new List<string>();
 
-        // Tabela sem PK - BLOQUEIA
-        if (!tabela.HasPrimaryKey)
+        // Tabela sem PK no banco E sem PK definida pelo usuário - BLOQUEIA
+        if (!tabela.HasPrimaryKey && (request.ColunasPkDefinidas == null || request.ColunasPkDefinidas.Count == 0))
         {
-            errors.Add($"Tabela '{tabela.NomeTabela}' não possui Primary Key definida. Geração bloqueada.");
+            errors.Add($"Tabela '{tabela.NomeTabela}' não possui Primary Key. Defina pelo menos uma coluna como chave primária.");
         }
 
         // CdFuncao obrigatório
@@ -162,15 +162,27 @@ public class FullStackGeneratorService
     /// <summary>
     /// Gera warnings (não bloqueiam, mas informam).
     /// </summary>
-    private List<string> GetWarnings(TabelaInfo tabela)
+    private List<string> GetWarnings(TabelaInfo tabela, FullStackRequest request)
     {
         var warnings = new List<string>();
 
-        // PK Composta
-        if (tabela.HasCompositePrimaryKey)
+        // PK Composta (do banco ou definida)
+        var totalPks = tabela.PrimaryKeyColumns.Count + (request.ColunasPkDefinidas?.Count ?? 0);
+        if (tabela.HasCompositePrimaryKey || totalPks > 1)
         {
-            var pkCols = string.Join(", ", tabela.PrimaryKeyColumns.Select(c => c.Nome));
-            warnings.Add($"Tabela possui PK composta ({pkCols}). Algumas funcionalidades podem ter limitações.");
+            var pkCols = tabela.PrimaryKeyColumns.Select(c => c.Nome).ToList();
+            if (request.ColunasPkDefinidas != null)
+            {
+                pkCols.AddRange(request.ColunasPkDefinidas.Select(p => p.Nome));
+            }
+            warnings.Add($"Tabela possui PK composta ({string.Join(", ", pkCols)}). Algumas funcionalidades podem ter limitações.");
+        }
+
+        // PK definida manualmente
+        if (request.ColunasPkDefinidas != null && request.ColunasPkDefinidas.Count > 0)
+        {
+            var pkNames = string.Join(", ", request.ColunasPkDefinidas.Select(p => p.Nome));
+            warnings.Add($"Chave primária definida manualmente: {pkNames}. Certifique-se de que essas colunas identificam registros únicos.");
         }
 
         // FK Composta

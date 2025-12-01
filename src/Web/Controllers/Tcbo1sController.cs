@@ -1,48 +1,25 @@
-// =============================================================================
-// GERADOR FULL-STACK v3.0 - WEB CONTROLLER TEMPLATE
-// Baseado em RhSensoERP.CrudTool v2.0
-// Compatível com BaseCrudController existente
-// =============================================================================
-
-using GeradorEntidades.Models;
-
-namespace GeradorEntidades.Templates;
-
-/// <summary>
-/// Gera Controller Web que herda de BaseCrudController.
-/// Adiciona apenas a lógica de permissões específica da entidade.
-/// </summary>
-public static class WebControllerTemplate
-{
-    /// <summary>
-    /// Gera o Controller Web completo.
-    /// </summary>
-    public static GeneratedFile Generate(EntityConfig entity)
-    {
-        var pkType = entity.PkTypeSimple;
-
-        var content = $@"// =============================================================================
+﻿// =============================================================================
 // ARQUIVO GERADO POR GeradorFullStack v3.0
-// Entity: {entity.Name}
-// Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
+// Entity: Tcbo1
+// Data: 2025-12-01 01:28:26
 // =============================================================================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RhSensoERP.Web.Controllers.Base;
-using RhSensoERP.Web.Models.{entity.PluralName};
-using RhSensoERP.Web.Services.{entity.PluralName};
+using RhSensoERP.Web.Models.Tcbo1s;
+using RhSensoERP.Web.Services.Tcbo1s;
 using RhSensoERP.Web.Services.Permissions;
 
 namespace RhSensoERP.Web.Controllers;
 
 /// <summary>
-/// Controller para gerenciamento de {entity.DisplayName}.
+/// Controller para gerenciamento de Tabela de Ocupação.
 /// Herda toda a funcionalidade CRUD de BaseCrudController.
 /// </summary>
 [Authorize]
-public class {entity.PluralName}Controller 
-    : BaseCrudController<{entity.Name}Dto, Create{entity.Name}Request, Update{entity.Name}Request, {pkType}>
-{{
+public class Tcbo1sController 
+    : BaseCrudController<Tcbo1Dto, CreateTcbo1Request, UpdateTcbo1Request, string>
+{
     // =========================================================================
     // CONFIGURAÇÃO DE PERMISSÕES
     // =========================================================================
@@ -51,27 +28,27 @@ public class {entity.PluralName}Controller
     /// Código da função/tela no sistema de permissões.
     /// Corresponde ao cadastrado na tabela tfunc1 do banco legado.
     /// </summary>
-    private const string CdFuncao = ""{entity.CdFuncao}"";
+    private const string CdFuncao = "RHU_FM_TCBO1";
 
     /// <summary>
     /// Código do sistema ao qual esta função pertence.
     /// </summary>
-    private const string CdSistema = ""{entity.CdSistema}"";
+    private const string CdSistema = "RHU";
 
-    private readonly I{entity.Name}ApiService _{entity.NameLower}Service;
+    private readonly ITcbo1ApiService _tcbo1Service;
 
     // =========================================================================
     // CONSTRUTOR
     // =========================================================================
 
-    public {entity.PluralName}Controller(
-        I{entity.Name}ApiService apiService,
+    public Tcbo1sController(
+        ITcbo1ApiService apiService,
         IUserPermissionsCacheService permissionsCache,
-        ILogger<{entity.PluralName}Controller> logger)
+        ILogger<Tcbo1sController> logger)
         : base(apiService, permissionsCache, logger)
-    {{
-        _{entity.NameLower}Service = apiService;
-    }}
+    {
+        _tcbo1Service = apiService;
+    }
 
     // =========================================================================
     // ACTION: INDEX (Página Principal)
@@ -82,34 +59,34 @@ public class {entity.PluralName}Controller
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken ct = default)
-    {{
+    {
         // Verifica permissão de consulta
         if (!await CanViewAsync(CdFuncao, ct))
-        {{
+        {
             _logger.LogWarning(
-                ""Acesso negado: Usuário {{User}} tentou acessar {{Funcao}} sem permissão"",
+                "Acesso negado: Usuário {User} tentou acessar {Funcao} sem permissão",
                 User.Identity?.Name,
                 CdFuncao);
 
-            return RedirectToAction(""AccessDenied"", ""Account"");
-        }}
+            return RedirectToAction("AccessDenied", "Account");
+        }
 
         // Busca permissões do usuário para esta função
         var permissions = await GetUserPermissionsAsync(CdFuncao, ct);
 
-        var viewModel = new {entity.PluralName}ListViewModel
-        {{
+        var viewModel = new Tcbo1sListViewModel
+        {
             UserPermissions = permissions
-        }};
+        };
 
         _logger.LogDebug(
-            ""Usuário {{User}} acessou {{Funcao}} | Permissões: {{Permissions}}"",
+            "Usuário {User} acessou {Funcao} | Permissões: {Permissions}",
             User.Identity?.Name,
             CdFuncao,
             permissions);
 
         return View(viewModel);
-    }}
+    }
 
     // =========================================================================
     // ACTION: GET BY ID (Sobrescrito para verificar permissão)
@@ -119,15 +96,15 @@ public class {entity.PluralName}Controller
     /// Busca registro por ID via AJAX.
     /// </summary>
     [HttpGet]
-    public override async Task<IActionResult> GetById({pkType} id)
-    {{
+    public override async Task<IActionResult> GetById(string id)
+    {
         if (!await CanViewAsync(CdFuncao))
-        {{
-            return JsonError(""Você não tem permissão para visualizar registros."");
-        }}
+        {
+            return JsonError("Você não tem permissão para visualizar registros.");
+        }
 
         return await base.GetById(id);
-    }}
+    }
 
     // =========================================================================
     // ACTION: CREATE (Sobrescrito para verificar permissão)
@@ -138,25 +115,25 @@ public class {entity.PluralName}Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public override async Task<IActionResult> Create([FromBody] Create{entity.Name}Request dto)
-    {{
+    public override async Task<IActionResult> Create([FromBody] CreateTcbo1Request dto)
+    {
         if (!await CanCreateAsync(CdFuncao))
-        {{
+        {
             _logger.LogWarning(
-                ""Tentativa de inclusão negada: Usuário {{User}} sem permissão 'I' em {{Funcao}}"",
+                "Tentativa de inclusão negada: Usuário {User} sem permissão 'I' em {Funcao}",
                 User.Identity?.Name,
                 CdFuncao);
 
-            return JsonError(""Você não tem permissão para criar registros nesta tela."");
-        }}
+            return JsonError("Você não tem permissão para criar registros nesta tela.");
+        }
 
         _logger.LogInformation(
-            ""Usuário {{User}} criando registro em {{Funcao}}"",
+            "Usuário {User} criando registro em {Funcao}",
             User.Identity?.Name,
             CdFuncao);
 
         return await base.Create(dto);
-    }}
+    }
 
     // =========================================================================
     // ACTION: EDIT (POST para compatibilidade com CrudBase.js)
@@ -168,31 +145,31 @@ public class {entity.PluralName}Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit([FromQuery] {pkType} id, [FromBody] Update{entity.Name}Request dto)
-    {{
-        if (EqualityComparer<{pkType}>.Default.Equals(id, default))
-        {{
-            return JsonError(""ID do registro não informado."");
-        }}
+    public async Task<IActionResult> Edit([FromQuery] string id, [FromBody] UpdateTcbo1Request dto)
+    {
+        if (EqualityComparer<string>.Default.Equals(id, default))
+        {
+            return JsonError("ID do registro não informado.");
+        }
 
         if (!await CanEditAsync(CdFuncao))
-        {{
+        {
             _logger.LogWarning(
-                ""Tentativa de alteração negada: Usuário {{User}} sem permissão 'A' em {{Funcao}}"",
+                "Tentativa de alteração negada: Usuário {User} sem permissão 'A' em {Funcao}",
                 User.Identity?.Name,
                 CdFuncao);
 
-            return JsonError(""Você não tem permissão para alterar registros nesta tela."");
-        }}
+            return JsonError("Você não tem permissão para alterar registros nesta tela.");
+        }
 
         _logger.LogInformation(
-            ""Usuário {{User}} alterando registro {{Id}} em {{Funcao}}"",
+            "Usuário {User} alterando registro {Id} em {Funcao}",
             User.Identity?.Name,
             id,
             CdFuncao);
 
         return await base.Update(id, dto);
-    }}
+    }
 
     // =========================================================================
     // ACTION: UPDATE (PUT padrão REST)
@@ -203,15 +180,15 @@ public class {entity.PluralName}Controller
     /// </summary>
     [HttpPut]
     [ValidateAntiForgeryToken]
-    public override async Task<IActionResult> Update({pkType} id, [FromBody] Update{entity.Name}Request dto)
-    {{
+    public override async Task<IActionResult> Update(string id, [FromBody] UpdateTcbo1Request dto)
+    {
         if (!await CanEditAsync(CdFuncao))
-        {{
-            return JsonError(""Você não tem permissão para alterar registros nesta tela."");
-        }}
+        {
+            return JsonError("Você não tem permissão para alterar registros nesta tela.");
+        }
 
         return await base.Update(id, dto);
-    }}
+    }
 
     // =========================================================================
     // ACTION: DELETE (Sobrescrito para verificar permissão)
@@ -224,26 +201,26 @@ public class {entity.PluralName}Controller
     [HttpPost]
     [HttpDelete]
     [ValidateAntiForgeryToken]
-    public override async Task<IActionResult> Delete({pkType} id)
-    {{
+    public override async Task<IActionResult> Delete(string id)
+    {
         if (!await CanDeleteAsync(CdFuncao))
-        {{
+        {
             _logger.LogWarning(
-                ""Tentativa de exclusão negada: Usuário {{User}} sem permissão 'E' em {{Funcao}}"",
+                "Tentativa de exclusão negada: Usuário {User} sem permissão 'E' em {Funcao}",
                 User.Identity?.Name,
                 CdFuncao);
 
-            return JsonError(""Você não tem permissão para excluir registros nesta tela."");
-        }}
+            return JsonError("Você não tem permissão para excluir registros nesta tela.");
+        }
 
         _logger.LogInformation(
-            ""Usuário {{User}} excluindo registro {{Id}} em {{Funcao}}"",
+            "Usuário {User} excluindo registro {Id} em {Funcao}",
             User.Identity?.Name,
             id,
             CdFuncao);
 
         return await base.Delete(id);
-    }}
+    }
 
     // =========================================================================
     // ACTION: DELETE MULTIPLE (Sobrescrito para verificar permissão)
@@ -254,40 +231,29 @@ public class {entity.PluralName}Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public override async Task<IActionResult> DeleteMultiple([FromBody] List<{pkType}> ids)
-    {{
+    public override async Task<IActionResult> DeleteMultiple([FromBody] List<string> ids)
+    {
         if (ids == null || ids.Count == 0)
-        {{
-            return JsonError(""Nenhum registro selecionado para exclusão."");
-        }}
+        {
+            return JsonError("Nenhum registro selecionado para exclusão.");
+        }
 
         if (!await CanDeleteAsync(CdFuncao))
-        {{
+        {
             _logger.LogWarning(
-                ""Tentativa de exclusão múltipla negada: Usuário {{User}} sem permissão 'E' em {{Funcao}}"",
+                "Tentativa de exclusão múltipla negada: Usuário {User} sem permissão 'E' em {Funcao}",
                 User.Identity?.Name,
                 CdFuncao);
 
-            return JsonError(""Você não tem permissão para excluir registros nesta tela."");
-        }}
+            return JsonError("Você não tem permissão para excluir registros nesta tela.");
+        }
 
         _logger.LogInformation(
-            ""Usuário {{User}} excluindo {{Count}} registros em {{Funcao}}"",
+            "Usuário {User} excluindo {Count} registros em {Funcao}",
             User.Identity?.Name,
             ids.Count,
             CdFuncao);
 
         return await base.DeleteMultiple(ids);
-    }}
-}}
-";
-
-        return new GeneratedFile
-        {
-            FileName = $"{entity.PluralName}Controller.cs",
-            RelativePath = $"Web/Controllers/{entity.PluralName}Controller.cs",
-            Content = content,
-            FileType = "Controller"
-        };
     }
 }

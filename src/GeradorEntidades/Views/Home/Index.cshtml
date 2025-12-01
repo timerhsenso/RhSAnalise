@@ -15,7 +15,11 @@
     <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css" rel="stylesheet" />
     <style>
+        /* ==================== DARK MODE PROFISSIONAL - CORRIGIDO ==================== */
+        /* Fundo escuro, texto branco, SEM linhas brancas */
+
         :root {
+            /* Cores primárias - Indigo moderno */
             --primary-color: #6366f1;
             --primary-light: #818cf8;
             --primary-dark: #4f46e5;
@@ -24,19 +28,47 @@
             --warning-color: #f59e0b;
             --danger-color: #ef4444;
             --info-color: #3b82f6;
-            /* Cores de fundo claras */
+        }
+
+        /* ==================== LIGHT MODE (Padrão) ==================== */
+        :root {
+            /* Fundos claros - Tons de cinza azulado */
             --bg-primary: #f8fafc;
             --bg-secondary: #ffffff;
             --bg-tertiary: #f1f5f9;
             --bg-hover: #e2e8f0;
-            /* Cores de texto */
+            /* Textos claros */
             --text-primary: #1e293b;
             --text-secondary: #64748b;
             --text-muted: #94a3b8;
-            /* Bordas */
+            /* Bordas claras */
             --border-color: #e2e8f0;
             --border-light: #f1f5f9;
         }
+
+        /* ==================== DARK MODE - FUNDO ESCURO, TEXTO BRANCO ==================== */
+        [data-theme="dark"] {
+            /* Fundos escuros - Azul marinho profundo */
+            --bg-primary: #0a0e1a; /* Fundo principal - Quase preto */
+            --bg-secondary: #141824; /* Cards e containers */
+            --bg-tertiary: #1e2433; /* Headers e seções */
+            --bg-hover: #2a3142; /* Hover states */
+            /* Textos escuros - BRANCO PURO E LEGÍVEL */
+            --text-primary: #ffffff; /* Texto principal - BRANCO PURO */
+            --text-secondary: #e2e8f0; /* Texto secundário - Branco azulado */
+            --text-muted: #94a3b8; /* Texto discreto - Cinza claro */
+            /* Bordas escuras - INVISÍVEIS, sem linhas brancas */
+            --border-color: #1e2433; /* Borda padrão - Quase invisível */
+            --border-light: #141824; /* Borda sutil - Invisível */
+            /* Cores de acento ajustadas */
+            --primary-light: #818cf8;
+            --accent-color: #22d3ee;
+            --success-color: #34d399;
+            --warning-color: #fbbf24;
+            --danger-color: #f87171;
+        }
+
+        /* ==================== COMPONENTES GLOBAIS ==================== */
 
         * {
             box-sizing: border-box;
@@ -50,12 +82,16 @@
             font-size: 14px;
         }
 
-        /* Navbar */
+        /* ==================== NAVBAR ==================== */
         .navbar {
             background: var(--bg-secondary) !important;
             border-bottom: 1px solid var(--border-color);
             padding: 0.5rem 0;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            box-shadow: none;
+        }
+
+        [data-theme="dark"] .navbar {
+            border-bottom: none;
         }
 
         .navbar-brand {
@@ -68,12 +104,16 @@
                 color: var(--primary-color);
             }
 
-        /* Cards */
+        /* ==================== CARDS ==================== */
         .card {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            box-shadow: none;
+        }
+
+        [data-theme="dark"] .card {
+            border: none;
         }
 
         .card-header {
@@ -86,11 +126,15 @@
             font-size: 0.85rem;
         }
 
+        [data-theme="dark"] .card-header {
+            border-bottom: none;
+        }
+
         .card-body {
             padding: 0.75rem;
         }
 
-        /* Tabela de Seleção */
+        /* ==================== TABELAS - SEM LINHAS BRANCAS ==================== */
         .table {
             color: var(--text-primary);
             font-size: 0.8rem;
@@ -125,7 +169,51 @@
             border-left: 3px solid var(--primary-color);
         }
 
-        /* Badges */
+        /* DARK MODE - TABELAS ESCURAS, TEXTO BRANCO, SEM BORDAS */
+        [data-theme="dark"] .table {
+            color: #ffffff !important;
+        }
+
+            [data-theme="dark"] .table td {
+                color: #ffffff !important;
+                border-color: transparent !important; /* SEM BORDAS VISÍVEIS */
+                background: transparent;
+            }
+
+            [data-theme="dark"] .table tbody tr {
+                background: var(--bg-secondary);
+                border: none;
+            }
+
+                [data-theme="dark"] .table tbody tr:hover {
+                    background: var(--bg-hover) !important;
+                }
+
+            [data-theme="dark"] .table thead th {
+                color: var(--text-secondary) !important;
+                background: var(--bg-tertiary);
+                border-color: transparent !important; /* SEM BORDAS VISÍVEIS */
+            }
+
+        [data-theme="dark"] .fw-medium,
+        [data-theme="dark"] .tabela-row td {
+            color: #ffffff !important;
+        }
+
+        [data-theme="dark"] .tabela-row:hover td {
+            color: #ffffff !important;
+        }
+
+        [data-theme="dark"] .selected-row {
+            background-color: rgba(99, 102, 241, 0.3) !important;
+            border-left: 3px solid var(--primary-light);
+        }
+
+            [data-theme="dark"] .selected-row td {
+                color: #ffffff !important;
+            }
+
+        /* ==================== BADGES ==================== */
         .badge {
             font-weight: 500;
             font-size: 0.65rem;
@@ -176,7 +264,7 @@
             background: var(--text-muted) !important;
         }
 
-        /* Alertas visuais - mais compactos */
+        /* ==================== ALERTAS ==================== */
         .alert-no-pk, .alert-composite-pk, .alert-composite-fk {
             border-radius: 6px;
             padding: 0.5rem 0.75rem;
@@ -205,7 +293,29 @@
             color: #9a3412;
         }
 
-        /* Preview de Código */
+        /* Alertas no dark mode */
+        [data-theme="dark"] .alert-no-pk {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-left: 3px solid #f87171;
+            color: #fca5a5;
+        }
+
+        [data-theme="dark"] .alert-composite-pk {
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-left: 3px solid #fbbf24;
+            color: #fcd34d;
+        }
+
+        [data-theme="dark"] .alert-composite-fk {
+            background: rgba(249, 115, 22, 0.2);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-left: 3px solid #fb923c;
+            color: #fdba74;
+        }
+
+        /* ==================== PREVIEW DE CÓDIGO ==================== */
         .code-preview {
             max-height: 350px;
             overflow: auto;
@@ -214,13 +324,18 @@
             border: 1px solid var(--border-color);
         }
 
-            .code-preview pre {
-                margin: 0;
-                padding: 0.75rem;
-                font-size: 0.75rem;
-            }
+        [data-theme="dark"] .code-preview {
+            background: #0f172a;
+            border: none;
+        }
 
-        /* Botões */
+        .code-preview pre {
+            margin: 0;
+            padding: 0.75rem;
+            font-size: 0.75rem;
+        }
+
+        /* ==================== BOTÕES ==================== */
         .btn-generate {
             background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
             border: none;
@@ -235,7 +350,7 @@
             .btn-generate:hover {
                 background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
                 transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
                 color: #fff;
             }
 
@@ -251,7 +366,18 @@
                 color: var(--primary-color);
             }
 
-        /* Inputs */
+        [data-theme="dark"] .btn-outline-secondary {
+            border-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+            [data-theme="dark"] .btn-outline-secondary:hover {
+                background: var(--bg-tertiary);
+                color: #ffffff;
+                border-color: var(--primary-light);
+            }
+
+        /* ==================== INPUTS E FORMULÁRIOS ==================== */
         .form-control, .form-select {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
@@ -268,15 +394,34 @@
                 color: var(--text-primary);
             }
 
-            .form-control::placeholder {
-                color: var(--text-muted);
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--bg-tertiary);
+            color: #ffffff;
+        }
+
+            [data-theme="dark"] .form-control:focus,
+            [data-theme="dark"] .form-select:focus {
+                background: var(--bg-tertiary);
+                border-color: var(--primary-light);
+                box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+                color: #ffffff;
             }
+
+        .form-control::placeholder {
+            color: var(--text-muted);
+        }
 
         .form-label {
             color: var(--text-secondary);
             font-weight: 500;
             font-size: 0.8rem;
             margin-bottom: 0.25rem;
+        }
+
+        [data-theme="dark"] .form-label {
+            color: var(--text-secondary);
         }
 
         .form-check-input {
@@ -291,7 +436,12 @@
                 border-color: var(--primary-color);
             }
 
-        /* Search Box */
+        [data-theme="dark"] .form-check-input {
+            background-color: var(--bg-tertiary);
+            border-color: var(--bg-hover);
+        }
+
+        /* ==================== SEARCH BOX ==================== */
         .search-box {
             position: relative;
         }
@@ -309,13 +459,17 @@
                 padding-left: 32px;
             }
 
-        /* Accordion/Seções Colapsáveis */
+        /* ==================== ACCORDION/SEÇÕES ==================== */
         .config-section {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             margin-bottom: 0.5rem;
             overflow: hidden;
+        }
+
+        [data-theme="dark"] .config-section {
+            border: none;
         }
 
         .config-section-header {
@@ -361,7 +515,11 @@
             border-top: 1px solid var(--border-light);
         }
 
-        /* FK Cards */
+        [data-theme="dark"] .config-section-body {
+            border-top: none;
+        }
+
+        /* ==================== FK CARDS ==================== */
         .fk-card {
             background: var(--bg-tertiary);
             border-left: 3px solid var(--primary-color);
@@ -381,11 +539,15 @@
                 color: var(--text-secondary);
             }
 
-        /* Modal */
+        /* ==================== MODAIS ==================== */
         .modal-content {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 12px;
+        }
+
+        [data-theme="dark"] .modal-content {
+            border: none;
         }
 
         .modal-header {
@@ -395,9 +557,17 @@
             padding: 0.75rem 1rem;
         }
 
+        [data-theme="dark"] .modal-header {
+            border-bottom: none;
+        }
+
         .modal-footer {
             border-top: 1px solid var(--border-color);
             padding: 0.75rem 1rem;
+        }
+
+        [data-theme="dark"] .modal-footer {
+            border-top: none;
         }
 
         .modal-title {
@@ -409,30 +579,47 @@
             padding: 1rem;
         }
 
-        /* Nav Tabs */
+        [data-theme="dark"] .modal-header .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+
+        /* ==================== NAV TABS ==================== */
         .nav-tabs {
             border-bottom: 1px solid var(--border-color);
         }
 
-            .nav-tabs .nav-link {
-                color: var(--text-secondary);
-                border: none;
-                padding: 0.5rem 1rem;
-                font-weight: 500;
-                font-size: 0.8rem;
+        [data-theme="dark"] .nav-tabs {
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--text-secondary);
+            border: none;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            font-size: 0.8rem;
+        }
+
+            .nav-tabs .nav-link:hover {
+                color: var(--primary-color);
+                border-color: transparent;
             }
 
-                .nav-tabs .nav-link:hover {
-                    color: var(--primary-color);
-                    border-color: transparent;
-                }
+            .nav-tabs .nav-link.active {
+                background: transparent;
+                color: var(--primary-color);
+                border: none;
+                border-bottom: 2px solid var(--primary-color);
+            }
 
-                .nav-tabs .nav-link.active {
-                    background: transparent;
-                    color: var(--primary-color);
-                    border: none;
-                    border-bottom: 2px solid var(--primary-color);
-                }
+        [data-theme="dark"] .nav-tabs .nav-link {
+            color: var(--text-secondary);
+        }
+
+            [data-theme="dark"] .nav-tabs .nav-link.active {
+                color: var(--primary-light);
+                border-bottom-color: var(--primary-light);
+            }
 
         .tab-content {
             background: var(--bg-secondary);
@@ -440,7 +627,7 @@
             padding: 0.75rem;
         }
 
-        /* Loading Overlay */
+        /* ==================== LOADING OVERLAY ==================== */
         #loadingOverlay {
             position: fixed;
             top: 0;
@@ -454,17 +641,21 @@
             z-index: 9999;
         }
 
-            #loadingOverlay h5 {
-                color: var(--text-primary);
-                font-size: 1rem;
-            }
+        [data-theme="dark"] #loadingOverlay {
+            background: rgba(10, 14, 26, 0.95);
+        }
 
-            #loadingOverlay p {
-                color: var(--text-secondary);
-                font-size: 0.85rem;
-            }
+        #loadingOverlay h5 {
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
 
-        /* Stats Cards - MENORES */
+        #loadingOverlay p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* ==================== STATS CARDS ==================== */
         .stats-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
@@ -473,26 +664,38 @@
             text-align: center;
         }
 
-            .stats-card .stats-number {
-                font-size: 1.4rem;
-                font-weight: 700;
-                color: var(--primary-color);
-                line-height: 1.2;
-            }
+        [data-theme="dark"] .stats-card {
+            border: none;
+        }
 
-            .stats-card .stats-label {
-                font-size: 0.6rem;
-                color: var(--text-muted);
-                text-transform: uppercase;
-                letter-spacing: 0.03em;
-                font-weight: 600;
-            }
+        .stats-card .stats-number {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            line-height: 1.2;
+        }
 
-        /* Toast */
+        .stats-card .stats-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            font-weight: 600;
+        }
+
+        [data-theme="dark"] .stats-card .stats-number {
+            color: var(--primary-light);
+        }
+
+        /* ==================== TOAST ==================== */
         .toast {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .toast {
+            border: none;
         }
 
         .toast-header {
@@ -501,7 +704,11 @@
             padding: 0.5rem 0.75rem;
         }
 
-        /* Column Config Table */
+        [data-theme="dark"] .toast-header {
+            border-bottom: none;
+        }
+
+        /* ==================== COLUMN CONFIG TABLE ==================== */
         .column-config-table {
             font-size: 0.75rem;
         }
@@ -523,7 +730,7 @@
                 padding: 0.2rem 0.4rem;
             }
 
-        /* Code elements */
+        /* ==================== CODE ELEMENTS ==================== */
         code {
             background: var(--bg-tertiary);
             padding: 0.15em 0.35em;
@@ -532,12 +739,22 @@
             color: var(--primary-dark);
         }
 
+        [data-theme="dark"] code {
+            background: var(--bg-tertiary);
+            color: #a5b4fc;
+        }
+
         .text-info code {
             color: var(--accent-color);
             background: rgba(6, 182, 212, 0.1);
         }
 
-        /* Scrollbar */
+        [data-theme="dark"] .text-info code {
+            color: #22d3ee;
+            background: rgba(6, 182, 212, 0.15);
+        }
+
+        /* ==================== SCROLLBAR ==================== */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -556,12 +773,27 @@
                 background: var(--text-muted);
             }
 
-        /* Texto muted */
+        [data-theme="dark"] ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        [data-theme="dark"] ::-webkit-scrollbar-thumb {
+            background: var(--bg-hover);
+        }
+
+            [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+                background: var(--text-muted);
+            }
+
+        /* ==================== UTILITÁRIOS ==================== */
         .text-muted {
             color: var(--text-secondary) !important;
         }
 
-        /* Links */
+        [data-theme="dark"] .text-muted {
+            color: var(--text-muted) !important;
+        }
+
         a {
             color: var(--primary-color);
         }
@@ -570,14 +802,17 @@
                 color: var(--primary-dark);
             }
 
-        /* Spinner */
+        [data-theme="dark"] a:hover {
+            color: var(--primary-light);
+        }
+
         .spinner-border {
             color: var(--primary-color) !important;
             width: 2rem;
             height: 2rem;
         }
 
-        /* Header da tabela detalhes - mais compacto */
+        /* ==================== HEADER DA TABELA ==================== */
         .table-header-card .card-body {
             padding: 0.75rem 1rem;
         }
@@ -592,7 +827,16 @@
             margin-bottom: 0;
         }
 
-        /* Espaçamento entre elementos */
+        [data-theme="dark"] .table-header-card h4,
+        [data-theme="dark"] #tabelaNome {
+            color: #ffffff !important;
+        }
+
+        [data-theme="dark"] #tabelaDescricao {
+            color: var(--text-secondary) !important;
+        }
+
+        /* ==================== ESPAÇAMENTOS ==================== */
         .mb-4 {
             margin-bottom: 1rem !important;
         }
@@ -610,7 +854,7 @@
             padding-bottom: 2rem !important;
         }
 
-        /* Ícones de status na lista - sem pintar linha */
+        /* ==================== ÍCONES DE STATUS ==================== */
         .status-icon {
             width: 18px;
             text-align: center;
@@ -625,7 +869,15 @@
                 color: #f59e0b;
             }
 
-        /* Placeholder */
+        [data-theme="dark"] .status-icon .fa-exclamation-circle {
+            color: #f87171;
+        }
+
+        [data-theme="dark"] .status-icon .fa-exclamation-triangle {
+            color: #fbbf24;
+        }
+
+        /* ==================== PLACEHOLDER ==================== */
         #placeholderPanel .card-body {
             padding: 2rem;
         }
@@ -643,144 +895,7 @@
             font-size: 0.85rem;
         }
 
-        /* ==================== DARK MODE ==================== */
-        [data-theme="dark"] {
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-tertiary: #334155;
-            --bg-hover: #475569;
-            --text-primary: #f1f5f9;
-            --text-secondary: #cbd5e1;
-            --text-muted: #94a3b8;
-            --border-color: #475569;
-            --border-light: #334155;
-        }
-
-            /* Tabela no dark mode - texto mais visível */
-            [data-theme="dark"] .table {
-                color: var(--text-primary);
-            }
-
-                [data-theme="dark"] .table td {
-                    color: var(--text-primary);
-                }
-
-                [data-theme="dark"] .table thead th {
-                    color: var(--text-secondary);
-                    background: var(--bg-tertiary);
-                }
-
-            [data-theme="dark"] .fw-medium,
-            [data-theme="dark"] .tabela-row td {
-                color: #e2e8f0 !important;
-            }
-
-            [data-theme="dark"] .tabela-row:hover td {
-                color: #fff !important;
-            }
-
-            /* Header da tabela selecionada */
-            [data-theme="dark"] .table-header-card h4,
-            [data-theme="dark"] #tabelaNome {
-                color: var(--text-primary) !important;
-            }
-
-            /* Stats cards no dark */
-            [data-theme="dark"] .stats-card {
-                background: var(--bg-secondary);
-            }
-
-                [data-theme="dark"] .stats-card .stats-number {
-                    color: var(--primary-light);
-                }
-
-            /* Nav tabs no dark */
-            [data-theme="dark"] .nav-tabs .nav-link {
-                color: var(--text-secondary);
-            }
-
-                [data-theme="dark"] .nav-tabs .nav-link.active {
-                    color: var(--primary-light);
-                }
-
-            [data-theme="dark"] .alert-no-pk {
-                background: rgba(239, 68, 68, 0.15);
-                border-color: rgba(239, 68, 68, 0.3);
-                color: #fca5a5;
-            }
-
-            [data-theme="dark"] .alert-composite-pk {
-                background: rgba(245, 158, 11, 0.15);
-                border-color: rgba(245, 158, 11, 0.3);
-                color: #fcd34d;
-            }
-
-            [data-theme="dark"] .alert-composite-fk {
-                background: rgba(249, 115, 22, 0.15);
-                border-color: rgba(249, 115, 22, 0.3);
-                color: #fdba74;
-            }
-
-            [data-theme="dark"] #loadingOverlay {
-                background: rgba(15, 23, 42, 0.95);
-            }
-
-            [data-theme="dark"] code {
-                background: var(--bg-tertiary);
-                color: #a5b4fc;
-            }
-
-            [data-theme="dark"] .text-info code {
-                color: #22d3ee;
-                background: rgba(6, 182, 212, 0.15);
-            }
-
-            [data-theme="dark"] .form-check-input {
-                background-color: var(--bg-tertiary);
-                border-color: var(--border-color);
-            }
-
-            [data-theme="dark"] .btn-outline-secondary {
-                border-color: var(--border-color);
-                color: var(--text-secondary);
-            }
-
-                [data-theme="dark"] .btn-outline-secondary:hover {
-                    background: var(--bg-tertiary);
-                    color: var(--text-primary);
-                }
-
-            [data-theme="dark"] .modal-header .btn-close {
-                filter: invert(1) grayscale(100%) brightness(200%);
-            }
-
-            /* Card header no dark */
-            [data-theme="dark"] .card-header {
-                background: var(--bg-tertiary);
-                color: var(--text-primary);
-            }
-
-            /* Badges no dark - manter cores */
-            [data-theme="dark"] .bg-secondary {
-                background: var(--text-muted) !important;
-            }
-
-            /* Linha selecionada mais visível */
-            [data-theme="dark"] .selected-row {
-                background-color: rgba(99, 102, 241, 0.2) !important;
-            }
-
-            /* Texto muted no dark */
-            [data-theme="dark"] .text-muted {
-                color: var(--text-muted) !important;
-            }
-
-            /* Descrição da tabela */
-            [data-theme="dark"] #tabelaDescricao {
-                color: var(--text-secondary) !important;
-            }
-
-        /* Dark Mode Toggle Button */
+        /* ==================== THEME TOGGLE BUTTON ==================== */
         .theme-toggle {
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
@@ -801,11 +916,15 @@
                 border-color: var(--primary-color);
             }
 
-            .theme-toggle i {
-                font-size: 0.9rem;
-            }
+        [data-theme="dark"] .theme-toggle {
+            border: none;
+        }
 
-        /* Transição suave entre temas */
+        .theme-toggle i {
+            font-size: 0.9rem;
+        }
+
+        /* ==================== TRANSIÇÕES SUAVES ==================== */
         body, .card, .navbar, .modal-content, .form-control, .form-select,
         .btn, .table, .badge, .stats-card, .config-section, .fk-card {
             transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
@@ -887,15 +1006,14 @@
                                             onclick="selectTabela('@tabela.NomeTabela', this)">
                                             <td onclick="event.stopPropagation();">
                                                 <input type="checkbox" class="form-check-input tabela-check"
-                                                       value="@tabela.NomeTabela"
-                                                       @(hasNoPk ? "disabled" : "") />
+                                                       value="@tabela.NomeTabela" />
                                             </td>
                                             <td>
                                                 <div class="d-flex align-items-center gap-2">
                                                     <span class="status-icon">
                                                         @if (hasNoPk)
                                                         {
-                                                            <i class="fas fa-exclamation-circle" title="Sem Primary Key"></i>
+                                                            <i class="fas fa-exclamation-circle" title="Sem Primary Key - Será necessário definir"></i>
                                                         }
                                                         else if (hasCompositePk)
                                                         {
@@ -1103,7 +1221,7 @@
                                     <div class="input-group">
                                         <input type="text" class="form-control" id="cfgCdFuncao"
                                                placeholder="Ex: SISCARGO" required />
-                                        <button class="btn btn-outline-light" type="button"
+                                        <button class="btn btn-outline-secondary" type="button"
                                                 onclick="abrirModalFuncoes()">
                                             <i class="fas fa-search"></i>
                                         </button>
@@ -1133,6 +1251,43 @@
                                     <input type="text" class="form-control" id="cfgDescricao"
                                            placeholder="Descrição da funcionalidade..." />
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO 1.5: CHAVE PRIMÁRIA (só aparece para tabelas sem PK) -->
+                    <div class="config-section" id="secaoPrimaryKey" style="display: none;">
+                        <div class="config-section-header" onclick="toggleSection(this)">
+                            <h6><i class="fas fa-key text-warning"></i> Chave Primária</h6>
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                        </div>
+                        <div class="config-section-body">
+                            <div class="alert alert-warning py-2 mb-3" style="font-size: 0.8rem;">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Esta tabela não possui chave primária definida no banco.</strong>
+                                Selecione a(s) coluna(s) que serão usadas como chave primária na entidade.
+                            </div>
+                            <div class="table-responsive" style="max-height: 250px;">
+                                <table class="table table-sm column-config-table mb-0">
+                                    <thead class="sticky-top" style="background: var(--bg-tertiary);">
+                                        <tr>
+                                            <th style="width: 40px;">
+                                                <i class="fas fa-key text-warning" title="Marcar como PK"></i>
+                                            </th>
+                                            <th>Coluna</th>
+                                            <th>Tipo SQL</th>
+                                            <th>Tipo C#</th>
+                                            <th style="width: 60px;">Nullable</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pkColunasBody"></tbody>
+                                </table>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Dica: Prefira colunas NOT NULL. Para PK composta, marque múltiplas colunas.
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -1573,9 +1728,9 @@
             let alertas = '';
             if (!tabela.hasPrimaryKey) {
                 alertas += `<div class="alert-no-pk">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <strong>Sem Primary Key:</strong> Esta tabela não possui chave primária definida.
-                    A geração de código está bloqueada.
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Sem Primary Key:</strong> Esta tabela não possui chave primária definida no banco.
+                    Você poderá definir a PK manualmente na configuração.
                 </div>`;
             }
             if (tabela.hasCompositePrimaryKey) {
@@ -1700,13 +1855,38 @@
 
             // Alertas
             let alertas = '';
-            if (!tabela.hasPrimaryKey) {
-                alertas += `<div class="alert alert-danger">
-                    <i class="fas fa-ban me-2"></i>
-                    <strong>Geração Bloqueada:</strong> Tabela sem Primary Key.
-                </div>`;
-            }
+            // Removido bloqueio - agora permite gerar após selecionar PK
             $('#modalAlertas').html(alertas);
+
+            // Seção de Chave Primária - mostrar apenas se tabela não tem PK
+            if (!tabela.hasPrimaryKey) {
+                $('#secaoPrimaryKey').show();
+                // Expandir automaticamente
+                $('#secaoPrimaryKey .config-section-header').removeClass('collapsed');
+                $('#secaoPrimaryKey .config-section-body').show();
+
+                // Preencher lista de colunas para seleção de PK
+                let pkHtml = '';
+                for (const col of tabela.colunas) {
+                    const nullableText = col.isNullable ?
+                        '<span class="text-warning">✓ Nullable</span>' :
+                        '<span class="text-success">✗ NOT NULL</span>';
+
+                    pkHtml += `<tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input pk-column-check"
+                                   data-col="${col.nome}" data-col-pascal="${col.nomePascalCase}" />
+                        </td>
+                        <td><code>${col.nome}</code></td>
+                        <td><span class="text-muted">${col.tipo}</span></td>
+                        <td><code class="text-info">${col.tipoCSharp}</code></td>
+                        <td>${nullableText}</td>
+                    </tr>`;
+                }
+                $('#pkColunasBody').html(pkHtml);
+            } else {
+                $('#secaoPrimaryKey').hide();
+            }
 
             // Identificação
             $('#cfgDisplayName').val(formatDisplayName(tabela.nomePascalCase));
@@ -1854,6 +2034,15 @@
         // GERAÇÃO FULL-STACK
         // =====================================================================
         function coletarConfiguracao() {
+            // Coleta colunas definidas como PK (para tabelas sem PK no banco)
+            const colunasPkDefinidas = [];
+            $('.pk-column-check:checked').each(function() {
+                colunasPkDefinidas.push({
+                    nome: $(this).data('col'),
+                    nomePascalCase: $(this).data('col-pascal')
+                });
+            });
+
             // Coleta configurações de listagem
             const colunasListagem = [];
             let order = 0;
@@ -1922,15 +2111,35 @@
                 gerarJavaScript: $('#cfgGerarJavaScript').is(':checked'),
                 colunasListagem: colunasListagem,
                 colunasFormulario: colunasFormulario,
-                configuracoesFk: configuracoesFk
+                configuracoesFk: configuracoesFk,
+                colunasPkDefinidas: colunasPkDefinidas
             };
+        }
+
+        function validarConfiguracao(config) {
+            // Validar código da função
+            if (!config.cdFuncao) {
+                showToast('Atenção', 'Informe o código da função', 'warning');
+                return false;
+            }
+
+            // Validar PK para tabelas sem PK definida no banco
+            if (!tabelaDetalhes.hasPrimaryKey && config.colunasPkDefinidas.length === 0) {
+                showToast('Atenção', 'Selecione pelo menos uma coluna como Chave Primária', 'warning');
+                // Destacar a seção de PK
+                $('#secaoPrimaryKey').addClass('border-warning');
+                $('#secaoPrimaryKey .config-section-header').removeClass('collapsed');
+                $('#secaoPrimaryKey .config-section-body').slideDown(200);
+                return false;
+            }
+
+            return true;
         }
 
         async function previewFullStack() {
             const config = coletarConfiguracao();
 
-            if (!config.cdFuncao) {
-                showToast('Atenção', 'Informe o código da função', 'warning');
+            if (!validarConfiguracao(config)) {
                 return;
             }
 
@@ -2012,8 +2221,7 @@
         async function gerarFullStack() {
             const config = coletarConfiguracao();
 
-            if (!config.cdFuncao) {
-                showToast('Atenção', 'Informe o código da função', 'warning');
+            if (!validarConfiguracao(config)) {
                 return;
             }
 

@@ -203,23 +203,87 @@ public class ColunaInfo
     /// </summary>
     public bool IsString => IsTexto;
 
+    /// <summary>
+    /// Se é tipo binário (byte[]).
+    /// </summary>
+    public bool IsBinary => Tipo.ToLower() is "binary" or "varbinary" or "image" or "timestamp" or "rowversion";
+
+    // Prefixos conhecidos para melhor conversão PascalCase
+    private static readonly string[] PrefixosConhecidos = new[]
+    {
+        "cd", "dc", "dt", "nr", "nm", "fl", "vl", "qt", "sg", "no", "id", "tp", "st", "ds", "tx", "pc", "hr"
+    };
+
     private static string ToPascalCase(string input)
     {
         if (string.IsNullOrEmpty(input)) return input;
 
+        // Se tem underscore, processa como snake_case
         if (input.Contains('_'))
         {
             var parts = input.Split('_', StringSplitOptions.RemoveEmptyEntries);
-            return string.Concat(parts.Select(p =>
-                p.Length > 0 ? char.ToUpper(p[0]) + p[1..].ToLower() : ""));
+            var sb = new System.Text.StringBuilder();
+            foreach (var part in parts)
+            {
+                sb.Append(ProcessPascalCasePart(part.ToLowerInvariant()));
+            }
+            return sb.ToString();
         }
 
-        if (input.All(c => char.IsLower(c) || char.IsDigit(c)))
+        // Se já tem letras maiúsculas misturadas, provavelmente já está em PascalCase
+        if (HasMixedCase(input))
         {
             return char.ToUpper(input[0]) + input[1..];
         }
 
-        return char.ToUpper(input[0]) + input[1..];
+        // Processa como string contínua
+        return ProcessPascalCasePart(input.ToLowerInvariant());
+    }
+
+    private static bool HasMixedCase(string input)
+    {
+        bool hasUpper = false;
+        bool hasLower = false;
+        foreach (var c in input)
+        {
+            if (char.IsUpper(c)) hasUpper = true;
+            if (char.IsLower(c)) hasLower = true;
+            if (hasUpper && hasLower) return true;
+        }
+        return false;
+    }
+
+    private static string ProcessPascalCasePart(string part)
+    {
+        if (string.IsNullOrEmpty(part)) return part;
+
+        var result = new System.Text.StringBuilder();
+        var i = 0;
+
+        while (i < part.Length)
+        {
+            var prefixoEncontrado = false;
+            foreach (var prefixo in PrefixosConhecidos)
+            {
+                if (i + prefixo.Length <= part.Length &&
+                    part.Substring(i, prefixo.Length) == prefixo)
+                {
+                    result.Append(char.ToUpper(prefixo[0]));
+                    result.Append(prefixo[1..]);
+                    i += prefixo.Length;
+                    prefixoEncontrado = true;
+                    break;
+                }
+            }
+
+            if (!prefixoEncontrado)
+            {
+                result.Append(result.Length == 0 ? char.ToUpper(part[i]) : part[i]);
+                i++;
+            }
+        }
+
+        return result.ToString();
     }
 
     private static string ToCamelCase(string input)
@@ -435,6 +499,20 @@ public class FullStackRequest
     public List<ColumnListConfig> ColunasListagem { get; set; } = [];
     public List<ColumnFormConfig> ColunasFormulario { get; set; } = [];
     public List<FkNavigationConfig> ConfiguracoesFk { get; set; } = [];
+
+    // =========================================================================
+    // CHAVE PRIMÁRIA DEFINIDA MANUALMENTE (para tabelas sem PK no banco)
+    // =========================================================================
+    public List<PkColumnConfig> ColunasPkDefinidas { get; set; } = [];
+}
+
+/// <summary>
+/// Configuração de coluna definida como PK pelo usuário.
+/// </summary>
+public class PkColumnConfig
+{
+    public string Nome { get; set; } = string.Empty;
+    public string NomePascalCase { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -565,6 +643,11 @@ public class EntityConfig
     /// </summary>
     public static EntityConfig FromTabela(TabelaInfo tabela, FullStackRequest request)
     {
+        // Determinar quais colunas são PK (do banco OU definidas pelo usuário)
+        var pkColumnsDefinidas = request.ColunasPkDefinidas
+            .Select(p => p.Nome.ToLowerInvariant())
+            .ToHashSet();
+
         var config = new EntityConfig
         {
             Name = tabela.NomePascalCase,
@@ -589,6 +672,10 @@ public class EntityConfig
             var formConfig = request.ColunasFormulario
                 .FirstOrDefault(c => c.Nome.Equals(coluna.Nome, StringComparison.OrdinalIgnoreCase));
 
+            // Verificar se esta coluna foi definida como PK pelo usuário
+            var isPkDefinida = pkColumnsDefinidas.Contains(coluna.Nome.ToLowerInvariant());
+            var isPrimaryKey = coluna.IsPrimaryKey || isPkDefinida;
+
             var prop = new PropertyConfig
             {
                 Name = coluna.NomePascalCase,
@@ -597,11 +684,12 @@ public class EntityConfig
                 CSharpTypeSimple = coluna.TipoCSharpSimples,
                 SqlType = coluna.Tipo,
                 DisplayName = listConfig?.Title ?? formConfig?.Label ?? FormatDisplayName(coluna.NomePascalCase),
-                IsPrimaryKey = coluna.IsPrimaryKey,
+                IsPrimaryKey = isPrimaryKey,
+                IsPrimaryKeyDefinedByUser = isPkDefinida,
                 IsIdentity = coluna.IsIdentity,
                 IsNullable = coluna.IsNullable,
                 IsReadOnly = coluna.IsComputed || coluna.IsIdentity,
-                Required = !coluna.IsNullable && !coluna.IsPrimaryKey,
+                Required = !coluna.IsNullable && !isPrimaryKey,
                 MaxLength = coluna.Tamanho,
                 IsGuid = coluna.IsGuid,
                 IsString = coluna.IsString,
@@ -629,7 +717,7 @@ public class EntityConfig
                     Sortable = listConfig.Sortable
                 };
             }
-            else if (listConfig == null && !coluna.IsPrimaryKey && !coluna.IsGuid)
+            else if (listConfig == null && !isPrimaryKey && !coluna.IsGuid)
             {
                 // Default: mostrar colunas simples
                 prop.List = new ListConfig
@@ -656,7 +744,21 @@ public class EntityConfig
                     Rows = formConfig.Rows ?? 3
                 };
             }
-            else if (formConfig == null && !coluna.IsPrimaryKey && !coluna.IsComputed)
+            // PKs string/char que não são Identity precisam aparecer no form (usuário digita)
+            else if (formConfig == null && isPrimaryKey && !coluna.IsIdentity && !coluna.IsGuid && coluna.IsTexto)
+            {
+                prop.Form = new FormConfig
+                {
+                    Show = true,
+                    ShowOnCreate = true,  // Mostra ao criar (usuário digita o código)
+                    ShowOnEdit = false,   // Não mostra ao editar (PK não muda)
+                    Order = 0,            // Primeiro campo
+                    InputType = "text",
+                    ColSize = coluna.Tamanho <= 10 ? 4 : 6,
+                    Disabled = false
+                };
+            }
+            else if (formConfig == null && !isPrimaryKey && !coluna.IsComputed)
             {
                 // Default: mostrar campos editáveis
                 prop.Form = new FormConfig
@@ -670,7 +772,8 @@ public class EntityConfig
 
             config.Properties.Add(prop);
 
-            if (coluna.IsPrimaryKey)
+            // Definir PrimaryKey (primeira encontrada, ou primeira definida pelo usuário)
+            if (isPrimaryKey && config.PrimaryKey == null)
             {
                 config.PrimaryKey = prop;
             }
@@ -697,19 +800,27 @@ public class EntityConfig
             sb.Append(c);
         }
 
-        return sb.ToString()
+        var resultado = sb.ToString()
             .Replace("Cd ", "Código ")
-            .Replace("Dc ", "")
+            .Replace("Dc ", "Descrição ")
             .Replace("Dt ", "Data ")
             .Replace("Nr ", "Número ")
-            .Replace("Nm ", "")
-            .Replace("Fl ", "")
+            .Replace("Nm ", "Nome ")
+            .Replace("Fl ", "Flag ")
             .Replace("Vl ", "Valor ")
             .Replace("Qt ", "Quantidade ")
             .Replace("Sg ", "Sigla ")
             .Replace("No ", "Número ")
+            .Replace("Tp ", "Tipo ")
+            .Replace("St ", "Status ")
+            .Replace("Ds ", "Descrição ")
+            .Replace("Tx ", "Taxa ")
+            .Replace("Pc ", "Percentual ")
+            .Replace("Hr ", "Hora ")
             .Replace("Id ", "")
             .Trim();
+
+        return resultado;
     }
 
     private static string GetDefaultFormat(ColunaInfo coluna)
@@ -754,6 +865,7 @@ public class PropertyConfig
     public string DisplayName { get; set; } = string.Empty;
 
     public bool IsPrimaryKey { get; set; }
+    public bool IsPrimaryKeyDefinedByUser { get; set; } // PK definida manualmente pelo usuário (não existe no banco)
     public bool IsIdentity { get; set; }
     public bool IsNullable { get; set; }
     public bool IsReadOnly { get; set; }
@@ -812,6 +924,8 @@ public class ListConfig
 public class FormConfig
 {
     public bool Show { get; set; } = true;
+    public bool ShowOnCreate { get; set; } = true;
+    public bool ShowOnEdit { get; set; } = true;
     public int Order { get; set; }
     public string InputType { get; set; } = "text";
     public int ColSize { get; set; } = 6;

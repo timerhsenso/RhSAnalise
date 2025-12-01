@@ -1,6 +1,7 @@
 // =============================================================================
 // GERADOR FULL-STACK v3.0 - WEB MODELS TEMPLATE
-// Migrado e adaptado de RhSensoERP.CrudTool
+// Baseado em RhSensoERP.CrudTool v2.0
+// Compatível com estrutura existente
 // =============================================================================
 
 using GeradorEntidades.Models;
@@ -9,7 +10,8 @@ using System.Text;
 namespace GeradorEntidades.Templates;
 
 /// <summary>
-/// Gera Models para o projeto Web (DTOs, Requests, ViewModels).
+/// Gera Models para o projeto Web.
+/// NÃO gera classes base (Result, ApiResponse, etc.) pois já existem.
 /// </summary>
 public static class WebModelsTemplate
 {

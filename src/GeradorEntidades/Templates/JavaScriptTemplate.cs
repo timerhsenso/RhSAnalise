@@ -1,6 +1,7 @@
 // =============================================================================
 // GERADOR FULL-STACK v3.0 - JAVASCRIPT TEMPLATE
-// Migrado e adaptado de RhSensoERP.CrudTool
+// Baseado em RhSensoERP.CrudTool v2.5
+// CORREÇÕES: Classe estende CrudBase, vírgula, crudPermissions
 // =============================================================================
 
 using GeradorEntidades.Models;
@@ -10,6 +11,14 @@ namespace GeradorEntidades.Templates;
 
 /// <summary>
 /// Gera JavaScript que estende a classe CrudBase existente.
+/// 
+/// CORREÇÕES v2.5:
+/// - Gera classe que extends CrudBase (padrão sistemas.js)
+/// - Usa window.crudPermissions (não pagePermissions)
+/// - Vírgula garantida antes da coluna de ações
+/// - Função getCleanId() para extrair ID com segurança
+/// - Controle de botões da toolbar por permissão
+/// - Checkbox com data-id
 /// </summary>
 public static class JavaScriptTemplate
 {
@@ -21,14 +30,15 @@ public static class JavaScriptTemplate
         var columns = GenerateColumns(entity);
         var beforeSubmitLogic = GenerateBeforeSubmitLogic(entity);
         var idField = entity.PrimaryKey?.Name ?? "Id";
-        var idFieldLower = char.ToLower(idField[0]) + idField[1..];
+        var idFieldLower = char.ToLower(idField[0]) + idField.Substring(1);
 
         var content = $@"/**
  * ============================================================================
  * {entity.DisplayName.ToUpper()} - JavaScript com Controle de Permissões
  * ============================================================================
  * Arquivo: wwwroot/js/{entity.PluralNameLower}/{entity.NameLower}.js
- * Versão: 3.0 (Gerado por GeradorFullStack)
+ * Versão: 2.5 (Seguindo padrão de sistemas.js)
+ * Gerado por: GeradorFullStack v3.0
  * Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
  * 
  * Implementação específica do CRUD de {entity.DisplayName}.
@@ -204,16 +214,31 @@ $(document).ready(function () {{
     window.{entity.NameLower}Crud = new {entity.Name}Crud({{
         controllerName: '{entity.PluralName}',
         entityName: '{entity.DisplayName}',
+        entityNamePlural: '{entity.DisplayName}',
         idField: '{idFieldLower}',
-        modalId: '#crudModal',
-        formId: '#crudForm',
-        tableId: '#dataTable',
+        tableSelector: '#tableCrud',
         columns: columns,
-        permissions: window.crudPermissions
+
+        // Permissões vindas do backend
+        permissions: {{
+            canCreate: window.crudPermissions.canCreate,
+            canEdit: window.crudPermissions.canEdit,
+            canDelete: window.crudPermissions.canDelete,
+            canView: window.crudPermissions.canView
+        }},
+
+        exportConfig: {{
+            enabled: true,
+            excel: true,
+            pdf: true,
+            csv: true,
+            print: true,
+            filename: '{entity.PluralName}'
+        }}
     }});
 
     // =========================================================================
-    // CONTROLE DE BOTÕES DA TOOLBAR BASEADO EM PERMISSÕES
+    // CONTROLE DE BOTÕES DA TOOLBAR
     // =========================================================================
 
     // Desabilita botão ""Novo"" se não pode criar
@@ -240,7 +265,7 @@ $(document).ready(function () {{
     // LOG DE INICIALIZAÇÃO
     // =========================================================================
 
-    console.log('✅ CRUD de {entity.Name} v3.0 inicializado com permissões:', {{
+    console.log('✅ CRUD de {entity.Name} v2.5 inicializado com permissões:', {{
         criar: window.crudPermissions.canCreate,
         editar: window.crudPermissions.canEdit,
         excluir: window.crudPermissions.canDelete,
@@ -274,14 +299,13 @@ $(document).ready(function () {{
 
         foreach (var prop in listProps)
         {
-            var config = prop.List!;
-            var align = config.Align ?? "left";
-            var sortable = config.Sortable ? "true" : "false";
-            var format = config.Format ?? "text";
-            var width = !string.IsNullOrEmpty(config.Width) ? $"\n            width: '{config.Width}'," : "";
+            var align = prop.List!.Align ?? "left";
+            var sortable = prop.List.Sortable ? "true" : "false";
+            var format = prop.List.Format ?? "text";
+            var width = !string.IsNullOrEmpty(prop.List.Width) ? $"\n            width: '{prop.List.Width}'," : "";
 
             // Nome da propriedade em camelCase para o JSON
-            var dataName = char.ToLower(prop.Name[0]) + prop.Name[1..];
+            var dataName = char.ToLower(prop.Name[0]) + prop.Name.Substring(1);
 
             string render = format switch
             {
@@ -318,6 +342,7 @@ $(document).ready(function () {{
                 _ => ""
             };
 
+            // ✅ CORREÇÃO: Vírgula sempre no final de cada coluna
             sb.AppendLine($@"        // {prop.DisplayName}
         {{
             data: '{dataName}',
@@ -328,7 +353,11 @@ $(document).ready(function () {{
         }},");
         }
 
-        return sb.ToString().TrimEnd('\r', '\n');
+        // Remove a última vírgula e quebra de linha, mas mantém uma vírgula final
+        // para separar da coluna de ações
+        var result = sb.ToString().TrimEnd('\r', '\n');
+
+        return result;
     }
 
     /// <summary>
@@ -343,9 +372,9 @@ $(document).ready(function () {{
             .Where(p => (p.IsInt || p.IsLong) && p.Form?.Show == true && !p.IsPrimaryKey)
             .ToList();
 
-        if (intProps.Count > 0)
+        if (intProps.Any())
         {
-            var intFieldNames = string.Join(", ", intProps.Select(p => $"'{char.ToLower(p.Name[0]) + p.Name[1..]}'"));
+            var intFieldNames = string.Join(", ", intProps.Select(p => $"'{char.ToLower(p.Name[0]) + p.Name.Substring(1)}'"));
             sb.AppendLine($@"        // Converte campos inteiros
         [{intFieldNames}].forEach(field => {{
             if (formData[field] !== undefined && formData[field] !== '') {{
@@ -360,9 +389,9 @@ $(document).ready(function () {{
             .Where(p => p.IsDecimal && p.Form?.Show == true)
             .ToList();
 
-        if (decimalProps.Count > 0)
+        if (decimalProps.Any())
         {
-            var decFieldNames = string.Join(", ", decimalProps.Select(p => $"'{char.ToLower(p.Name[0]) + p.Name[1..]}'"));
+            var decFieldNames = string.Join(", ", decimalProps.Select(p => $"'{char.ToLower(p.Name[0]) + p.Name.Substring(1)}'"));
             sb.AppendLine($@"        // Converte campos decimais
         [{decFieldNames}].forEach(field => {{
             if (formData[field] !== undefined && formData[field] !== '') {{
@@ -377,7 +406,7 @@ $(document).ready(function () {{
             .Where(p => p.IsBool && p.Form?.Show == true)
             .ToList();
 
-        if (boolProps.Count > 0)
+        if (boolProps.Any())
         {
             var boolFieldNames = string.Join(", ", boolProps.Select(p => $"'{p.Name}'"));
             sb.AppendLine($@"        // Converte checkboxes para 0/1
@@ -400,14 +429,17 @@ $(document).ready(function () {{
             .Where(p => p.IsGuid && p.Form?.Show == true && !p.IsPrimaryKey && p.IsNullable)
             .ToList();
 
-        foreach (var prop in guidProps)
+        if (guidProps.Any())
         {
-            var propNameLower = char.ToLower(prop.Name[0]) + prop.Name[1..];
-            sb.AppendLine($@"        // Trata {prop.Name} nullable (Guid)
+            foreach (var prop in guidProps)
+            {
+                var propNameLower = char.ToLower(prop.Name[0]) + prop.Name.Substring(1);
+                sb.AppendLine($@"        // Trata {prop.Name} nullable (Guid)
         if (formData.{propNameLower} === '' || formData.{propNameLower} === undefined) {{
             formData.{propNameLower} = null;
         }}
 ");
+            }
         }
 
         // Campos DateTime opcionais
@@ -415,9 +447,9 @@ $(document).ready(function () {{
             .Where(p => p.IsDateTime && p.Form?.Show == true && p.IsNullable)
             .ToList();
 
-        if (dateProps.Count > 0)
+        if (dateProps.Any())
         {
-            var dateFieldNames = string.Join(", ", dateProps.Select(p => $"'{char.ToLower(p.Name[0]) + p.Name[1..]}'"));
+            var dateFieldNames = string.Join(", ", dateProps.Select(p => $"'{char.ToLower(p.Name[0]) + p.Name.Substring(1)}'"));
             sb.AppendLine($@"        // Trata campos de data opcionais
         [{dateFieldNames}].forEach(field => {{
             if (formData[field] === '') {{

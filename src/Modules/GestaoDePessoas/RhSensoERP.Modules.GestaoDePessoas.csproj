@@ -22,6 +22,7 @@
   <ItemGroup>
     <Folder Include="Core\Entities\Tabelas\Folha\" />
     <Folder Include="Core\Entities\Tabelas\Eventos\" />
+    <Folder Include="Core\Entities\Tabelas\Pessoal\" />
   </ItemGroup>
 
   <PropertyGroup>

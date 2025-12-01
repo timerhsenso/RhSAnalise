@@ -1,6 +1,7 @@
 // =============================================================================
 // GERADOR FULL-STACK v3.0 - WEB SERVICES TEMPLATE
-// Migrado e adaptado de RhSensoERP.CrudTool
+// Baseado em RhSensoERP.CrudTool v3.0
+// Compatível com auto-registro de serviços no DI
 // =============================================================================
 
 using GeradorEntidades.Models;
@@ -8,7 +9,7 @@ using GeradorEntidades.Models;
 namespace GeradorEntidades.Templates;
 
 /// <summary>
-/// Gera Services que implementam IApiService e IBatchDeleteService.
+/// Gera Services que implementam IApiService e IBatchDeleteService existentes.
 /// </summary>
 public static class WebServicesTemplate
 {
@@ -23,6 +24,7 @@ public static class WebServicesTemplate
 // ARQUIVO GERADO POR GeradorFullStack v3.0
 // Entity: {entity.Name}
 // Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
+// AUTO-REGISTRO: Compatível com AddCrudToolServicesAutomatically()
 // =============================================================================
 using RhSensoERP.Web.Models.{entity.PluralName};
 using RhSensoERP.Web.Models.Common;
@@ -87,6 +89,11 @@ public interface I{entity.Name}ApiService
 // ARQUIVO GERADO POR GeradorFullStack v3.0
 // Entity: {entity.Name}
 // Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
+// AUTO-REGISTRO: Compatível com AddCrudToolServicesAutomatically()
+// =============================================================================
+// NOTA: Este serviço usa HttpClient TIPADO injetado pelo DI.
+// O Timeout e políticas de resiliência (Polly) são configurados em:
+// ServiceCollectionExtensions.AddCrudToolServicesAutomatically()
 // =============================================================================
 using System.Net.Http.Headers;
 using System.Text;
@@ -102,6 +109,16 @@ namespace RhSensoERP.Web.Services.{entity.PluralName};
 /// Implementação do serviço de API para {entity.DisplayName}.
 /// Consome a API backend gerada pelo Source Generator.
 /// </summary>
+/// <remarks>
+/// Este serviço é registrado automaticamente no DI via:
+/// <code>services.AddCrudToolServicesAutomatically(apiSettings)</code>
+/// 
+/// HttpClient já vem configurado com:
+/// - BaseAddress
+/// - Timeout
+/// - Retry Policy (Polly)
+/// - Circuit Breaker (Polly)
+/// </remarks>
 public class {entity.Name}ApiService : I{entity.Name}ApiService
 {{
     private readonly HttpClient _httpClient;
@@ -120,6 +137,9 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
         
+        // NOTA: Timeout e BaseAddress já configurados pelo DI (ServiceCollectionExtensions)
+        // NÃO configurar aqui para evitar conflito com Polly
+        
         _jsonOptions = new JsonSerializerOptions
         {{
             PropertyNameCaseInsensitive = true,
@@ -131,12 +151,14 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
 
     /// <summary>
     /// Configura header de autenticação com token JWT.
+    /// Token está em AuthenticationTokens (StoreTokens no AccountController).
     /// </summary>
     private async Task SetAuthHeaderAsync()
     {{
         var context = _httpContextAccessor.HttpContext;
         if (context?.User?.Identity?.IsAuthenticated == true)
         {{
+            // Token está em AuthenticationTokens, não em Claims
             var token = await context.GetTokenAsync(""access_token"");
             
             if (!string.IsNullOrEmpty(token))
@@ -156,18 +178,28 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
         }}
     }}
 
+    /// <summary>
+    /// Cria ApiResponse de sucesso.
+    /// </summary>
     private static ApiResponse<T> Success<T>(T? data) => new()
     {{
         Success = true,
         Data = data
     }};
 
+    /// <summary>
+    /// Cria ApiResponse de erro.
+    /// NOTA: Message é computed (=> Error?.Message), então usamos Error.
+    /// </summary>
     private static ApiResponse<T> Fail<T>(string message) => new()
     {{
         Success = false,
         Error = new ApiError {{ Message = message }}
     }};
 
+    /// <summary>
+    /// Processa resposta HTTP do backend.
+    /// </summary>
     private async Task<ApiResponse<T>> ProcessResponseAsync<T>(
         HttpResponseMessage response, 
         string operation)
@@ -197,8 +229,8 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
         }}
         catch (JsonException ex)
         {{
-            _logger.LogError(ex, ""[{entityUpper}] Erro ao deserializar resposta"");
-            return Fail<T>($""Erro ao processar resposta: {{ex.Message}}"");
+            _logger.LogError(ex, ""[{entityUpper}] Erro JSON em {{Op}}"", operation);
+            return Fail<T>(""Erro ao processar resposta do servidor"");
         }}
     }}
 
@@ -206,40 +238,56 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
 
     #region IApiService Implementation
 
-    public async Task<ApiResponse<DataTableResponse<{entity.Name}Dto>>> GetAllAsync(DataTableRequest request)
+    public async Task<ApiResponse<PagedResult<{entity.Name}Dto>>> GetPagedAsync(
+        int page, 
+        int pageSize, 
+        string? search = null)
     {{
         try
         {{
             await SetAuthHeaderAsync();
-            var queryString = request.ToQueryString();
-            
-            _logger.LogDebug(""[{entityUpper}] GET {{Route}}?{{Query}}"", ApiRoute, queryString);
-            
-            var response = await _httpClient.GetAsync($""{{ApiRoute}}?{{queryString}}"");
-            
-            if (!response.IsSuccessStatusCode)
-                return await ProcessResponseAsync<DataTableResponse<{entity.Name}Dto>>(response, ""GetAll"");
+            var query = $""?page={{page}}&pageSize={{pageSize}}"";
+            if (!string.IsNullOrWhiteSpace(search))
+                query += $""&search={{Uri.EscapeDataString(search)}}"";
 
-            var content = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<BackendResult<DataTableResponse<{entity.Name}Dto>>>(content, _jsonOptions);
-            
-            if (result?.IsSuccess == true)
-            {{
-                var data = result.Value ?? result.Data;
-                return Success(data);
-            }}
+            _logger.LogDebug(""[{entityUpper}] GET {{Route}}{{Query}}"", ApiRoute, query);
 
-            return Fail<DataTableResponse<{entity.Name}Dto>>(result?.Error?.Message ?? ""Erro ao buscar registros"");
+            var response = await _httpClient.GetAsync($""{{ApiRoute}}{{query}}"");
+            return await ProcessResponseAsync<PagedResult<{entity.Name}Dto>>(response, ""GetPaged"");
         }}
         catch (HttpRequestException ex)
         {{
-            _logger.LogError(ex, ""[{entityUpper}] Erro de conexão em GetAllAsync"");
-            return Fail<DataTableResponse<{entity.Name}Dto>>(""Erro de conexão com o servidor"");
+            _logger.LogError(ex, ""[{entityUpper}] Erro de conexão em GetPagedAsync"");
+            return Fail<PagedResult<{entity.Name}Dto>>(""Erro de conexão com o servidor"");
+        }}
+        catch (TaskCanceledException)
+        {{
+            return Fail<PagedResult<{entity.Name}Dto>>(""Tempo limite excedido"");
+        }}
+        catch (Exception ex)
+        {{
+            _logger.LogError(ex, ""[{entityUpper}] Exceção em GetPagedAsync"");
+            return Fail<PagedResult<{entity.Name}Dto>>(ex.Message);
+        }}
+    }}
+
+    public async Task<ApiResponse<IEnumerable<{entity.Name}Dto>>> GetAllAsync()
+    {{
+        try
+        {{
+            await SetAuthHeaderAsync();
+            var response = await _httpClient.GetAsync($""{{ApiRoute}}?page=1&pageSize=10000"");
+            var result = await ProcessResponseAsync<PagedResult<{entity.Name}Dto>>(response, ""GetAll"");
+            
+            if (result.Success && result.Data != null)
+                return Success<IEnumerable<{entity.Name}Dto>>(result.Data.Items);
+            
+            return Fail<IEnumerable<{entity.Name}Dto>>(result.Error?.Message ?? ""Erro ao buscar dados"");
         }}
         catch (Exception ex)
         {{
             _logger.LogError(ex, ""[{entityUpper}] Exceção em GetAllAsync"");
-            return Fail<DataTableResponse<{entity.Name}Dto>>(ex.Message);
+            return Fail<IEnumerable<{entity.Name}Dto>>(ex.Message);
         }}
     }}
 
@@ -249,20 +297,7 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
         {{
             await SetAuthHeaderAsync();
             var response = await _httpClient.GetAsync($""{{ApiRoute}}/{{id}}"");
-            
-            if (!response.IsSuccessStatusCode)
-                return await ProcessResponseAsync<{entity.Name}Dto>(response, ""GetById"");
-
-            var content = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<BackendResult<{entity.Name}Dto>>(content, _jsonOptions);
-            
-            if (result?.IsSuccess == true)
-            {{
-                var data = result.Value ?? result.Data;
-                return Success(data);
-            }}
-
-            return Fail<{entity.Name}Dto>(result?.Error?.Message ?? ""Registro não encontrado"");
+            return await ProcessResponseAsync<{entity.Name}Dto>(response, ""GetById"");
         }}
         catch (HttpRequestException ex)
         {{
@@ -291,6 +326,7 @@ public class {entity.Name}ApiService : I{entity.Name}ApiService
             if (!response.IsSuccessStatusCode)
                 return await ProcessResponseAsync<{entity.Name}Dto>(response, ""Create"");
 
+            // Backend retorna Result<{pkType}> com o ID criado
             var responseJson = await response.Content.ReadAsStringAsync();
             var createResult = JsonSerializer.Deserialize<BackendResult<{pkType}>>(responseJson, _jsonOptions);
             

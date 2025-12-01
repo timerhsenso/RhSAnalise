@@ -1,10 +1,12 @@
 // =============================================================================
 // GERADOR FULL-STACK v3.0 - ENTITY TEMPLATE
 // Gera a entidade de domínio com atributos para Source Generator
+// Compatível com o formato do gerador antigo
 // =============================================================================
 
 using GeradorEntidades.Models;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace GeradorEntidades.Templates;
 
@@ -13,11 +15,17 @@ namespace GeradorEntidades.Templates;
 /// </summary>
 public static class EntityTemplate
 {
+    // Prefixos conhecidos para melhor conversão PascalCase
+    private static readonly string[] PrefixosConhecidos = new[]
+    {
+        "cd", "dc", "dt", "nr", "nm", "fl", "vl", "qt", "sg", "no", "id", "tp", "st", "ds", "tx", "pc", "hr"
+    };
+
     /// <summary>
     /// Gera a entidade completa.
     /// </summary>
     public static GeneratedFile Generate(
-        TabelaInfo tabela, 
+        TabelaInfo tabela,
         FullStackRequest request,
         List<string> navigationsGeradas)
     {
@@ -25,6 +33,30 @@ public static class EntityTemplate
         var modulo = ModuloConfig.GetModulos()
             .FirstOrDefault(m => m.Nome.Equals(request.Modulo, StringComparison.OrdinalIgnoreCase))
             ?? ModuloConfig.GetModulos().First();
+
+        // Criar HashSet de colunas definidas como PK pelo usuário
+        var pkDefinidas = request.ColunasPkDefinidas?
+            .Select(p => p.Nome.ToLowerInvariant())
+            .ToHashSet() ?? new HashSet<string>();
+
+        // Calcular total de PKs (do banco + definidas pelo usuário)
+        var totalPks = tabela.PrimaryKeyColumns.Count + pkDefinidas.Count;
+        var isPkComposta = totalPks > 1;
+
+        // Criar ordem das PKs para Column(Order = X)
+        var pkOrder = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var orderIndex = 0;
+        foreach (var pk in tabela.PrimaryKeyColumns)
+        {
+            pkOrder[pk.Nome] = orderIndex++;
+        }
+        foreach (var pkDef in request.ColunasPkDefinidas ?? new List<PkColumnConfig>())
+        {
+            if (!pkOrder.ContainsKey(pkDef.Nome))
+            {
+                pkOrder[pkDef.Nome] = orderIndex++;
+            }
+        }
 
         var sb = new StringBuilder();
 
@@ -42,14 +74,14 @@ public static class EntityTemplate
         if (!string.IsNullOrWhiteSpace(tabela.Descricao))
         {
             sb.AppendLine("/// <summary>");
-            sb.AppendLine($"/// {tabela.Descricao}");
+            sb.AppendLine($"/// {EscapeXml(tabela.Descricao)}");
             sb.AppendLine("/// </summary>");
         }
 
         // Atributo GenerateCrud
         sb.AppendLine("[GenerateCrud(");
         sb.AppendLine($"    TableName = \"{tabela.NomeTabela.ToLower()}\",");
-        sb.AppendLine($"    DisplayName = \"{request.DisplayName ?? nomeEntidade}\",");
+        sb.AppendLine($"    DisplayName = \"{EscapeString(request.DisplayName ?? FormatDisplayName(nomeEntidade))}\",");
         sb.AppendLine($"    CdSistema = \"{request.CdSistema}\",");
         sb.AppendLine($"    CdFuncao = \"{request.CdFuncao}\",");
         sb.AppendLine($"    IsLegacyTable = {request.IsLegacyTable.ToString().ToLower()},");
@@ -61,24 +93,22 @@ public static class EntityTemplate
         sb.AppendLine("{");
 
         // =========================================================================
-        // SEÇÃO 1: PROPRIEDADES ESCALARES (colunas normais)
+        // PROPRIEDADES ESCALARES
         // =========================================================================
-        sb.AppendLine("    #region Propriedades");
-        sb.AppendLine();
-
         foreach (var coluna in tabela.Colunas)
         {
-            GerarPropriedade(sb, coluna, tabela.PrimaryKey);
+            var isPkDefinidaUsuario = pkDefinidas.Contains(coluna.Nome.ToLowerInvariant());
+            var isPrimaryKey = coluna.IsPrimaryKey || isPkDefinidaUsuario;
+            var order = pkOrder.GetValueOrDefault(coluna.Nome, -1);
+
+            GerarPropriedade(sb, coluna, isPrimaryKey, isPkComposta, order, isPkDefinidaUsuario);
         }
 
-        sb.AppendLine("    #endregion");
-
         // =========================================================================
-        // SEÇÃO 2: NAVIGATION PROPERTIES (relacionamentos)
+        // NAVIGATION PROPERTIES
         // =========================================================================
         if (request.GerarNavigation && tabela.ForeignKeys.Count > 0)
         {
-            sb.AppendLine();
             sb.AppendLine("    #region Navigation Properties");
             sb.AppendLine();
 
@@ -106,7 +136,7 @@ public static class EntityTemplate
                 sb.AppendLine($"    /// </summary>");
 
                 // Atributo ForeignKey
-                var colunaPascal = coluna?.NomePascalCase ?? TabelaInfo.ToPascalCase(fk.ColunaOrigem);
+                var colunaPascal = FormatPascalCase(fk.ColunaOrigem);
                 sb.AppendLine($"    [ForeignKey(nameof({colunaPascal}))]");
 
                 // Propriedade virtual
@@ -130,62 +160,347 @@ public static class EntityTemplate
         };
     }
 
-    #region Helper Methods
+    #region Geração de Propriedade
 
-    private static void GerarPropriedade(StringBuilder sb, ColunaInfo coluna, ColunaInfo? primaryKey)
+    private static void GerarPropriedade(
+        StringBuilder sb,
+        ColunaInfo coluna,
+        bool isPrimaryKey,
+        bool isPkComposta,
+        int pkOrder,
+        bool isPkDefinidaUsuario)
     {
-        // Comentário XML
+        var nomePascal = FormatPascalCase(coluna.Nome);
+        var displayName = FormatDisplayName(nomePascal);
+
+        // Comentário XML (se tiver descrição)
         if (!string.IsNullOrWhiteSpace(coluna.Descricao))
         {
             sb.AppendLine($"    /// <summary>");
-            sb.AppendLine($"    /// {coluna.Descricao}");
+            sb.AppendLine($"    /// {EscapeXml(coluna.Descricao)}");
             sb.AppendLine($"    /// </summary>");
         }
 
-        // Atributos
-        if (coluna.IsPrimaryKey)
+        // Comentário se PK foi definida pelo usuário
+        if (isPkDefinidaUsuario)
+        {
+            sb.AppendLine("    // PK definida manualmente (não existe constraint no banco)");
+        }
+
+        // ===== ATRIBUTOS =====
+
+        // [Key] - para PKs
+        if (isPrimaryKey)
         {
             sb.AppendLine("    [Key]");
         }
 
+        // [Required] - para campos não nullable (incluindo PKs string)
+        if (!coluna.IsNullable)
+        {
+            // Para strings, sempre [Required]
+            // Para tipos valor, só se não for PK (PK já é implicitamente required)
+            if (coluna.IsTexto || coluna.IsBinary)
+            {
+                sb.AppendLine("    [Required]");
+            }
+        }
+
+        // [Column("nome")] ou [Column("nome", Order = X)] para PK composta
+        var nomeColunaDiferente = !coluna.Nome.Equals(nomePascal, StringComparison.OrdinalIgnoreCase);
+        if (isPkComposta && isPrimaryKey)
+        {
+            sb.AppendLine($"    [Column(\"{coluna.Nome.ToLower()}\", Order = {pkOrder})]");
+        }
+        else if (nomeColunaDiferente)
+        {
+            sb.AppendLine($"    [Column(\"{coluna.Nome.ToLower()}\")]");
+        }
+
+        // [DatabaseGenerated] para Identity
         if (coluna.IsIdentity)
         {
             sb.AppendLine("    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]");
         }
-        else if (coluna.IsPrimaryKey && coluna.IsGuid)
+
+        // [StringLength(n)] para strings com tamanho definido
+        if (coluna.IsTexto && coluna.Tamanho.HasValue && coluna.Tamanho > 0)
         {
-            // Guid PK sem Identity - será gerado pelo código
+            if (coluna.Tamanho <= 8000) // SQL Server max para varchar/nvarchar
+            {
+                sb.AppendLine($"    [StringLength({coluna.Tamanho})]");
+            }
         }
 
-        // Column attribute para mapear nome original
-        if (!coluna.Nome.Equals(coluna.NomePascalCase, StringComparison.OrdinalIgnoreCase))
+        // ===== PROPRIEDADE =====
+        var tipoCSharp = coluna.TipoCSharp;
+        var defaultValue = GetDefaultValue(tipoCSharp);
+
+        sb.AppendLine($"    public {tipoCSharp} {nomePascal} {{ get; set; }}{defaultValue}");
+        sb.AppendLine();
+    }
+
+    #endregion
+
+    #region Formatação PascalCase
+
+    /// <summary>
+    /// Converte nome de coluna para PascalCase respeitando prefixos conhecidos.
+    /// Ex: cdtptabela → CdTpTabela, dctabela → DcTabela
+    /// </summary>
+    public static string FormatPascalCase(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+
+        // Se já tem letras maiúsculas misturadas, provavelmente já está em PascalCase
+        if (HasMixedCase(input))
         {
-            sb.AppendLine($"    [Column(\"{coluna.Nome}\")]");
+            return char.ToUpper(input[0]) + input[1..];
         }
 
-        // MaxLength para strings
-        if (coluna.IsTexto && coluna.Tamanho.HasValue && coluna.Tamanho > 0 && coluna.Tamanho < 10000)
+        // Se tem underscore, processa como snake_case
+        if (input.Contains('_'))
         {
-            sb.AppendLine($"    [MaxLength({coluna.Tamanho})]");
+            return ProcessSnakeCase(input);
         }
 
-        // Required para não-nullable (exceto PK e tipos valor)
-        if (!coluna.IsNullable && !coluna.IsPrimaryKey && coluna.IsTexto)
+        // Converter para minúsculas para processar
+        var lower = input.ToLowerInvariant();
+        var result = new StringBuilder();
+        var i = 0;
+
+        while (i < lower.Length)
         {
-            sb.AppendLine("    [Required]");
+            // Verificar se começa com um prefixo conhecido
+            var prefixoEncontrado = false;
+            foreach (var prefixo in PrefixosConhecidos)
+            {
+                if (i + prefixo.Length <= lower.Length &&
+                    lower.Substring(i, prefixo.Length) == prefixo)
+                {
+                    // Adiciona prefixo com primeira letra maiúscula
+                    result.Append(char.ToUpper(prefixo[0]));
+                    result.Append(prefixo[1..]);
+                    i += prefixo.Length;
+                    prefixoEncontrado = true;
+                    break;
+                }
+            }
+
+            if (!prefixoEncontrado)
+            {
+                // Se não é prefixo, capitaliza a primeira letra do "restante"
+                if (result.Length == 0 || i == 0)
+                {
+                    result.Append(char.ToUpper(lower[i]));
+                }
+                else
+                {
+                    result.Append(lower[i]);
+                }
+                i++;
+            }
         }
 
-        // Propriedade
-        var defaultValue = coluna.TipoCSharp switch
+        return result.ToString();
+    }
+
+    private static bool HasMixedCase(string input)
+    {
+        bool hasUpper = false;
+        bool hasLower = false;
+        foreach (var c in input)
+        {
+            if (char.IsUpper(c)) hasUpper = true;
+            if (char.IsLower(c)) hasLower = true;
+            if (hasUpper && hasLower) return true;
+        }
+        return false;
+    }
+
+    private static string ProcessSnakeCase(string input)
+    {
+        var parts = input.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        var sb = new StringBuilder();
+
+        foreach (var part in parts)
+        {
+            if (part.Length == 0) continue;
+
+            // Primeiro tenta aplicar prefixos conhecidos
+            var processed = FormatPascalCasePart(part.ToLowerInvariant());
+            sb.Append(processed);
+        }
+
+        return sb.ToString();
+    }
+
+    private static string FormatPascalCasePart(string part)
+    {
+        if (string.IsNullOrEmpty(part)) return part;
+
+        var result = new StringBuilder();
+        var i = 0;
+
+        while (i < part.Length)
+        {
+            var prefixoEncontrado = false;
+            foreach (var prefixo in PrefixosConhecidos)
+            {
+                if (i + prefixo.Length <= part.Length &&
+                    part.Substring(i, prefixo.Length) == prefixo)
+                {
+                    result.Append(char.ToUpper(prefixo[0]));
+                    result.Append(prefixo[1..]);
+                    i += prefixo.Length;
+                    prefixoEncontrado = true;
+                    break;
+                }
+            }
+
+            if (!prefixoEncontrado)
+            {
+                result.Append(result.Length == 0 ? char.ToUpper(part[i]) : part[i]);
+                i++;
+            }
+        }
+
+        return result.ToString();
+    }
+
+    #endregion
+
+    #region Display Name
+
+    /// <summary>
+    /// Formata nome PascalCase para display amigável.
+    /// Ex: CdTpTabela → Código do Tipo de Tabela
+    /// </summary>
+    public static string FormatDisplayName(string pascalCase)
+    {
+        if (string.IsNullOrEmpty(pascalCase)) return pascalCase;
+
+        // Primeiro separa as palavras por maiúsculas
+        var comEspacos = Regex.Replace(pascalCase, "([a-z])([A-Z])", "$1 $2");
+
+        // Substitui prefixos conhecidos por nomes completos
+        var resultado = comEspacos
+            .Replace("Cd ", "Código ")
+            .Replace("Dc ", "Descrição ")
+            .Replace("Dt ", "Data ")
+            .Replace("Nr ", "Número ")
+            .Replace("Nm ", "Nome ")
+            .Replace("Fl ", "Flag ")
+            .Replace("Vl ", "Valor ")
+            .Replace("Qt ", "Quantidade ")
+            .Replace("Sg ", "Sigla ")
+            .Replace("No ", "Número ")
+            .Replace("Tp ", "Tipo ")
+            .Replace("St ", "Status ")
+            .Replace("Ds ", "Descrição ")
+            .Replace("Tx ", "Taxa ")
+            .Replace("Pc ", "Percentual ")
+            .Replace("Hr ", "Hora ")
+            .Replace("Id ", "");
+
+        // Remove "de de" ou "do do" duplicados
+        resultado = Regex.Replace(resultado, @"\b(de|do|da)\s+\1\b", "$1", RegexOptions.IgnoreCase);
+
+        // Adiciona "de" ou "do" entre palavras quando apropriado
+        resultado = AjustarPreposicoes(resultado);
+
+        return resultado.Trim();
+    }
+
+    private static string AjustarPreposicoes(string texto)
+    {
+        // Palavras que pedem "da/do" antes
+        var palavrasFemininas = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Tabela", "Data", "Empresa", "Filial", "Pessoa", "Função", "Descrição",
+            "Quantidade", "Taxa", "Hora", "Sigla", "Situação", "Ação", "Operação"
+        };
+
+        var palavrasMasculinas = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Tipo", "Código", "Número", "Valor", "Status", "Nome", "Registro",
+            "Sistema", "Módulo", "Cargo", "Setor", "Departamento", "Usuário"
+        };
+
+        var palavras = texto.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        var resultado = new List<string>();
+
+        for (int i = 0; i < palavras.Count; i++)
+        {
+            var atual = palavras[i];
+            resultado.Add(atual);
+
+            // Se não é a última palavra e a próxima precisa de preposição
+            if (i < palavras.Count - 1)
+            {
+                var proxima = palavras[i + 1];
+
+                // Não adiciona preposição se já tem uma
+                if (proxima.Equals("de", StringComparison.OrdinalIgnoreCase) ||
+                    proxima.Equals("do", StringComparison.OrdinalIgnoreCase) ||
+                    proxima.Equals("da", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                // Verifica se a próxima palavra pede preposição
+                if (palavrasFemininas.Contains(proxima) &&
+                    !atual.Equals("de", StringComparison.OrdinalIgnoreCase) &&
+                    !atual.Equals("da", StringComparison.OrdinalIgnoreCase))
+                {
+                    resultado.Add("da");
+                }
+                else if (palavrasMasculinas.Contains(proxima) &&
+                         !atual.Equals("de", StringComparison.OrdinalIgnoreCase) &&
+                         !atual.Equals("do", StringComparison.OrdinalIgnoreCase))
+                {
+                    resultado.Add("do");
+                }
+            }
+        }
+
+        return string.Join(" ", resultado);
+    }
+
+    #endregion
+
+    #region Helpers
+
+    private static string GetDefaultValue(string tipoCSharp)
+    {
+        return tipoCSharp switch
         {
             "string" => " = string.Empty;",
             "byte[]" => " = Array.Empty<byte>();",
             _ => ""
         };
-
-        sb.AppendLine($"    public {coluna.TipoCSharp} {coluna.NomePascalCase} {{ get; set; }}{defaultValue}");
-        sb.AppendLine();
     }
+
+    private static string EscapeXml(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        return text
+            .Replace("&", "&amp;")
+            .Replace("<", "&lt;")
+            .Replace(">", "&gt;")
+            .Replace("\"", "&quot;")
+            .Replace("'", "&apos;");
+    }
+
+    private static string EscapeString(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        return text.Replace("\"", "\\\"");
+    }
+
+    #endregion
+
+    #region FK Filtering
 
     private static List<ForeignKeyInfo> FiltrarFksParaNavigation(TabelaInfo tabela, FullStackRequest request)
     {

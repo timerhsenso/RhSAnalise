@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using RhSensoERP.Modules.GestaoDePessoas.Core.Entities;
-using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
+//using RhSensoERP.Modules.GestaoDePessoas.Core.Entities;
+//using RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal;
 using RhSensoERP.Modules.Esocial.Core.Entities;
 using System.Reflection;
 
@@ -21,7 +21,7 @@ namespace RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Contexts
         //public DbSet<CentroCusto> CentrosCusto { get; set; }
         //public DbSet<Municipio> Municipios { get; set; }
         //public DbSet<Sindicato> Sindicatos { get; set; }
-        public DbSet<Banco> Bancos { get; set; }
+       // public DbSet<Banco> Bancos { get; set; }
         //public DbSet<Agencia> Agencias { get; set; }
         //public DbSet<MotivoRescisao> MotivosRescisao { get; set; }
         //public DbSet<GrauInstrucao> GrausInstrucao { get; set; }
