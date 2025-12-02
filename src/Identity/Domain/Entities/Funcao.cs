@@ -33,7 +33,7 @@ public class Funcao : BaseEntity
     public string? DescricaoModulo { get; set; }
 
     // Relacionamentos
-    public virtual Sistema Sistema { get; set; } = null!;
+    public virtual Tsistema Sistema { get; set; } = null!;
     public virtual ICollection<BotaoFuncao> Botoes { get; set; } = new List<BotaoFuncao>();
     public virtual ICollection<GrupoFuncao> GrupoFuncoes { get; set; } = new List<GrupoFuncao>();
 }

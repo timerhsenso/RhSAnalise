@@ -18,7 +18,7 @@ public sealed class IdentityDbContext : DbContext, IUnitOfWork
         _auditableEntityInterceptor = auditableEntityInterceptor;
     }
 
-    public DbSet<Sistema> Sistemas => Set<Sistema>();
+    public DbSet<Tsistema> Sistemas => Set<Tsistema>();
     public DbSet<Funcao> Funcoes => Set<Funcao>();
     public DbSet<BotaoFuncao> BotoesFuncao => Set<BotaoFuncao>();
     public DbSet<GrupoDeUsuario> GruposDeUsuario => Set<GrupoDeUsuario>();

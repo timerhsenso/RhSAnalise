@@ -45,5 +45,5 @@ public class UserGroup : BaseEntity
     /// <summary>
     /// Referência ao sistema.
     /// </summary>
-    public virtual Sistema? Sistema { get; set; }
+    public virtual Tsistema? Sistema { get; set; }
 }

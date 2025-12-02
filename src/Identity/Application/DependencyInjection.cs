@@ -30,7 +30,7 @@ public static class DependencyInjection
         {
             cfg.AddProfile<UsuarioProfile>();
             cfg.AddProfile<PermissaoProfile>();
-            cfg.AddProfile<SistemaProfile>();
+            cfg.AddProfile<TsistemaProfile>();
             cfg.AddProfile<AuthProfile>();
         }, assembly);
 

@@ -23,7 +23,7 @@ public class GrupoDeUsuario : BaseEntity
     public string CdSistema { get; set; } = string.Empty;
 
     // Relacionamentos
-    public virtual Sistema Sistema { get; set; } = null!;
+    public virtual Tsistema Sistema { get; set; } = null!;
     public virtual ICollection<UserGroup> UserGroups { get; set; } = new List<UserGroup>();
     public virtual ICollection<GrupoFuncao> GrupoFuncoes { get; set; } = new List<GrupoFuncao>();
 }

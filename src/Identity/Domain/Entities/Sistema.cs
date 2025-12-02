@@ -1,5 +1,4 @@
-﻿// src/Identity/Domain/Entities/Sistema.cs
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using RhSensoERP.Shared.Core.Attributes;
 
@@ -7,33 +6,26 @@ namespace RhSensoERP.Identity.Domain.Entities;
 
 [GenerateCrud(
     TableName = "tsistema",
-    DisplayName = "Sistema",
+    DisplayName = "Tabela de Sistemas",
     CdSistema = "SEG",
     CdFuncao = "SEG_FM_TSISTEMA",
     IsLegacyTable = true,
-    GenerateApiController = true  // ← ADICIONAR ISSO!
-
+    GenerateApiController = true
 )]
-public class Sistema
+public class Tsistema
 {
     [Key]
-    [Column("cdsistema")]
+    [Required]
     [StringLength(10)]
-    [FieldDisplayName("Código")]
-    public string CdSistema { get; set; } = string.Empty;
+    public string CdsiStema { get; set; } = string.Empty;
 
     [Required]
-    [Column("dcsistema")]
-    [StringLength(100)]
-    [FieldDisplayName("Descrição")]
-    public string DcSistema { get; set; } = string.Empty;
-
-    [Column("ativo")]
-    [FieldDisplayName("Ativo")]
-    public bool Ativo { get; set; } = true;
+    [StringLength(60)]
+    public string DcsiStema { get; set; } = string.Empty;
 
     // ═══════════════════════════════════════════════════════════════
     // NAVEGAÇÃO - Relacionamento 1:N com Funcao
     // ═══════════════════════════════════════════════════════════════
     public virtual ICollection<Funcao> Funcoes { get; set; } = new List<Funcao>();
+
 }

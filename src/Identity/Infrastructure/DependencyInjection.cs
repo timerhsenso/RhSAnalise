@@ -45,7 +45,7 @@ public static class DependencyInjection
         // ==================== REPOSITORIES ====================
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IPermissaoRepository, PermissaoRepository>();
-        services.AddScoped<ISistemaRepository, SistemaRepository>();
+        services.AddScoped<ITsistemaRepository, TsistemaRepository>();
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<IdentityDbContext>());
 
         // ==================== ACTIVE DIRECTORY - FASE 3 ====================
