@@ -1,7 +1,7 @@
 ﻿// =============================================================================
 // ARQUIVO GERADO POR GeradorFullStack v3.0
-// Entity: Taux1
-// Data: 2025-12-01 23:06:17
+// Entity: Tsistema
+// Data: 2025-12-02 02:25:04
 // AUTO-REGISTRO: Compatível com AddCrudToolServicesAutomatically()
 // =============================================================================
 // NOTA: Este serviço usa HttpClient TIPADO injetado pelo DI.
@@ -12,14 +12,14 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
-using RhSensoERP.Web.Models.Taux1s;
+using RhSensoERP.Web.Models.Tsistemas;
 using RhSensoERP.Web.Models.Common;
 using RhSensoERP.Web.Services.Base;
 
-namespace RhSensoERP.Web.Services.Taux1s;
+namespace RhSensoERP.Web.Services.Tsistemas;
 
 /// <summary>
-/// Implementação do serviço de API para Tabela Auxiliar.
+/// Implementação do serviço de API para Tsistema.
 /// Consome a API backend gerada pelo Source Generator.
 /// </summary>
 /// <remarks>
@@ -32,19 +32,19 @@ namespace RhSensoERP.Web.Services.Taux1s;
 /// - Retry Policy (Polly)
 /// - Circuit Breaker (Polly)
 /// </remarks>
-public class Taux1ApiService : ITaux1ApiService
+public class TsistemaApiService : ITsistemaApiService
 {
     private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ILogger<Taux1ApiService> _logger;
+    private readonly ILogger<TsistemaApiService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    private const string ApiRoute = "api/gestaodepessoas/taux1s";
+    private const string ApiRoute = "api/identity/tsistemas";
 
-    public Taux1ApiService(
+    public TsistemaApiService(
         HttpClient httpClient,
         IHttpContextAccessor httpContextAccessor,
-        ILogger<Taux1ApiService> logger)
+        ILogger<TsistemaApiService> logger)
     {
         _httpClient = httpClient;
         _httpContextAccessor = httpContextAccessor;
@@ -78,16 +78,16 @@ public class Taux1ApiService : ITaux1ApiService
             {
                 _httpClient.DefaultRequestHeaders.Authorization = 
                     new AuthenticationHeaderValue("Bearer", token);
-                _logger.LogDebug("[TAUX1] Token JWT configurado");
+                _logger.LogDebug("[TSISTEMA] Token JWT configurado");
             }
             else
             {
-                _logger.LogWarning("[TAUX1] Token JWT não encontrado");
+                _logger.LogWarning("[TSISTEMA] Token JWT não encontrado");
             }
         }
         else
         {
-            _logger.LogWarning("[TAUX1] Usuário não autenticado");
+            _logger.LogWarning("[TSISTEMA] Usuário não autenticado");
         }
     }
 
@@ -119,7 +119,7 @@ public class Taux1ApiService : ITaux1ApiService
     {
         var content = await response.Content.ReadAsStringAsync();
         
-        _logger.LogDebug("[TAUX1] {Op} - Status: {Status}, Content: {Content}", 
+        _logger.LogDebug("[TSISTEMA] {Op} - Status: {Status}, Content: {Content}", 
             operation, response.StatusCode, content);
 
         if (string.IsNullOrEmpty(content))
@@ -142,7 +142,7 @@ public class Taux1ApiService : ITaux1ApiService
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "[TAUX1] Erro JSON em {Op}", operation);
+            _logger.LogError(ex, "[TSISTEMA] Erro JSON em {Op}", operation);
             return Fail<T>("Erro ao processar resposta do servidor");
         }
     }
@@ -151,7 +151,7 @@ public class Taux1ApiService : ITaux1ApiService
 
     #region IApiService Implementation
 
-    public async Task<ApiResponse<PagedResult<Taux1Dto>>> GetPagedAsync(
+    public async Task<ApiResponse<PagedResult<TsistemaDto>>> GetPagedAsync(
         int page, 
         int pageSize, 
         string? search = null)
@@ -163,68 +163,68 @@ public class Taux1ApiService : ITaux1ApiService
             if (!string.IsNullOrWhiteSpace(search))
                 query += $"&search={Uri.EscapeDataString(search)}";
 
-            _logger.LogDebug("[TAUX1] GET {Route}{Query}", ApiRoute, query);
+            _logger.LogDebug("[TSISTEMA] GET {Route}{Query}", ApiRoute, query);
 
             var response = await _httpClient.GetAsync($"{ApiRoute}{query}");
-            return await ProcessResponseAsync<PagedResult<Taux1Dto>>(response, "GetPaged");
+            return await ProcessResponseAsync<PagedResult<TsistemaDto>>(response, "GetPaged");
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "[TAUX1] Erro de conexão em GetPagedAsync");
-            return Fail<PagedResult<Taux1Dto>>("Erro de conexão com o servidor");
+            _logger.LogError(ex, "[TSISTEMA] Erro de conexão em GetPagedAsync");
+            return Fail<PagedResult<TsistemaDto>>("Erro de conexão com o servidor");
         }
         catch (TaskCanceledException)
         {
-            return Fail<PagedResult<Taux1Dto>>("Tempo limite excedido");
+            return Fail<PagedResult<TsistemaDto>>("Tempo limite excedido");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[TAUX1] Exceção em GetPagedAsync");
-            return Fail<PagedResult<Taux1Dto>>(ex.Message);
+            _logger.LogError(ex, "[TSISTEMA] Exceção em GetPagedAsync");
+            return Fail<PagedResult<TsistemaDto>>(ex.Message);
         }
     }
 
-    public async Task<ApiResponse<IEnumerable<Taux1Dto>>> GetAllAsync()
+    public async Task<ApiResponse<IEnumerable<TsistemaDto>>> GetAllAsync()
     {
         try
         {
             await SetAuthHeaderAsync();
             var response = await _httpClient.GetAsync($"{ApiRoute}?page=1&pageSize=10000");
-            var result = await ProcessResponseAsync<PagedResult<Taux1Dto>>(response, "GetAll");
+            var result = await ProcessResponseAsync<PagedResult<TsistemaDto>>(response, "GetAll");
             
             if (result.Success && result.Data != null)
-                return Success<IEnumerable<Taux1Dto>>(result.Data.Items);
+                return Success<IEnumerable<TsistemaDto>>(result.Data.Items);
             
-            return Fail<IEnumerable<Taux1Dto>>(result.Error?.Message ?? "Erro ao buscar dados");
+            return Fail<IEnumerable<TsistemaDto>>(result.Error?.Message ?? "Erro ao buscar dados");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[TAUX1] Exceção em GetAllAsync");
-            return Fail<IEnumerable<Taux1Dto>>(ex.Message);
+            _logger.LogError(ex, "[TSISTEMA] Exceção em GetAllAsync");
+            return Fail<IEnumerable<TsistemaDto>>(ex.Message);
         }
     }
 
-    public async Task<ApiResponse<Taux1Dto>> GetByIdAsync(string id)
+    public async Task<ApiResponse<TsistemaDto>> GetByIdAsync(string id)
     {
         try
         {
             await SetAuthHeaderAsync();
             var response = await _httpClient.GetAsync($"{ApiRoute}/{id}");
-            return await ProcessResponseAsync<Taux1Dto>(response, "GetById");
+            return await ProcessResponseAsync<TsistemaDto>(response, "GetById");
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "[TAUX1] Erro de conexão em GetByIdAsync");
-            return Fail<Taux1Dto>("Erro de conexão com o servidor");
+            _logger.LogError(ex, "[TSISTEMA] Erro de conexão em GetByIdAsync");
+            return Fail<TsistemaDto>("Erro de conexão com o servidor");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[TAUX1] Exceção em GetByIdAsync");
-            return Fail<Taux1Dto>(ex.Message);
+            _logger.LogError(ex, "[TSISTEMA] Exceção em GetByIdAsync");
+            return Fail<TsistemaDto>(ex.Message);
         }
     }
 
-    public async Task<ApiResponse<Taux1Dto>> CreateAsync(CreateTaux1Request request)
+    public async Task<ApiResponse<TsistemaDto>> CreateAsync(CreateTsistemaRequest request)
     {
         try
         {
@@ -232,12 +232,12 @@ public class Taux1ApiService : ITaux1ApiService
             var json = JsonSerializer.Serialize(request, _jsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            _logger.LogDebug("[TAUX1] POST {Route} - Body: {Body}", ApiRoute, json);
+            _logger.LogDebug("[TSISTEMA] POST {Route} - Body: {Body}", ApiRoute, json);
             
             var response = await _httpClient.PostAsync(ApiRoute, content);
             
             if (!response.IsSuccessStatusCode)
-                return await ProcessResponseAsync<Taux1Dto>(response, "Create");
+                return await ProcessResponseAsync<TsistemaDto>(response, "Create");
 
             // Backend retorna Result<string> com o ID criado
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -253,21 +253,21 @@ public class Taux1ApiService : ITaux1ApiService
                     return await GetByIdAsync(createdId);
             }
 
-            return Fail<Taux1Dto>(createResult?.Error?.Message ?? "Erro ao criar registro");
+            return Fail<TsistemaDto>(createResult?.Error?.Message ?? "Erro ao criar registro");
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "[TAUX1] Erro de conexão em CreateAsync");
-            return Fail<Taux1Dto>("Erro de conexão com o servidor");
+            _logger.LogError(ex, "[TSISTEMA] Erro de conexão em CreateAsync");
+            return Fail<TsistemaDto>("Erro de conexão com o servidor");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[TAUX1] Exceção em CreateAsync");
-            return Fail<Taux1Dto>(ex.Message);
+            _logger.LogError(ex, "[TSISTEMA] Exceção em CreateAsync");
+            return Fail<TsistemaDto>(ex.Message);
         }
     }
 
-    public async Task<ApiResponse<Taux1Dto>> UpdateAsync(string id, UpdateTaux1Request request)
+    public async Task<ApiResponse<TsistemaDto>> UpdateAsync(string id, UpdateTsistemaRequest request)
     {
         try
         {
@@ -275,24 +275,24 @@ public class Taux1ApiService : ITaux1ApiService
             var json = JsonSerializer.Serialize(request, _jsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            _logger.LogDebug("[TAUX1] PUT {Route}/{Id} - Body: {Body}", ApiRoute, id, json);
+            _logger.LogDebug("[TSISTEMA] PUT {Route}/{Id} - Body: {Body}", ApiRoute, id, json);
             
             var response = await _httpClient.PutAsync($"{ApiRoute}/{id}", content);
             
             if (!response.IsSuccessStatusCode)
-                return await ProcessResponseAsync<Taux1Dto>(response, "Update");
+                return await ProcessResponseAsync<TsistemaDto>(response, "Update");
 
             return await GetByIdAsync(id);
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "[TAUX1] Erro de conexão em UpdateAsync");
-            return Fail<Taux1Dto>("Erro de conexão com o servidor");
+            _logger.LogError(ex, "[TSISTEMA] Erro de conexão em UpdateAsync");
+            return Fail<TsistemaDto>("Erro de conexão com o servidor");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[TAUX1] Exceção em UpdateAsync");
-            return Fail<Taux1Dto>(ex.Message);
+            _logger.LogError(ex, "[TSISTEMA] Exceção em UpdateAsync");
+            return Fail<TsistemaDto>(ex.Message);
         }
     }
 
@@ -310,12 +310,12 @@ public class Taux1ApiService : ITaux1ApiService
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "[TAUX1] Erro de conexão em DeleteAsync");
+            _logger.LogError(ex, "[TSISTEMA] Erro de conexão em DeleteAsync");
             return Fail<bool>("Erro de conexão com o servidor");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[TAUX1] Exceção em DeleteAsync");
+            _logger.LogError(ex, "[TSISTEMA] Exceção em DeleteAsync");
             return Fail<bool>(ex.Message);
         }
     }
@@ -333,7 +333,7 @@ public class Taux1ApiService : ITaux1ApiService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[TAUX1] Exceção em DeleteMultipleAsync");
+            _logger.LogError(ex, "[TSISTEMA] Exceção em DeleteMultipleAsync");
             return Fail<bool>(ex.Message);
         }
     }
@@ -350,7 +350,7 @@ public class Taux1ApiService : ITaux1ApiService
             var idsList = ids.ToList();
             var json = JsonSerializer.Serialize(idsList, _jsonOptions);
             
-            _logger.LogDebug("[TAUX1] DELETE {Route}/batch - Body: {Body}", ApiRoute, json);
+            _logger.LogDebug("[TSISTEMA] DELETE {Route}/batch - Body: {Body}", ApiRoute, json);
             
             var request = new HttpRequestMessage(HttpMethod.Delete, $"{ApiRoute}/batch")
             {
@@ -385,12 +385,12 @@ public class Taux1ApiService : ITaux1ApiService
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "[TAUX1] Erro de conexão em DeleteBatchAsync");
+            _logger.LogError(ex, "[TSISTEMA] Erro de conexão em DeleteBatchAsync");
             return Fail<BatchDeleteResultDto>("Erro de conexão com o servidor");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[TAUX1] Exceção em DeleteBatchAsync");
+            _logger.LogError(ex, "[TSISTEMA] Exceção em DeleteBatchAsync");
             return Fail<BatchDeleteResultDto>(ex.Message);
         }
     }

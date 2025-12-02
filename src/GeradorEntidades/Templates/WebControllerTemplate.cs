@@ -1,7 +1,8 @@
 // =============================================================================
-// GERADOR FULL-STACK v3.0 - WEB CONTROLLER TEMPLATE
+// GERADOR FULL-STACK v3.1 - WEB CONTROLLER TEMPLATE
 // Baseado em RhSensoERP.CrudTool v2.0
 // Compatível com BaseCrudController existente
+// NOVO v3.1: Gera [MenuItem] automaticamente para menu dinâmico
 // =============================================================================
 
 using GeradorEntidades.Models;
@@ -21,19 +22,34 @@ public static class WebControllerTemplate
     {
         var pkType = entity.PkTypeSimple;
 
+        // Determina o módulo do menu baseado no CdSistema
+        var menuModule = GetMenuModule(entity.CdSistema);
+
         var content = $@"// =============================================================================
-// ARQUIVO GERADO POR GeradorFullStack v3.0
+// ARQUIVO GERADO POR GeradorFullStack v3.1
 // Entity: {entity.Name}
 // Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
 // =============================================================================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RhSensoERP.Web.Attributes;
 using RhSensoERP.Web.Controllers.Base;
 using RhSensoERP.Web.Models.{entity.PluralName};
 using RhSensoERP.Web.Services.{entity.PluralName};
 using RhSensoERP.Web.Services.Permissions;
 
 namespace RhSensoERP.Web.Controllers;
+
+// =============================================================================
+// MENU ITEM - Configuração para aparecer no menu dinâmico
+// =============================================================================
+[MenuItem(
+    Module = MenuModule.{menuModule},
+    DisplayName = ""{entity.DisplayName}"",
+    Icon = ""{entity.Icon}"",
+    Order = {entity.MenuOrder},
+    CdFuncao = ""{entity.CdFuncao}""
+)]
 
 /// <summary>
 /// Controller para gerenciamento de {entity.DisplayName}.
@@ -288,6 +304,26 @@ public class {entity.PluralName}Controller
             RelativePath = $"Web/Controllers/{entity.PluralName}Controller.cs",
             Content = content,
             FileType = "Controller"
+        };
+    }
+
+    /// <summary>
+    /// Converte CdSistema para MenuModule correspondente.
+    /// </summary>
+    private static string GetMenuModule(string cdSistema)
+    {
+        return cdSistema?.ToUpperInvariant() switch
+        {
+            "SEG" => "Seguranca",
+            "RHU" => "GestaoDePessoas",
+            "CPO" => "ControleDePonto",
+            "TRE" => "Treinamento",
+            "MSO" => "SaudeOcupacional",
+            "AVA" => "Avaliacao",
+            "CAD" => "Cadastros",
+            "REL" => "Relatorios",
+            "CFG" => "Configuracoes",
+            _ => "Outros"
         };
     }
 }

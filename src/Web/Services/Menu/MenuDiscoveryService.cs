@@ -3,6 +3,7 @@
 // =============================================================================
 // Arquivo: src/Web/Services/Menu/MenuDiscoveryService.cs
 // Descrição: Descobre automaticamente Controllers marcados com [MenuItem]
+// Versão: 2.0 - Com logs de debug para diagnóstico de permissões
 // =============================================================================
 
 using System.Collections.Concurrent;
@@ -16,11 +17,33 @@ namespace RhSensoERP.Web.Services.Menu;
 /// <summary>
 /// Serviço que descobre e gerencia itens de menu automaticamente.
 /// </summary>
+/// <remarks>
+/// <para><b>Funcionamento:</b></para>
+/// <list type="number">
+///   <item>Na inicialização, escaneia todos os Controllers com [MenuItem]</item>
+///   <item>Ao montar o menu, verifica permissão 'C' (Consulta) para cada item</item>
+///   <item>Itens sem permissão são ocultados do menu</item>
+///   <item>Resultado é cacheado por 5 minutos por usuário</item>
+/// </list>
+/// 
+/// <para><b>Diagnóstico:</b></para>
+/// <para>Para debugar problemas de menu, configure o log level para Debug:</para>
+/// <code>
+/// "Logging": {
+///   "LogLevel": {
+///     "RhSensoERP.Web.Services.Menu": "Debug"
+///   }
+/// }
+/// </code>
+/// </remarks>
 public interface IMenuDiscoveryService
 {
     /// <summary>
     /// Obtém todos os módulos com seus itens de menu.
     /// </summary>
+    /// <param name="username">Username para verificar permissões. Se null, usa o usuário do HttpContext.</param>
+    /// <param name="ct">Token de cancelamento.</param>
+    /// <returns>Lista de módulos com seus itens de menu.</returns>
     Task<IReadOnlyList<MenuModuleViewModel>> GetMenuAsync(string? username = null, CancellationToken ct = default);
 
     /// <summary>
@@ -43,14 +66,31 @@ public class MenuDiscoveryService : IMenuDiscoveryService
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<MenuDiscoveryService> _logger;
 
-    // Cache estático - carregado uma vez na inicialização (todos os itens possíveis)
+    // =========================================================================
+    // CACHE ESTÁTICO
+    // =========================================================================
+
+    /// <summary>
+    /// Cache estático - carregado uma vez na inicialização (todos os itens possíveis).
+    /// Contém TODOS os Controllers com [MenuItem], independente de permissão.
+    /// </summary>
     private static readonly Lazy<IReadOnlyList<MenuItemInfo>> _allMenuItems = new(DiscoverMenuItems);
 
-    // Cache por usuário (menu já filtrado por permissão) + TTL
+    /// <summary>
+    /// Cache por usuário (menu já filtrado por permissão) + TTL.
+    /// Chave: username, Valor: menu filtrado + timestamp.
+    /// </summary>
     private static readonly ConcurrentDictionary<string, CachedMenuEntry> _userMenuCache = new();
 
-    // Duração do cache por usuário (pode ajustar conforme necessidade)
+    /// <summary>
+    /// Duração do cache por usuário.
+    /// Após este tempo, as permissões são verificadas novamente.
+    /// </summary>
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+
+    // =========================================================================
+    // CONSTRUTOR
+    // =========================================================================
 
     public MenuDiscoveryService(
         IUserPermissionsCacheService permissionsService,
@@ -61,6 +101,10 @@ public class MenuDiscoveryService : IMenuDiscoveryService
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
+
+    // =========================================================================
+    // DESCOBERTA DE CONTROLLERS (EXECUTADO UMA VEZ)
+    // =========================================================================
 
     /// <summary>
     /// Descobre todos os Controllers marcados com [MenuItem].
@@ -169,36 +213,88 @@ public class MenuDiscoveryService : IMenuDiscoveryService
         return result;
     }
 
+    // =========================================================================
+    // OBTENÇÃO DO MENU (COM VERIFICAÇÃO DE PERMISSÕES)
+    // =========================================================================
+
     public async Task<IReadOnlyList<MenuModuleViewModel>> GetMenuAsync(
         string? username = null,
         CancellationToken ct = default)
     {
-        // Obtém username do contexto se não informado
+        // =====================================================================
+        // PASSO 1: Obter username
+        // =====================================================================
         username ??= _httpContextAccessor.HttpContext?.User?.Identity?.Name;
+
+        // DEBUG: Log do username obtido
+        _logger.LogDebug(
+            "[MENU] Iniciando GetMenuAsync | Username recebido: '{UsernameParam}' | " +
+            "Username do HttpContext: '{UsernameContext}' | " +
+            "IsAuthenticated: {IsAuth}",
+            username,
+            _httpContextAccessor.HttpContext?.User?.Identity?.Name,
+            _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated);
 
         if (string.IsNullOrWhiteSpace(username))
         {
-            _logger.LogWarning("Tentativa de obter menu sem usuário autenticado");
+            _logger.LogWarning(
+                "[MENU] ⚠️ Username vazio ou nulo! Menu será retornado vazio. " +
+                "Verifique se o usuário está autenticado.");
             return Array.Empty<MenuModuleViewModel>();
         }
 
-        // Verifica cache por usuário com TTL
+        // =====================================================================
+        // PASSO 2: Verificar cache
+        // =====================================================================
         if (_userMenuCache.TryGetValue(username, out var cachedEntry))
         {
             var age = DateTimeOffset.UtcNow - cachedEntry.CreatedAt;
             if (age <= CacheDuration)
             {
+                _logger.LogDebug(
+                    "[MENU] Cache HIT para '{User}' | Idade: {Age:mm\\:ss} | " +
+                    "Módulos: {Modules} | Itens: {Items}",
+                    username,
+                    age,
+                    cachedEntry.Menu.Count,
+                    cachedEntry.Menu.Sum(m => m.Items.Count));
                 return cachedEntry.Menu;
             }
 
             // Expirado: remove para forçar recarga
             _userMenuCache.TryRemove(username, out _);
+            _logger.LogDebug(
+                "[MENU] Cache EXPIRADO para '{User}' | Idade: {Age:mm\\:ss} | Recarregando...",
+                username,
+                age);
         }
 
+        // =====================================================================
+        // PASSO 3: Carregar todos os itens descobertos
+        // =====================================================================
         var allItems = _allMenuItems.Value;
+
+        _logger.LogDebug(
+            "[MENU] Total de itens descobertos (todos os Controllers com [MenuItem]): {Count}",
+            allItems.Count);
+
+        // DEBUG: Lista todos os itens descobertos
+        foreach (var item in allItems)
+        {
+            _logger.LogDebug(
+                "[MENU] Item descoberto: {DisplayName} | Controller: {Controller} | " +
+                "CdFuncao: {CdFuncao} | Módulo: {Module}",
+                item.DisplayName,
+                item.ControllerName,
+                item.CdFuncao ?? "(sem permissão definida)",
+                item.Module);
+        }
+
         var modules = new List<MenuModuleViewModel>();
 
-        // Agrupa por módulo
+        // =====================================================================
+        // PASSO 4: Agrupar por módulo e verificar permissões
+        // =====================================================================
         var groupedByModule = allItems.GroupBy(i => i.Module);
 
         foreach (var group in groupedByModule.OrderBy(g => GetModuleOrder(g.Key)))
@@ -206,25 +302,60 @@ public class MenuDiscoveryService : IMenuDiscoveryService
             var moduleInfo = GetModuleInfo(group.Key);
             var moduleItems = new List<MenuItemViewModel>();
 
+            _logger.LogDebug(
+                "[MENU] Processando módulo: {Module} ({DisplayName}) | Itens no módulo: {Count}",
+                group.Key,
+                moduleInfo.DisplayName,
+                group.Count());
+
             foreach (var item in group.OrderBy(i => i.Order).ThenBy(i => i.DisplayName))
             {
-                // Verifica permissão se CdFuncao foi definido
+                // =============================================================
+                // VERIFICAÇÃO DE PERMISSÃO
+                // =============================================================
                 var hasPermission = true;
+
                 if (!string.IsNullOrEmpty(item.CdFuncao))
                 {
+                    // Verifica permissão 'C' (Consulta) para exibir no menu
                     hasPermission = await _permissionsService.HasPermissionAsync(
                         username,
                         item.CdFuncao!,
-                        'C',
+                        'C', // <-- Tipo de permissão: Consulta
                         ct);
+
+                    // DEBUG: Log detalhado da verificação de permissão
+                    _logger.LogDebug(
+                        "[MENU] Verificando permissão | Item: {DisplayName} | " +
+                        "CdFuncao: {CdFuncao} | Usuário: {User} | " +
+                        "Tipo: 'C' (Consulta) | Resultado: {HasPermission}",
+                        item.DisplayName,
+                        item.CdFuncao,
+                        username,
+                        hasPermission ? "✅ PERMITIDO" : "❌ NEGADO");
+                }
+                else
+                {
+                    _logger.LogDebug(
+                        "[MENU] Item sem CdFuncao (sempre visível): {DisplayName}",
+                        item.DisplayName);
                 }
 
-                // Se não tem permissão e não é "ComingSoon", não mostra
+                // =============================================================
+                // DECISÃO: MOSTRAR OU OCULTAR
+                // =============================================================
                 if (!hasPermission && !item.ComingSoon)
                 {
+                    _logger.LogDebug(
+                        "[MENU] ❌ Item OCULTO do menu: {DisplayName} | " +
+                        "Motivo: Usuário '{User}' não tem permissão 'C' em '{CdFuncao}'",
+                        item.DisplayName,
+                        username,
+                        item.CdFuncao);
                     continue;
                 }
 
+                // Item será adicionado ao menu
                 moduleItems.Add(new MenuItemViewModel
                 {
                     Area = item.Area,
@@ -239,6 +370,10 @@ public class MenuDiscoveryService : IMenuDiscoveryService
                     Description = item.Description,
                     HasPermission = hasPermission && !item.ComingSoon
                 });
+
+                _logger.LogDebug(
+                    "[MENU] ✅ Item ADICIONADO ao menu: {DisplayName}",
+                    item.DisplayName);
             }
 
             // Só adiciona módulo se tiver itens visíveis
@@ -253,10 +388,23 @@ public class MenuDiscoveryService : IMenuDiscoveryService
                     CdSistema = moduleInfo.CdSistema,
                     Items = moduleItems
                 });
+
+                _logger.LogDebug(
+                    "[MENU] Módulo adicionado: {Module} | Itens visíveis: {Count}",
+                    moduleInfo.DisplayName,
+                    moduleItems.Count);
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "[MENU] Módulo IGNORADO (sem itens visíveis): {Module}",
+                    moduleInfo.DisplayName);
             }
         }
 
-        // Armazena em cache para o usuário com horário de criação
+        // =====================================================================
+        // PASSO 5: Armazenar em cache
+        // =====================================================================
         var entry = new CachedMenuEntry
         {
             CreatedAt = DateTimeOffset.UtcNow,
@@ -265,11 +413,28 @@ public class MenuDiscoveryService : IMenuDiscoveryService
 
         _userMenuCache[username] = entry;
 
-        _logger.LogDebug(
-            "Menu carregado para {User}: {Modules} módulos, {Items} itens",
+        // =====================================================================
+        // RESUMO FINAL
+        // =====================================================================
+        _logger.LogInformation(
+            "[MENU] Menu montado para '{User}' | " +
+            "Módulos: {Modules} | Itens totais: {Items} | " +
+            "Cache atualizado (TTL: {TTL} min)",
             username,
             modules.Count,
-            modules.Sum(m => m.Items.Count));
+            modules.Sum(m => m.Items.Count),
+            CacheDuration.TotalMinutes);
+
+        if (modules.Count == 0)
+        {
+            _logger.LogWarning(
+                "[MENU] ⚠️ Menu VAZIO para '{User}'! Possíveis causas:\n" +
+                "  1. Usuário não tem permissão 'C' (Consulta) nas funções\n" +
+                "  2. Funções não existem na tabela tfunc1\n" +
+                "  3. Permissões não cadastradas na tabela tperm1\n" +
+                "  4. Nenhum Controller com [MenuItem] foi descoberto",
+                username);
+        }
 
         return entry.Menu;
     }
@@ -285,8 +450,11 @@ public class MenuDiscoveryService : IMenuDiscoveryService
 
     public void InvalidateCache()
     {
+        var count = _userMenuCache.Count;
         _userMenuCache.Clear();
-        _logger.LogInformation("Cache de menu invalidado");
+        _logger.LogInformation(
+            "[MENU] Cache invalidado | Entradas removidas: {Count}",
+            count);
     }
 
     #region Helpers

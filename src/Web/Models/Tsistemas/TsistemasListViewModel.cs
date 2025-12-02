@@ -1,31 +1,31 @@
 ﻿// =============================================================================
-// ARQUIVO GERADO POR GeradorFullStack v3.0
-// Entity: Taux1
-// Data: 2025-12-01 23:06:17
+// ARQUIVO GERADO POR GeradorFullStack v3.1
+// Entity: Tsistema
+// Data: 2025-12-02 02:25:04
 // =============================================================================
 using RhSensoERP.Web.Models.Base;
 
-namespace RhSensoERP.Web.Models.Taux1s;
+namespace RhSensoERP.Web.Models.Tsistemas;
 
 /// <summary>
-/// ViewModel para listagem de Tabela Auxiliar.
+/// ViewModel para listagem de Tsistema.
 /// Herda de BaseListViewModel que já contém permissões e configurações de DataTables.
 /// </summary>
-public class Taux1sListViewModel : BaseListViewModel
+public class TsistemasListViewModel : BaseListViewModel
 {
-    public Taux1sListViewModel()
+    public TsistemasListViewModel()
     {
         // Inicializa propriedades padrão
-        InitializeDefaults("Taux1s", "Tabela Auxiliar");
+        InitializeDefaults("Tsistemas", "Tsistema");
         
         // Configurações específicas
-        PageTitle = "Tabela Auxiliar";
+        PageTitle = "Tsistema";
         PageIcon = "fas fa-list";
-        CdFuncao = "RHU_FM_TAUX1";
+        CdFuncao = "SEG_FM_TSISTEMA";
     }
 
     /// <summary>
     /// Itens da listagem (para uso sem DataTables server-side).
     /// </summary>
-    public List<Taux1Dto> Items { get; set; } = new();
+    public List<TsistemaDto> Items { get; set; } = new();
 }

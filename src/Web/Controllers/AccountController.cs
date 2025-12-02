@@ -1,6 +1,10 @@
 // =============================================================================
 // RHSENSOERP WEB - ACCOUNT CONTROLLER
 // =============================================================================
+// CORREÇÃO v2.0: Claims ajustadas para permissões funcionarem corretamente
+// - ClaimTypes.Name → CdUsuario (usado pelo sistema de permissões)
+// - dcusuario → Nome completo (usado para exibição no layout)
+// =============================================================================
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -76,11 +80,19 @@ public sealed class AccountController : Controller
                 _logger.LogWarning("Não foi possível obter as permissões para o usuário {CdUsuario}.", authResponse.User.CdUsuario);
             }
 
+            // =================================================================
+            // CLAIMS DO USUÁRIO
+            // =================================================================
+            // ClaimTypes.Name → CdUsuario (usado para permissões/cache)
+            // dcusuario → Nome completo (usado para exibição no layout)
+            // cdusuario → Código do usuário (compatibilidade/extensões)
+            // =================================================================
             var claims = new List<Claim>
             {
                 new(ClaimTypes.NameIdentifier, authResponse.User.Id.ToString()),
-                new(ClaimTypes.Name, authResponse.User.DcUsuario),
-                new("cdusuario", authResponse.User.CdUsuario),
+                new(ClaimTypes.Name, authResponse.User.CdUsuario),      // ← Para permissões
+                new("dcusuario", authResponse.User.DcUsuario),          // ← Para exibição no layout
+                new("cdusuario", authResponse.User.CdUsuario),          // ← Compatibilidade
             };
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -146,7 +158,7 @@ public sealed class AccountController : Controller
             UserInfo = new UserInfoViewModel
             {
                 CdUsuario = cdUsuario ?? string.Empty,
-                DcUsuario = User.Identity?.Name ?? string.Empty,
+                DcUsuario = User.FindFirst("dcusuario")?.Value ?? User.Identity?.Name ?? string.Empty,
                 Id = Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id) ? id : Guid.Empty
             }
         };

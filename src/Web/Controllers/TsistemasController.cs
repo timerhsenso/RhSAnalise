@@ -1,24 +1,36 @@
 ﻿// =============================================================================
-// ARQUIVO GERADO POR GeradorFullStack v3.0
-// Entity: Taux1
-// Data: 2025-12-01 23:06:17
+// ARQUIVO GERADO POR GeradorFullStack v3.1
+// Entity: Tsistema
+// Data: 2025-12-02 02:25:04
 // =============================================================================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RhSensoERP.Web.Attributes;
 using RhSensoERP.Web.Controllers.Base;
-using RhSensoERP.Web.Models.Taux1s;
-using RhSensoERP.Web.Services.Taux1s;
+using RhSensoERP.Web.Models.Tsistemas;
+using RhSensoERP.Web.Services.Tsistemas;
 using RhSensoERP.Web.Services.Permissions;
 
 namespace RhSensoERP.Web.Controllers;
 
+// =============================================================================
+// MENU ITEM - Configuração para aparecer no menu dinâmico
+// =============================================================================
+[MenuItem(
+    Module = MenuModule.Seguranca,
+    DisplayName = "Tsistema",
+    Icon = "fas fa-table",
+    Order = 10,
+    CdFuncao = "SEG_FM_TSISTEMA"
+)]
+
 /// <summary>
-/// Controller para gerenciamento de Tabela Auxiliar.
+/// Controller para gerenciamento de Tsistema.
 /// Herda toda a funcionalidade CRUD de BaseCrudController.
 /// </summary>
 [Authorize]
-public class Taux1sController 
-    : BaseCrudController<Taux1Dto, CreateTaux1Request, UpdateTaux1Request, string>
+public class TsistemasController 
+    : BaseCrudController<TsistemaDto, CreateTsistemaRequest, UpdateTsistemaRequest, string>
 {
     // =========================================================================
     // CONFIGURAÇÃO DE PERMISSÕES
@@ -28,26 +40,26 @@ public class Taux1sController
     /// Código da função/tela no sistema de permissões.
     /// Corresponde ao cadastrado na tabela tfunc1 do banco legado.
     /// </summary>
-    private const string CdFuncao = "RHU_FM_TAUX1";
+    private const string CdFuncao = "SEG_FM_TSISTEMA";
 
     /// <summary>
     /// Código do sistema ao qual esta função pertence.
     /// </summary>
-    private const string CdSistema = "RHU";
+    private const string CdSistema = "SEG";
 
-    private readonly ITaux1ApiService _taux1Service;
+    private readonly ITsistemaApiService _tsistemaService;
 
     // =========================================================================
     // CONSTRUTOR
     // =========================================================================
 
-    public Taux1sController(
-        ITaux1ApiService apiService,
+    public TsistemasController(
+        ITsistemaApiService apiService,
         IUserPermissionsCacheService permissionsCache,
-        ILogger<Taux1sController> logger)
+        ILogger<TsistemasController> logger)
         : base(apiService, permissionsCache, logger)
     {
-        _taux1Service = apiService;
+        _tsistemaService = apiService;
     }
 
     // =========================================================================
@@ -74,7 +86,7 @@ public class Taux1sController
         // Busca permissões do usuário para esta função
         var permissions = await GetUserPermissionsAsync(CdFuncao, ct);
 
-        var viewModel = new Taux1sListViewModel
+        var viewModel = new TsistemasListViewModel
         {
             UserPermissions = permissions
         };
@@ -115,7 +127,7 @@ public class Taux1sController
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public override async Task<IActionResult> Create([FromBody] CreateTaux1Request dto)
+    public override async Task<IActionResult> Create([FromBody] CreateTsistemaRequest dto)
     {
         if (!await CanCreateAsync(CdFuncao))
         {
@@ -145,7 +157,7 @@ public class Taux1sController
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit([FromQuery] string id, [FromBody] UpdateTaux1Request dto)
+    public async Task<IActionResult> Edit([FromQuery] string id, [FromBody] UpdateTsistemaRequest dto)
     {
         if (EqualityComparer<string>.Default.Equals(id, default))
         {
@@ -180,7 +192,7 @@ public class Taux1sController
     /// </summary>
     [HttpPut]
     [ValidateAntiForgeryToken]
-    public override async Task<IActionResult> Update(string id, [FromBody] UpdateTaux1Request dto)
+    public override async Task<IActionResult> Update(string id, [FromBody] UpdateTsistemaRequest dto)
     {
         if (!await CanEditAsync(CdFuncao))
         {

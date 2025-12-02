@@ -1,8 +1,8 @@
-﻿@model RhSensoERP.Web.Models.Taux1s.Taux1sListViewModel
+﻿@model RhSensoERP.Web.Models.Tsistemas.TsistemasListViewModel
 @{
     ViewData["Title"] = Model.PageTitle;
     Layout = "_CrudLayout";
-    ViewData["EntityName"] = "Tabela Auxiliar";
+    ViewData["EntityName"] = "Tsistema";
     ViewData["IconClass"] = "fas fa-list";
 }
 
@@ -32,18 +32,18 @@
     <input type="hidden" id="Id" name="Id" />
     <div class="row">
         <div class="col-md-3 mb-3">
-            <label for="CdTptabela" class="form-label">
-                Código Tptabela <span class="text-danger">*</span> <span class="badge bg-warning text-dark" title="Chave primária - editável apenas na criação">PK</span>
+            <label for="CdsiStema" class="form-label">
+                Cdsi Stema <span class="text-danger">*</span> <span class="badge bg-warning text-dark" title="Chave primária - editável apenas na criação">PK</span>
             </label>
-            <input type="text" class="form-control" id="CdTptabela" name="CdTptabela" 
-                   placeholder="Digite código tptabela..." required  maxlength="2" data-pk-text="true" />
+            <input type="text" class="form-control" id="CdsiStema" name="CdsiStema" 
+                   placeholder="Digite cdsi stema..." required  maxlength="10" data-pk-text="true" />
         </div>
         <div class="col-md-6 mb-3">
-            <label for="Dctabela" class="form-label">
-                Dctabela <span class="text-danger">*</span>
+            <label for="DcsiStema" class="form-label">
+                Dcsi Stema <span class="text-danger">*</span>
             </label>
-            <input type="text" class="form-control" id="Dctabela" name="Dctabela" 
-                   placeholder="Digite dctabela..." required  maxlength="60" />
+            <input type="text" class="form-control" id="DcsiStema" name="DcsiStema" 
+                   placeholder="Digite dcsi stema..." required  maxlength="60" />
         </div>
     </div>
 }
@@ -52,5 +52,5 @@
    Script específico da entidade
    ============================================================================ *@
 @section PageScripts {
-    <script src="~/js/taux1s/taux1.js" asp-append-version="true"></script>
+    <script src="~/js/tsistemas/tsistema.js" asp-append-version="true"></script>
 }

@@ -27,6 +27,13 @@
 		<FileVersion>2.0.0.0</FileVersion>
 	</PropertyGroup>
 
+	<ItemGroup>
+	  <Compile Remove="Controllers\GestaoDePessoas\**" />
+	  <Content Remove="Controllers\GestaoDePessoas\**" />
+	  <EmbeddedResource Remove="Controllers\GestaoDePessoas\**" />
+	  <None Remove="Controllers\GestaoDePessoas\**" />
+	</ItemGroup>
+
 	<ItemGroup Label="Packages">
 		<!-- API Core -->
 		<PackageReference Include="Asp.Versioning.Mvc" />
@@ -105,7 +112,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Controllers\GestaoDePessoas\Tabelas\Pessoal\" />
 	  <Folder Include="logs\" />
 	</ItemGroup>
 

@@ -1,6 +1,7 @@
 // =============================================================================
-// GERADOR FULL-STACK v3.0 - MODELS
+// GERADOR FULL-STACK v3.1 - MODELS
 // Unifica GeradorEntidades + CrudTool Templates
+// v3.1 - Adicionado Icon e MenuOrder no EntityConfig para [MenuItem] automático
 // =============================================================================
 
 namespace GeradorEntidades.Models;
@@ -630,7 +631,23 @@ public class EntityConfig
     public string ModuleRouteLower => ModuleRoute.ToLowerInvariant();
     public string? BackendNamespace { get; set; }
 
+    // =========================================================================
+    // MENU ITEM - Configurações para [MenuItem] no Controller
+    // =========================================================================
+
+    /// <summary>
+    /// Ícone FontAwesome para o menu (ex: "fas fa-table", "fas fa-users").
+    /// </summary>
+    public string Icon { get; set; } = "fas fa-table";
+
+    /// <summary>
+    /// Ordem de exibição no menu (menor = primeiro).
+    /// </summary>
+    public int MenuOrder { get; set; } = 10;
+
+    // =========================================================================
     // PK Info
+    // =========================================================================
     public PropertyConfig? PrimaryKey { get; set; }
     public string PkType => PrimaryKey?.CSharpType ?? "Guid";
     public string PkTypeSimple => PrimaryKey?.CSharpTypeSimple ?? "Guid";
@@ -659,7 +676,9 @@ public class EntityConfig
             CdFuncao = request.CdFuncao,
             CdSistema = request.CdSistema,
             Module = request.Modulo,
-            ModuleRoute = request.ModuloRota
+            ModuleRoute = request.ModuloRota,
+            Icon = request.Icone,           // ← NOVO v3.1
+            MenuOrder = request.MenuOrder   // ← NOVO v3.1
         };
 
         // Mapear colunas para propriedades

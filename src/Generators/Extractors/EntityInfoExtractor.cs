@@ -1,8 +1,8 @@
 // =============================================================================
-// RHSENSOERP GENERATOR v3.1 - ENTITY INFO EXTRACTOR
+// RHSENSOERP GENERATOR v3.2 - ENTITY INFO EXTRACTOR
 // =============================================================================
 // Arquivo: src/Generators/Extractors/EntityInfoExtractor.cs
-// Versão: 3.1 - Com suporte a MetadataProvider para UI dinâmica
+// Versão: 3.2 - CORREÇÃO: Detecta PKs Identity/Guid vs PKs de texto
 // =============================================================================
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -283,12 +283,24 @@ public static class EntityInfoExtractor
                         propInfo.RequiredOnCreate = true;
                         break;
 
+                    // =========================================================
+                    // CORREÇÃO v3.2: Detecta Identity para diferenciar PKs
+                    // =========================================================
                     case "DatabaseGeneratedAttribute" or "DatabaseGenerated":
-                        // Verifica se é Identity
                         var option = attr.ConstructorArguments.FirstOrDefault().Value;
-                        if (option != null && (int)option == 1) // Identity = 1
+                        if (option != null)
                         {
-                            propInfo.IsReadOnly = true;
+                            var optionValue = (int)option;
+                            // DatabaseGeneratedOption: None = 0, Identity = 1, Computed = 2
+                            if (optionValue == 1) // Identity
+                            {
+                                propInfo.IsIdentity = true;
+                                propInfo.IsReadOnly = true;
+                            }
+                            else if (optionValue == 2) // Computed
+                            {
+                                propInfo.IsReadOnly = true;
+                            }
                         }
                         break;
                 }
@@ -329,7 +341,15 @@ public static class EntityInfoExtractor
     {
         var baseProps = new[]
         {
-            new Models.PropertyInfo { Name = "Id", Type = "Guid", IsPrimaryKey = true, IsReadOnly = true, ColumnName = "id" },
+            new Models.PropertyInfo
+            {
+                Name = "Id",
+                Type = "Guid",
+                IsPrimaryKey = true,
+                IsReadOnly = true,
+                IsIdentity = false, // Guid não é Identity, mas é auto-gerado (via IsGuid)
+                ColumnName = "id"
+            },
             new Models.PropertyInfo { Name = "CreatedAt", Type = "DateTime", IsReadOnly = true, ColumnName = "createdat" },
             new Models.PropertyInfo { Name = "CreatedBy", Type = "string", IsReadOnly = true, ColumnName = "createdby", MaxLength = 100 },
             new Models.PropertyInfo { Name = "UpdatedAt", Type = "DateTime?", IsReadOnly = true, IsNullable = true, ColumnName = "updatedat" },
@@ -347,6 +367,7 @@ public static class EntityInfoExtractor
 
     /// <summary>
     /// Determina qual propriedade é a chave primária.
+    /// CORREÇÃO v3.2: Define PrimaryKeyIsGenerated baseado em IsIdentity ou IsGuid.
     /// </summary>
     private static void DeterminePrimaryKey(EntityInfo info)
     {
@@ -369,6 +390,14 @@ public static class EntityInfoExtractor
             info.PrimaryKeyProperty = keyProp.Name;
             info.PrimaryKeyColumn = keyProp.ColumnName;
             info.PrimaryKeyType = keyProp.BaseType;
+
+            // =========================================================
+            // CORREÇÃO v3.2: Define se a PK é auto-gerada
+            // =========================================================
+            // PKs são auto-geradas se:
+            // - São Identity (auto-incremento no banco)
+            // - São Guid (gerado automaticamente pela aplicação/banco)
+            info.PrimaryKeyIsGenerated = keyProp.IsIdentity || keyProp.IsGuid;
         }
     }
 

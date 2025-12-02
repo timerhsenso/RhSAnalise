@@ -1,25 +1,25 @@
 ﻿/**
  * ============================================================================
- * TABELA AUXILIAR - JavaScript com Controle de Permissões
+ * TSISTEMA - JavaScript com Controle de Permissões
  * ============================================================================
- * Arquivo: wwwroot/js/taux1s/taux1.js
+ * Arquivo: wwwroot/js/tsistemas/tsistema.js
  * Versão: 3.1 (Suporte a PKs de texto)
  * Gerado por: GeradorFullStack v3.1
- * Data: 2025-12-01 23:06:17
+ * Data: 2025-12-02 02:25:04
  * 
- * Implementação específica do CRUD de Tabela Auxiliar.
+ * Implementação específica do CRUD de Tsistema.
  * Estende a classe CrudBase com customizações necessárias.
  * ============================================================================
  */
 
-class Taux1Crud extends CrudBase {
+class TsistemaCrud extends CrudBase {
     constructor(config) {
         super(config);
         
         // =====================================================================
         // CORREÇÃO v3.1: Identifica campos de PK de texto
         // =====================================================================
-        this.pkTextoField = 'CdTptabela';
+        this.pkTextoField = 'CdsiStema';
         this.isPkTexto = true;
     }
 
@@ -38,12 +38,12 @@ class Taux1Crud extends CrudBase {
             $pkField.prop('readonly', false)
                     .prop('disabled', false)
                     .removeClass('bg-light');
-            console.log('✏️ [Taux1] Campo PK habilitado para edição (criação)');
+            console.log('✏️ [Tsistema] Campo PK habilitado para edição (criação)');
         } else {
             // Edição: campo readonly
             $pkField.prop('readonly', true)
                     .addClass('bg-light');
-            console.log('🔒 [Taux1] Campo PK desabilitado (edição)');
+            console.log('🔒 [Tsistema] Campo PK desabilitado (edição)');
         }
     }
 
@@ -79,12 +79,12 @@ class Taux1Crud extends CrudBase {
      */
     beforeSubmit(formData, isEdit) {
         // Garante que PK de texto seja string trimada
-        if (formData.cdTptabela) {
-            formData.cdTptabela = String(formData.cdTptabela).trim();
+        if (formData.cdsiStema) {
+            formData.cdsiStema = String(formData.cdsiStema).trim();
         }
 
 
-        console.log('📤 [Taux1] Dados a enviar:', formData);
+        console.log('📤 [Tsistema] Dados a enviar:', formData);
         return formData;
     }
 
@@ -92,14 +92,14 @@ class Taux1Crud extends CrudBase {
      * Customização após submeter.
      */
     afterSubmit(data, isEdit) {
-        console.log('✅ [Taux1] Registro salvo:', data);
+        console.log('✅ [Tsistema] Registro salvo:', data);
     }
 
     /**
      * Override do método getRowId para extrair ID corretamente.
      */
     getRowId(row) {
-        const id = row[this.config.idField] || row.cdTptabela || row.CdTptabela || row.id || row.Id || '';
+        const id = row[this.config.idField] || row.cdsiStema || row.CdsiStema || row.id || row.Id || '';
         return typeof id === 'string' ? id.trim() : id;
     }
 }
@@ -122,7 +122,7 @@ $(document).ready(function () {
         };
     }
 
-    console.log('🔐 [Taux1] Permissões ativas:', window.crudPermissions);
+    console.log('🔐 [Tsistema] Permissões ativas:', window.crudPermissions);
 
     // =========================================================================
     // FUNÇÃO AUXILIAR: Extrai ID com trim e validação
@@ -133,14 +133,14 @@ $(document).ready(function () {
 
         // Tenta várias variações do nome do campo
         let id = row[fieldName] || row[fieldName.toLowerCase()] || row[fieldName.toUpperCase()] || 
-                 row['cdTptabela'] || row['CdTptabela'] || row['id'] || row['Id'] || '';
+                 row['cdsiStema'] || row['CdsiStema'] || row['id'] || row['Id'] || '';
 
         // Converte para string e faz trim
         id = String(id).trim();
 
         // Log para debug
         if (!id) {
-            console.warn('⚠️ [Taux1] ID vazio para row:', row);
+            console.warn('⚠️ [Tsistema] ID vazio para row:', row);
         }
 
         return id;
@@ -161,25 +161,25 @@ $(document).ready(function () {
             render: function (data, type, row) {
                 // Só mostra checkbox se pode excluir
                 if (window.crudPermissions.canDelete) {
-                    const id = getCleanId(row, 'cdTptabela');
+                    const id = getCleanId(row, 'cdsiStema');
                     return `<input type="checkbox" class="dt-checkboxes form-check-input" data-id="${id}">`;
                 }
                 return '';
             }
         },
-        // Código Tptabela
+        // Cdsi Stema
         {
-            data: 'cdTptabela',
-            name: 'CdTptabela',
-            title: 'Código Tptabela',
+            data: 'cdsiStema',
+            name: 'CdsiStema',
+            title: 'Cdsi Stema',
             orderable: true,
             className: 'text-left'
         },
-        // Dctabela
+        // Dcsi Stema
         {
-            data: 'dctabela',
-            name: 'Dctabela',
-            title: 'Dctabela',
+            data: 'dcsiStema',
+            name: 'DcsiStema',
+            title: 'Dcsi Stema',
             orderable: true,
             className: 'text-left'
         },
@@ -192,9 +192,9 @@ $(document).ready(function () {
             title: 'Ações',
             width: '130px',
             render: function (data, type, row) {
-                const id = getCleanId(row, 'cdTptabela');
+                const id = getCleanId(row, 'cdsiStema');
 
-                console.log('🔧 [Taux1] Renderizando ações | ID:', id, '| Row:', row);
+                console.log('🔧 [Tsistema] Renderizando ações | ID:', id, '| Row:', row);
 
                 let actions = '<div class="btn-group btn-group-sm" role="group">';
 
@@ -238,10 +238,10 @@ $(document).ready(function () {
     // INICIALIZAÇÃO DO CRUD
     // =========================================================================
 
-    window.taux1Crud = new Taux1Crud({
-        controllerName: 'Taux1s',
-        entityName: 'Tabela Auxiliar',
-        idField: 'cdTptabela',
+    window.tsistemaCrud = new TsistemaCrud({
+        controllerName: 'Tsistemas',
+        entityName: 'Tsistema',
+        idField: 'cdsiStema',
         columns: columns,
         permissions: window.crudPermissions,
         dataTableOptions: {
@@ -260,7 +260,7 @@ $(document).ready(function () {
             .attr('title', 'Você não tem permissão para criar registros')
             .css('cursor', 'not-allowed');
 
-        console.log('🔒 [Taux1] Botão "Novo" desabilitado (sem permissão de criação)');
+        console.log('🔒 [Tsistema] Botão "Novo" desabilitado (sem permissão de criação)');
     }
 
     // Desabilita botão "Excluir Selecionados" se não pode excluir
@@ -270,14 +270,14 @@ $(document).ready(function () {
             .attr('title', 'Você não tem permissão para excluir registros')
             .css('cursor', 'not-allowed');
 
-        console.log('🔒 [Taux1] Botão "Excluir Selecionados" desabilitado (sem permissão de exclusão)');
+        console.log('🔒 [Tsistema] Botão "Excluir Selecionados" desabilitado (sem permissão de exclusão)');
     }
 
     // =========================================================================
     // LOG DE INICIALIZAÇÃO
     // =========================================================================
 
-    console.log('✅ CRUD de Taux1 v3.1 inicializado com permissões:', {
+    console.log('✅ CRUD de Tsistema v3.1 inicializado com permissões:', {
         criar: window.crudPermissions.canCreate,
         editar: window.crudPermissions.canEdit,
         excluir: window.crudPermissions.canDelete,
