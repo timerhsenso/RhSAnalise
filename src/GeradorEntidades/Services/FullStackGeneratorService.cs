@@ -51,7 +51,17 @@ public class FullStackGeneratorService
             EnsureDefaultConfigurations(tabela, request);
 
             // Cria EntityConfig a partir dos dados
+            _logger.LogInformation(
+                "Processando configuração: {ListCount} colunas listagem, {FormCount} colunas formulário",
+                request.ColunasListagem?.Count ?? 0,
+                request.ColunasFormulario?.Count ?? 0);
+
             var entityConfig = EntityConfig.FromTabela(tabela, request);
+
+            _logger.LogInformation(
+                "EntityConfig criado: {PropertyCount} propriedades, PK={PrimaryKey}",
+                entityConfig.Properties.Count,
+                entityConfig.PrimaryKey?.Name ?? "Não definida");
 
             // =========================================================================
             // GERAÇÃO: BACKEND
@@ -59,10 +69,11 @@ public class FullStackGeneratorService
 
             if (request.GerarEntidade)
             {
-                _logger.LogDebug("Gerando Entidade...");
+                _logger.LogDebug("Gerando Entidade para {Entity}...", entityConfig.Name);
                 var navigations = new List<string>();
                 result.Entidade = EntityTemplate.Generate(tabela, request, navigations);
                 result.NavigationsGeradas = navigations;
+                _logger.LogDebug("Entidade gerada com {NavCount} navegações", navigations.Count);
             }
 
             // =========================================================================
@@ -71,8 +82,9 @@ public class FullStackGeneratorService
 
             if (request.GerarWebController)
             {
-                _logger.LogDebug("Gerando WebController...");
+                _logger.LogDebug("Gerando WebController para {Entity}...", entityConfig.Name);
                 result.WebController = WebControllerTemplate.Generate(entityConfig);
+                _logger.LogDebug("WebController gerado com sucesso");
             }
 
             // =========================================================================
@@ -81,11 +93,12 @@ public class FullStackGeneratorService
 
             if (request.GerarWebModels)
             {
-                _logger.LogDebug("Gerando WebModels...");
+                _logger.LogDebug("Gerando WebModels para {Entity}...", entityConfig.Name);
                 result.Dto = WebModelsTemplate.GenerateDto(entityConfig);
                 result.CreateRequest = WebModelsTemplate.GenerateCreateRequest(entityConfig);
                 result.UpdateRequest = WebModelsTemplate.GenerateUpdateRequest(entityConfig);
                 result.ListViewModel = WebModelsTemplate.GenerateListViewModel(entityConfig);
+                _logger.LogDebug("WebModels gerados: DTO, CreateRequest, UpdateRequest, ListViewModel");
             }
 
             // =========================================================================
@@ -94,9 +107,10 @@ public class FullStackGeneratorService
 
             if (request.GerarWebServices)
             {
-                _logger.LogDebug("Gerando WebServices...");
+                _logger.LogDebug("Gerando WebServices para {Entity}...", entityConfig.Name);
                 result.ServiceInterface = WebServicesTemplate.GenerateInterface(entityConfig);
                 result.ServiceImplementation = WebServicesTemplate.GenerateImplementation(entityConfig);
+                _logger.LogDebug("WebServices gerados: Interface e Implementation");
             }
 
             // =========================================================================
@@ -105,8 +119,9 @@ public class FullStackGeneratorService
 
             if (request.GerarView)
             {
-                _logger.LogDebug("Gerando View...");
+                _logger.LogDebug("Gerando View para {Entity}...", entityConfig.Name);
                 result.View = ViewTemplate.Generate(entityConfig);
+                _logger.LogDebug("View gerada com sucesso");
             }
 
             // =========================================================================
@@ -115,8 +130,9 @@ public class FullStackGeneratorService
 
             if (request.GerarJavaScript)
             {
-                _logger.LogDebug("Gerando JavaScript...");
+                _logger.LogDebug("Gerando JavaScript para {Entity}...", entityConfig.Name);
                 result.JavaScript = JavaScriptTemplate.Generate(entityConfig);
+                _logger.LogDebug("JavaScript gerado com sucesso");
             }
 
             result.Success = true;
@@ -154,6 +170,17 @@ public class FullStackGeneratorService
         if (string.IsNullOrWhiteSpace(request.CdFuncao))
         {
             errors.Add("Código da Função (CdFuncao) é obrigatório.");
+        }
+
+        // ✅ NOVO: Validar seleção mínima de colunas
+        var hasListSelection = request.ColunasListagem?.Count > 0;
+        var hasFormSelection = request.ColunasFormulario?.Count > 0;
+        var hasAnySelection = hasListSelection || hasFormSelection;
+
+        // Se usuário selecionou algo, deve ter pelo menos 1 coluna no formulário
+        if (hasAnySelection && !hasFormSelection)
+        {
+            errors.Add("Selecione pelo menos uma coluna para o Formulário.");
         }
 
         return errors;

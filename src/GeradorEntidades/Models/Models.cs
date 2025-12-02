@@ -681,6 +681,11 @@ public class EntityConfig
             MenuOrder = request.MenuOrder   // ← NOVO v3.1
         };
 
+        // ✅ CORRIGIDO: Determinar se é primeira execução (sem seleção)
+        var hasListSelection = request.ColunasListagem.Count > 0;
+        var hasFormSelection = request.ColunasFormulario.Count > 0;
+        var isFirstExecution = !hasListSelection && !hasFormSelection;
+
         // Mapear colunas para propriedades
         var order = 0;
         foreach (var coluna in tabela.Colunas)
@@ -722,7 +727,7 @@ public class EntityConfig
                 ForeignKeyColumn = coluna.ForeignKey?.ColunaDestino
             };
 
-            // Configuração de listagem
+            // ✅ CORRIGIDO: Configuração de listagem
             if (listConfig != null && listConfig.Visible)
             {
                 prop.List = new ListConfig
@@ -736,9 +741,10 @@ public class EntityConfig
                     Sortable = listConfig.Sortable
                 };
             }
-            else if (listConfig == null && !isPrimaryKey && !coluna.IsGuid)
+            // ✅ CORRIGIDO: Só criar padrão se é PRIMEIRA execução
+            else if (listConfig == null && isFirstExecution && !isPrimaryKey && !coluna.IsGuid && !coluna.IsBinary)
             {
-                // Default: mostrar colunas simples
+                // Default: mostrar colunas simples (apenas na primeira execução)
                 prop.List = new ListConfig
                 {
                     Show = true,
@@ -748,7 +754,7 @@ public class EntityConfig
                 };
             }
 
-            // Configuração de formulário
+            // ✅ CORRIGIDO: Configuração de formulário
             if (formConfig != null && formConfig.Visible)
             {
                 prop.Form = new FormConfig
@@ -777,13 +783,14 @@ public class EntityConfig
                     Disabled = false
                 };
             }
-            else if (formConfig == null && !isPrimaryKey && !coluna.IsComputed)
+            // ✅ CORRIGIDO: Só criar padrão se é PRIMEIRA execução
+            else if (formConfig == null && isFirstExecution && !isPrimaryKey && !coluna.IsComputed && !coluna.IsBinary)
             {
-                // Default: mostrar campos editáveis
+                // Default: mostrar campos editáveis (apenas na primeira execução)
                 prop.Form = new FormConfig
                 {
                     Show = true,
-                    Order = order,
+                    Order = order++,
                     InputType = GetDefaultInputType(coluna),
                     ColSize = GetDefaultColSize(coluna)
                 };

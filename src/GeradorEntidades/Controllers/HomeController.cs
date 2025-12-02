@@ -83,7 +83,7 @@ public class HomeController : Controller
     public async Task<IActionResult> GetTabela(string nome)
     {
         _logger.LogInformation("GetTabela chamado para: {Nome}", nome);
-        
+
         var tabela = await _dbService.GetTabelaAsync(nome);
 
         if (tabela == null)
@@ -215,21 +215,42 @@ public class HomeController : Controller
     [HttpPost]
     public async Task<IActionResult> GerarFullStack([FromBody] FullStackRequest request)
     {
+        _logger.LogInformation("GerarFullStack iniciado para tabela: {Tabela}", request.NomeTabela);
+
         if (string.IsNullOrWhiteSpace(request.NomeTabela))
+        {
+            _logger.LogWarning("GerarFullStack: Nome da tabela vazio");
             return BadRequest(new { error = "Nome da tabela é obrigatório." });
+        }
 
         if (string.IsNullOrWhiteSpace(request.CdFuncao))
+        {
+            _logger.LogWarning("GerarFullStack: Código da função vazio para tabela {Tabela}", request.NomeTabela);
             return BadRequest(new { error = "Código da função é obrigatório." });
+        }
 
         var tabela = await _dbService.GetTabelaAsync(request.NomeTabela);
 
         if (tabela == null)
+        {
+            _logger.LogWarning("GerarFullStack: Tabela não encontrada: {Tabela}", request.NomeTabela);
             return NotFound(new { error = $"Tabela '{request.NomeTabela}' não encontrada." });
+        }
+
+        _logger.LogInformation("GerarFullStack: Gerando código para {Tabela} (CdFuncao={CdFuncao})",
+            request.NomeTabela, request.CdFuncao);
 
         var result = _fullStackGenerator.Generate(tabela, request);
 
         if (!result.Success)
+        {
+            _logger.LogError("GerarFullStack: Erro na geração para {Tabela}: {Error}",
+                request.NomeTabela, result.Error);
             return BadRequest(new { error = result.Error });
+        }
+
+        _logger.LogInformation("GerarFullStack: Sucesso para {Tabela} - {FileCount} arquivos gerados",
+            request.NomeTabela, result.AllFiles.Count());
 
         return Json(new
         {
@@ -242,8 +263,8 @@ public class HomeController : Controller
                 f.FileName,
                 f.RelativePath,
                 f.FileType,
-                contentPreview = f.Content.Length > 500 
-                    ? f.Content[..500] + "..." 
+                contentPreview = f.Content.Length > 500
+                    ? f.Content[..500] + "..."
                     : f.Content,
                 contentLength = f.Content.Length
             })
@@ -256,22 +277,42 @@ public class HomeController : Controller
     [HttpPost]
     public async Task<IActionResult> PreviewFullStack([FromBody] FullStackRequest request)
     {
+        _logger.LogInformation("PreviewFullStack iniciado para tabela: {Tabela}", request.NomeTabela);
+
         if (string.IsNullOrWhiteSpace(request.NomeTabela))
+        {
+            _logger.LogWarning("PreviewFullStack: Nome da tabela vazio");
             return BadRequest(new { error = "Nome da tabela é obrigatório." });
+        }
 
         var tabela = await _dbService.GetTabelaAsync(request.NomeTabela);
 
         if (tabela == null)
+        {
+            _logger.LogWarning("PreviewFullStack: Tabela não encontrada: {Tabela}", request.NomeTabela);
             return NotFound(new { error = $"Tabela '{request.NomeTabela}' não encontrada." });
+        }
 
         // Para preview, preenchemos CdFuncao se não informado
         if (string.IsNullOrWhiteSpace(request.CdFuncao))
+        {
             request.CdFuncao = "PREVIEW";
+            _logger.LogDebug("PreviewFullStack: CdFuncao preenchido com padrão 'PREVIEW'");
+        }
+
+        _logger.LogInformation("PreviewFullStack: Gerando preview para {Tabela}", request.NomeTabela);
 
         var result = _fullStackGenerator.Generate(tabela, request);
 
         if (!result.Success)
+        {
+            _logger.LogError("PreviewFullStack: Erro na geração para {Tabela}: {Error}",
+                request.NomeTabela, result.Error);
             return BadRequest(new { error = result.Error });
+        }
+
+        _logger.LogInformation("PreviewFullStack: Sucesso para {Tabela} - {FileCount} arquivos gerados",
+            request.NomeTabela, result.AllFiles.Count());
 
         return Json(new
         {
@@ -295,21 +336,42 @@ public class HomeController : Controller
     [HttpPost]
     public async Task<IActionResult> DownloadFullStackZip([FromBody] FullStackRequest request)
     {
+        _logger.LogInformation("DownloadFullStackZip iniciado para tabela: {Tabela}", request.NomeTabela);
+
         if (string.IsNullOrWhiteSpace(request.NomeTabela))
+        {
+            _logger.LogWarning("DownloadFullStackZip: Nome da tabela vazio");
             return BadRequest("Nome da tabela é obrigatório.");
+        }
 
         if (string.IsNullOrWhiteSpace(request.CdFuncao))
-            return BadRequest("Código da função é obrigatório.");
+        {
+            _logger.LogWarning("DownloadFullStackZip: Codigo da funcao vazio para tabela {Tabela}", request.NomeTabela);
+            return BadRequest("Codigo da funcao eh obrigatorio.");
+        }
 
         var tabela = await _dbService.GetTabelaAsync(request.NomeTabela);
 
         if (tabela == null)
-            return NotFound($"Tabela '{request.NomeTabela}' não encontrada.");
+        {
+            _logger.LogWarning("DownloadFullStackZip: Tabela nao encontrada: {Tabela}", request.NomeTabela);
+            return NotFound($"Tabela '{request.NomeTabela}' nao encontrada.");
+        }
+
+        _logger.LogInformation("DownloadFullStackZip: Gerando ZIP para {Tabela} (CdFuncao={CdFuncao})",
+            request.NomeTabela, request.CdFuncao);
 
         var result = _fullStackGenerator.Generate(tabela, request);
 
         if (!result.Success)
+        {
+            _logger.LogError("DownloadFullStackZip: Erro na geracao para {Tabela}: {Error}",
+                request.NomeTabela, result.Error);
             return BadRequest(result.Error);
+        }
+
+        _logger.LogInformation("DownloadFullStackZip: Criando ZIP com {FileCount} arquivos para {Tabela}",
+            result.AllFiles.Count(), request.NomeTabela);
 
         // Cria ZIP com todos os arquivos
         using var memoryStream = new MemoryStream();

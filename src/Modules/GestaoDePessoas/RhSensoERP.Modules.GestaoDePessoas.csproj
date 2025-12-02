@@ -2,6 +2,7 @@
 	<!-- ✅ Source Generator -->
 	<ItemGroup>
 		<ProjectReference Include="..\..\Generators\RhSensoERP.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\..\Identity\RhSensoERP.Identity.csproj" />
 	</ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\Core\RhSensoERP.Shared.Core.csproj" />
@@ -17,12 +18,6 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
 	  <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
 
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Core\Entities\Tabelas\Folha\" />
-    <Folder Include="Core\Entities\Tabelas\Eventos\" />
-    <Folder Include="Core\Entities\Tabelas\Pessoal\" />
   </ItemGroup>
 
   <PropertyGroup>

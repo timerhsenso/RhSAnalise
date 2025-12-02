@@ -326,13 +326,19 @@ public class TabSheetApiController : ControllerBase
 
         foreach (var coluna in tabela.Colunas)
         {
-            // Buscar configuração de listagem
+            // Buscar configuracao de listagem
             var listConfig = config.MasterTable?.Listagem?
                 .FirstOrDefault(c => c.Column.Equals(coluna.Nome, StringComparison.OrdinalIgnoreCase));
 
-            // Buscar configuração de formulário
+            // Buscar configuracao de formulario
             var formConfig = config.MasterTable?.Formulario?
                 .FirstOrDefault(c => c.Column.Equals(coluna.Nome, StringComparison.OrdinalIgnoreCase));
+
+            // CORRIGIDO: Se coluna nao foi selecionada em nenhum lugar, pular
+            if (listConfig == null && formConfig == null)
+            {
+                continue;
+            }
 
             var prop = new PropertyConfig
             {

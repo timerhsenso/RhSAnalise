@@ -5,7 +5,7 @@
  * =============================================================================
  */
 
-const TabSheetV2 = (function() {
+const TabSheetV2 = (function () {
     'use strict';
 
     // =========================================================================
@@ -53,7 +53,7 @@ const TabSheetV2 = (function() {
         $btnPreview.on('click', showPreview);
 
         // Clique nos steps
-        $steps.on('click', function() {
+        $steps.on('click', function () {
             const step = parseInt($(this).data('step'));
             if (step < state.currentStep) {
                 goToStep(step);
@@ -61,21 +61,21 @@ const TabSheetV2 = (function() {
         });
 
         // Check all para listagem mestre
-        $('#checkAllMasterListagem').on('change', function() {
+        $('#checkAllMasterListagem').on('change', function () {
             const checked = $(this).is(':checked');
             $('#masterListagemBody .listagem-check').prop('checked', checked);
             updateCounts();
         });
 
         // Check all para formulário mestre
-        $('#checkAllMasterForm').on('change', function() {
+        $('#checkAllMasterForm').on('change', function () {
             const checked = $(this).is(':checked');
             $('#masterFormularioBody .formulario-check').prop('checked', checked);
             updateCounts();
         });
 
         // Busca de tabelas detalhe
-        $('#tsSearchDetail').on('input', function() {
+        $('#tsSearchDetail').on('input', function () {
             const term = $(this).val().toLowerCase();
             filterAvailableTables(term);
         });
@@ -117,13 +117,13 @@ const TabSheetV2 = (function() {
         try {
             // Buscar metadados da tabela mestre
             const response = await fetch(`/api/tabsheet/metadata/${encodeURIComponent(tableName)}`);
-            
+
             if (!response.ok) {
                 throw new Error('Erro ao carregar metadados');
             }
 
             const data = await response.json();
-            
+
             // Armazenar dados
             state.masterColumns = data.columns || [];
             state.masterForeignKeys = data.foreignKeys || [];
@@ -141,7 +141,7 @@ const TabSheetV2 = (function() {
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
             showLoading(false);
-            
+
             // Fallback: usar dados mockados para demonstração
             loadMockData(tableName);
         }
@@ -174,8 +174,8 @@ const TabSheetV2 = (function() {
         state.masterForeignKeys = mockFKs;
         state.availableTables = mockRelated;
 
-        populateStep1(tableName, { 
-            columns: mockColumns, 
+        populateStep1(tableName, {
+            columns: mockColumns,
             primaryKey: 'id',
             schema: 'dbo'
         });
@@ -193,7 +193,7 @@ const TabSheetV2 = (function() {
         const pascalName = toPascalCase(tableName);
         $('#tsConfigId').val(pascalName + '_TabSheet');
         $('#tsTitle').val('Cadastro de ' + humanize(tableName));
-        
+
         // Info da tabela mestre
         $('#tsTableName, #tsMasterTableName').text(tableName);
         $('#tsMasterSchema').text(data.schema || 'dbo');
@@ -436,7 +436,7 @@ const TabSheetV2 = (function() {
     }
 
     function filterAvailableTables(term) {
-        $('.ts-available-item').each(function() {
+        $('.ts-available-item').each(function () {
             const tableName = $(this).data('table').toLowerCase();
             $(this).toggle(tableName.includes(term));
         });
@@ -478,7 +478,7 @@ const TabSheetV2 = (function() {
 
         // Esconder mensagem vazia
         $('#tsNoTabsMessage').hide();
-        
+
         // Atualizar contador
         $('#tsSelectedCount').text(state.selectedTabs.length);
     }
@@ -645,7 +645,7 @@ const TabSheetV2 = (function() {
     async function loadDetailTableColumns(tableName) {
         try {
             const response = await fetch(`/api/tabsheet/columns/${encodeURIComponent(tableName)}`);
-            
+
             if (!response.ok) {
                 throw new Error('Erro ao carregar colunas');
             }
@@ -777,10 +777,10 @@ const TabSheetV2 = (function() {
         state.currentStep = step;
 
         // Atualizar UI dos steps
-        $steps.each(function() {
+        $steps.each(function () {
             const stepNum = parseInt($(this).data('step'));
             $(this).removeClass('active completed');
-            
+
             if (stepNum < step) {
                 $(this).addClass('completed');
             } else if (stepNum === step) {
@@ -814,13 +814,13 @@ const TabSheetV2 = (function() {
             case 1:
                 const configId = $('#tsConfigId').val().trim();
                 const title = $('#tsTitle').val().trim();
-                
+
                 if (!configId) {
                     showToast('Atenção', 'Informe o ID da configuração', 'warning');
                     $('#tsConfigId').focus();
                     return false;
                 }
-                
+
                 if (!title) {
                     showToast('Atenção', 'Informe o título da tela', 'warning');
                     $('#tsTitle').focus();
@@ -831,12 +831,12 @@ const TabSheetV2 = (function() {
             case 2:
                 const listagemChecked = $('#masterListagemBody .listagem-check:checked').length;
                 const formularioChecked = $('#masterFormularioBody .formulario-check:checked').length;
-                
+
                 if (listagemChecked === 0) {
                     showToast('Atenção', 'Selecione ao menos uma coluna para a listagem', 'warning');
                     return false;
                 }
-                
+
                 if (formularioChecked === 0) {
                     showToast('Atenção', 'Selecione ao menos um campo para o formulário', 'warning');
                     return false;
@@ -977,7 +977,7 @@ const TabSheetV2 = (function() {
             a.remove();
 
             showToast('Sucesso', 'Código gerado com sucesso!', 'success');
-            
+
             // Fechar modal
             bootstrap.Modal.getInstance($modal[0]).hide();
 
@@ -993,7 +993,7 @@ const TabSheetV2 = (function() {
     function buildConfiguration() {
         // Coletar dados da listagem mestre
         const masterListagem = [];
-        $('#masterListagemBody tr').each(function() {
+        $('#masterListagemBody tr').each(function () {
             if ($(this).find('.listagem-check').is(':checked')) {
                 masterListagem.push({
                     column: $(this).data('col'),
@@ -1008,7 +1008,7 @@ const TabSheetV2 = (function() {
 
         // Coletar dados do formulário mestre
         const masterFormulario = [];
-        $('#masterFormularioBody tr').each(function() {
+        $('#masterFormularioBody tr').each(function () {
             if ($(this).find('.formulario-check').is(':checked')) {
                 masterFormulario.push({
                     column: $(this).data('col'),
@@ -1024,10 +1024,10 @@ const TabSheetV2 = (function() {
         // Coletar dados das abas
         const tabs = state.selectedTabs.map(tab => {
             const $pane = $(`#detail-${tab.tableName}`);
-            
+
             // Colunas da listagem
             const listagem = [];
-            $pane.find('.detail-listagem-body tr').each(function() {
+            $pane.find('.detail-listagem-body tr').each(function () {
                 if ($(this).find('input[type="checkbox"]').first().is(':checked')) {
                     listagem.push({
                         column: $(this).data('col'),
@@ -1041,7 +1041,7 @@ const TabSheetV2 = (function() {
 
             // Campos do formulário
             const formulario = [];
-            $pane.find('.detail-formulario-body tr').each(function() {
+            $pane.find('.detail-formulario-body tr').each(function () {
                 if ($(this).find('input[type="checkbox"]').first().is(':checked')) {
                     formulario.push({
                         column: $(this).data('col'),
@@ -1098,10 +1098,10 @@ const TabSheetV2 = (function() {
     function showPreview() {
         const config = buildConfiguration();
         console.log('📋 Configuração gerada:', config);
-        
+
         // Mostrar JSON em modal ou console
         const jsonStr = JSON.stringify(config, null, 2);
-        
+
         // Criar modal de preview
         const $previewModal = $(`
             <div class="modal fade" id="modalPreview" tabindex="-1">
@@ -1131,7 +1131,7 @@ const TabSheetV2 = (function() {
 
         // Highlight
         if (typeof hljs !== 'undefined') {
-            $previewModal.find('pre code').each(function() {
+            $previewModal.find('pre code').each(function () {
                 hljs.highlightElement(this);
             });
         }
@@ -1165,7 +1165,7 @@ const TabSheetV2 = (function() {
         $('#tsAvailableList').empty();
         $('#tsDetailTabs li, #tsDetailTabsContent .tab-pane').remove();
         $('#tsNoTabsMessage').show();
-        
+
         // Reset contadores
         $('#tsSelectedCount, #tsAvailableCount, #masterListagemCount, #masterFormularioCount').text('0');
     }
@@ -1173,7 +1173,7 @@ const TabSheetV2 = (function() {
     function updateCounts() {
         const listagemCount = $('#masterListagemBody .listagem-check:checked').length;
         const formularioCount = $('#masterFormularioBody .formulario-check:checked').length;
-        
+
         $('#masterListagemCount').text(listagemCount);
         $('#masterFormularioCount').text(formularioCount);
     }
@@ -1223,22 +1223,47 @@ const TabSheetV2 = (function() {
 
     function inferFormat(type) {
         type = (type || '').toLowerCase();
+
+        // MELHORADO: Detectar automaticamente o formato correto
+
+        // Tipos de data/hora
+        if (type.includes('datetime2') || type.includes('datetime')) return 'datetime';
+        if (type.includes('datetimeoffset')) return 'datetime';
+        if (type.includes('smalldatetime')) return 'datetime';
         if (type.includes('date') && type.includes('time')) return 'datetime';
         if (type.includes('date')) return 'date';
-        if (type.includes('money') || type.includes('decimal')) return 'currency';
-        if (type.includes('int') || type.includes('numeric')) return 'number';
+        if (type.includes('time')) return 'text';
+
+        // Tipos monetarios
+        if (type.includes('money') || type.includes('smallmoney')) return 'currency';
+
+        // Tipos numericos
+        if (type.includes('decimal') || type.includes('numeric')) return 'number';
+        if (type.includes('int') || type.includes('bigint') || type.includes('smallint') || type.includes('tinyint')) return 'number';
+        if (type.includes('float') || type.includes('real')) return 'number';
+
+        // Tipos booleanos
         if (type.includes('bit')) return 'boolean';
+
+        // Padrao: texto
         return 'text';
     }
 
     function inferAlign(type) {
         type = (type || '').toLowerCase();
-        if (type.includes('int') || type.includes('decimal') || type.includes('money') || type.includes('numeric')) {
-            return 'right';
-        }
-        if (type.includes('bit') || type.includes('date')) {
-            return 'center';
-        }
+
+        // MELHORADO: Detectar automaticamente o alinhamento correto
+
+        // Alinhar a direita: numeros e moeda
+        if (type.includes('int') || type.includes('bigint') || type.includes('smallint') || type.includes('tinyint')) return 'right';
+        if (type.includes('decimal') || type.includes('numeric') || type.includes('money') || type.includes('smallmoney')) return 'right';
+        if (type.includes('float') || type.includes('real')) return 'right';
+
+        // Alinhar no centro: booleanos e datas
+        if (type.includes('bit')) return 'center';
+        if (type.includes('date') || type.includes('datetime') || type.includes('time')) return 'center';
+
+        // Padrao: alinhar a esquerda
         return 'left';
     }
 
@@ -1246,13 +1271,33 @@ const TabSheetV2 = (function() {
         type = (type || '').toLowerCase();
         name = (name || '').toLowerCase();
 
+        // MELHORADO: Detectar automaticamente o tipo correto
+
+        // Campos especiais por nome
         if (name.includes('email')) return 'email';
         if (name.includes('senha') || name.includes('password')) return 'password';
+
+        // Tipos booleanos
         if (type.includes('bit')) return 'checkbox';
-        if (type.includes('date') && type.includes('time')) return 'datetime-local';
+
+        // Tipos de data/hora
+        if (type.includes('datetime2') || type.includes('datetime')) return 'datetime-local';
+        if (type.includes('datetimeoffset')) return 'datetime-local';
+        if (type.includes('smalldatetime')) return 'datetime-local';
         if (type.includes('date')) return 'date';
-        if (type.includes('int') || type.includes('decimal') || type.includes('numeric')) return 'number';
-        if (type.includes('text') || (type.includes('varchar') && type.includes('500'))) return 'textarea';
+        if (type.includes('time')) return 'time';
+
+        // Tipos numericos
+        if (type.includes('int') || type.includes('bigint') || type.includes('smallint') || type.includes('tinyint')) return 'number';
+        if (type.includes('decimal') || type.includes('numeric') || type.includes('money') || type.includes('float') || type.includes('real')) return 'number';
+
+        // Tipos de texto grande
+        if (type.includes('text') && !type.includes('ntext')) return 'textarea';
+        if (type.includes('ntext')) return 'textarea';
+        if (type.includes('varchar') && type.includes('max')) return 'textarea';
+        if (type.includes('nvarchar') && type.includes('max')) return 'textarea';
+
+        // Padrao: texto
         return 'text';
     }
 
@@ -1260,10 +1305,29 @@ const TabSheetV2 = (function() {
         type = (type || '').toLowerCase();
         name = (name || '').toLowerCase();
 
-        if (type.includes('text') || name.includes('descricao') || name.includes('observacao')) return 12;
-        if (type.includes('date')) return 3;
+        // MELHORADO: Detectar automaticamente o tamanho da coluna
+
+        // Campos muito grandes (12 colunas)
+        if (type.includes('text') && !type.includes('ntext')) return 12;
+        if (type.includes('ntext')) return 12;
+        if (type.includes('varchar') && type.includes('max')) return 12;
+        if (type.includes('nvarchar') && type.includes('max')) return 12;
+        if (name.includes('descricao') || name.includes('observacao') || name.includes('comentario')) return 12;
+
+        // Campos pequenos (2-3 colunas)
         if (type.includes('bit')) return 2;
-        if (type.includes('int') || type.includes('decimal')) return 3;
+        if (type.includes('date') && !type.includes('time')) return 3;
+        if (type.includes('time')) return 3;
+        if (type.includes('datetime') || type.includes('datetimeoffset')) return 4;
+        if (type.includes('int') || type.includes('bigint') || type.includes('smallint') || type.includes('tinyint')) return 3;
+        if (type.includes('decimal') || type.includes('numeric') || type.includes('money')) return 3;
+        if (type.includes('float') || type.includes('real')) return 3;
+
+        // Campos pequenos por nome
+        if (name.includes('codigo') || name.includes('code') || name.includes('sigla')) return 3;
+        if (name.includes('cep') || name.includes('telefone') || name.includes('phone')) return 4;
+
+        // Padrao: 6 colunas
         return 6;
     }
 
@@ -1307,7 +1371,7 @@ const TabSheetV2 = (function() {
 })();
 
 // Inicialização quando o DOM estiver pronto
-$(document).ready(function() {
+$(document).ready(function () {
     TabSheetV2.init();
 });
 
