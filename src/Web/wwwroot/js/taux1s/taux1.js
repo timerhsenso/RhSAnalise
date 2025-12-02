@@ -3,9 +3,9 @@
  * TABELA AUXILIAR - JavaScript com Controle de Permissões
  * ============================================================================
  * Arquivo: wwwroot/js/taux1s/taux1.js
- * Versão: 2.5 (Seguindo padrão de sistemas.js)
- * Gerado por: GeradorFullStack v3.0
- * Data: 2025-12-01 01:19:10
+ * Versão: 3.1 (Suporte a PKs de texto)
+ * Gerado por: GeradorFullStack v3.1
+ * Data: 2025-12-01 23:06:17
  * 
  * Implementação específica do CRUD de Tabela Auxiliar.
  * Estende a classe CrudBase com customizações necessárias.
@@ -15,20 +15,61 @@
 class Taux1Crud extends CrudBase {
     constructor(config) {
         super(config);
+        
+        // =====================================================================
+        // CORREÇÃO v3.1: Identifica campos de PK de texto
+        // =====================================================================
+        this.pkTextoField = 'CdTptabela';
+        this.isPkTexto = true;
     }
 
     /**
      * Habilita/desabilita campos de chave primária.
-     * Sobrescreve método da classe base.
+     * CORREÇÃO v3.1: PKs de texto são editáveis apenas na criação.
      */
     enablePrimaryKeyFields(enable) {
-        // CdTptabela é chave primária, geralmente não editável
-        $('#CdTptabela').prop('readonly', !enable);
+        if (!this.isPkTexto) return;
         
-        if (!enable) {
-            $('#CdTptabela').addClass('bg-light');
+        const $pkField = $('#' + this.pkTextoField);
+        if ($pkField.length === 0) return;
+        
+        if (enable) {
+            // Criação: campo editável
+            $pkField.prop('readonly', false)
+                    .prop('disabled', false)
+                    .removeClass('bg-light');
+            console.log('✏️ [Taux1] Campo PK habilitado para edição (criação)');
         } else {
-            $('#CdTptabela').removeClass('bg-light');
+            // Edição: campo readonly
+            $pkField.prop('readonly', true)
+                    .addClass('bg-light');
+            console.log('🔒 [Taux1] Campo PK desabilitado (edição)');
+        }
+    }
+
+    /**
+     * Override: Abre modal para NOVO registro.
+     * CORREÇÃO v3.1: Habilita PK de texto na criação.
+     */
+    openCreateModal() {
+        super.openCreateModal();
+        
+        // Habilita PK de texto para digitação
+        if (this.isPkTexto) {
+            this.enablePrimaryKeyFields(true);
+        }
+    }
+
+    /**
+     * Override: Abre modal para EDIÇÃO.
+     * CORREÇÃO v3.1: Desabilita PK de texto na edição.
+     */
+    async openEditModal(id) {
+        await super.openEditModal(id);
+        
+        // Desabilita PK de texto (não pode alterar chave)
+        if (this.isPkTexto) {
+            this.enablePrimaryKeyFields(false);
         }
     }
 
@@ -37,6 +78,11 @@ class Taux1Crud extends CrudBase {
      * Converte tipos e valida campos obrigatórios.
      */
     beforeSubmit(formData, isEdit) {
+        // Garante que PK de texto seja string trimada
+        if (formData.cdTptabela) {
+            formData.cdTptabela = String(formData.cdTptabela).trim();
+        }
+
 
         console.log('📤 [Taux1] Dados a enviar:', formData);
         return formData;
@@ -195,41 +241,26 @@ $(document).ready(function () {
     window.taux1Crud = new Taux1Crud({
         controllerName: 'Taux1s',
         entityName: 'Tabela Auxiliar',
-        entityNamePlural: 'Tabela Auxiliar',
         idField: 'cdTptabela',
-        tableSelector: '#tableCrud',
         columns: columns,
-
-        // Permissões vindas do backend
-        permissions: {
-            canCreate: window.crudPermissions.canCreate,
-            canEdit: window.crudPermissions.canEdit,
-            canDelete: window.crudPermissions.canDelete,
-            canView: window.crudPermissions.canView
-        },
-
-        exportConfig: {
-            enabled: true,
-            excel: true,
-            pdf: true,
-            csv: true,
-            print: true,
-            filename: 'Taux1s'
+        permissions: window.crudPermissions,
+        dataTableOptions: {
+            order: [[1, 'asc']]
         }
     });
 
     // =========================================================================
-    // CONTROLE DE BOTÕES DA TOOLBAR
+    // CONTROLE DE TOOLBAR BASEADO EM PERMISSÕES
     // =========================================================================
 
     // Desabilita botão "Novo" se não pode criar
     if (!window.crudPermissions.canCreate) {
-        $('#btnCreate, #btnNew').prop('disabled', true)
+        $('#btnNew').prop('disabled', true)
             .addClass('disabled')
             .attr('title', 'Você não tem permissão para criar registros')
             .css('cursor', 'not-allowed');
 
-        console.log('🔒 [Taux1] Botão "Novo" desabilitado (sem permissão de inclusão)');
+        console.log('🔒 [Taux1] Botão "Novo" desabilitado (sem permissão de criação)');
     }
 
     // Desabilita botão "Excluir Selecionados" se não pode excluir
@@ -246,10 +277,11 @@ $(document).ready(function () {
     // LOG DE INICIALIZAÇÃO
     // =========================================================================
 
-    console.log('✅ CRUD de Taux1 v2.5 inicializado com permissões:', {
+    console.log('✅ CRUD de Taux1 v3.1 inicializado com permissões:', {
         criar: window.crudPermissions.canCreate,
         editar: window.crudPermissions.canEdit,
         excluir: window.crudPermissions.canDelete,
-        visualizar: window.crudPermissions.canView
+        visualizar: window.crudPermissions.canView,
+        pkTexto: true
     });
 });

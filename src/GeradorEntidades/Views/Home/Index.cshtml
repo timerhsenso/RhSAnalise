@@ -354,6 +354,32 @@
                 color: #fff;
             }
 
+        /* Botão TabSheet - Cyan/Teal */
+        .btn-tabsheet {
+            background: linear-gradient(135deg, #06b6d4, #14b8a6);
+            border: none;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+            .btn-tabsheet:hover {
+                background: linear-gradient(135deg, #0891b2, #0d9488);
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+                color: #fff;
+            }
+
+            .btn-tabsheet:disabled {
+                background: linear-gradient(135deg, #64748b, #475569);
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+
         .btn-outline-secondary {
             border-color: var(--border-color);
             color: var(--text-secondary);
@@ -1048,6 +1074,10 @@
                             <button class="btn btn-outline-secondary btn-sm" onclick="gerarLoteFullStack()" id="btnGerarLote" disabled>
                                 <i class="fas fa-layer-group me-1"></i>Gerar Selecionadas
                             </button>
+                            <!-- NOVO BOTÃO TABSHEET -->
+                            <button class="btn btn-tabsheet btn-sm" onclick="abrirModalTabSheet()" id="btnGerarTabSheet" disabled>
+                                <i class="fas fa-folder-tree me-1"></i>Gerar TabSheet
+                            </button>
                         </div>
                         <div class="mt-2 text-center">
                             <small class="text-muted" style="font-size: 0.7rem;">
@@ -1084,9 +1114,15 @@
                                     </h4>
                                     <p class="text-muted mb-0" id="tabelaDescricao">-</p>
                                 </div>
-                                <button class="btn btn-generate btn-sm" onclick="abrirModalConfiguracao()">
-                                    <i class="fas fa-rocket me-1"></i>Gerar Full-Stack
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <!-- BOTÃO TABSHEET NO HEADER -->
+                                    <button class="btn btn-tabsheet btn-sm" onclick="abrirModalTabSheet()" title="Gerar TabSheet (Mestre/Detalhe)">
+                                        <i class="fas fa-folder-tree me-1"></i>TabSheet
+                                    </button>
+                                    <button class="btn btn-generate btn-sm" onclick="abrirModalConfiguracao()">
+                                        <i class="fas fa-rocket me-1"></i>Gerar Full-Stack
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Alertas -->
@@ -1575,6 +1611,11 @@
         </div>
     </div>
 
+    <!-- =========================================================================
+         MODAL TABSHEET - INCLUI A PARTIAL
+         ========================================================================= -->
+    @await Html.PartialAsync("_TabSheetModal")
+
     <!-- Toast -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div id="toast" class="toast" role="alert">
@@ -1594,6 +1635,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+
+    <!-- TABSHEET CONFIG SCRIPT -->
+    <script src="~/js/tabsheet/tabsheet-config.js"></script>
 
     <script>
         // =====================================================================
@@ -1636,6 +1680,9 @@
         let modalFuncoes = null;
         let modalPreview = null;
 
+        // VARIÁVEL GLOBAL PARA TABSHEET
+        window.selectedTableName = null;
+
         // =====================================================================
         // INICIALIZAÇÃO
         // =====================================================================
@@ -1649,6 +1696,23 @@
             // Atualizar contador de selecionadas
             $(document).on('change', '.tabela-check', atualizarContadorSelecionadas);
         });
+
+        // =====================================================================
+        // FUNÇÃO PARA ABRIR MODAL TABSHEET
+        // =====================================================================
+        function abrirModalTabSheet() {
+            if (!tabelaSelecionada) {
+                showToast('Atenção', 'Selecione uma tabela primeiro', 'warning');
+                return;
+            }
+
+            // Usar a API do TabSheetConfig
+            if (typeof TabSheetConfig !== 'undefined') {
+                TabSheetConfig.openModal(tabelaSelecionada);
+            } else {
+                showToast('Erro', 'Módulo TabSheet não carregado', 'error');
+            }
+        }
 
         // =====================================================================
         // FUNÇÕES DE SELEÇÃO DE TABELAS
@@ -1677,6 +1741,7 @@
             $('#selecionadasCount').text(count);
             $('#btnConfigurar').prop('disabled', count === 0);
             $('#btnGerarLote').prop('disabled', count === 0);
+            $('#btnGerarTabSheet').prop('disabled', count === 0 && !tabelaSelecionada);
         }
 
         async function selectTabela(nome, row) {
@@ -1685,6 +1750,12 @@
             $(row).addClass('selected-row');
 
             tabelaSelecionada = nome;
+
+            // ATUALIZA VARIÁVEL GLOBAL PARA TABSHEET
+            window.selectedTableName = nome;
+
+            // Habilita botão TabSheet
+            $('#btnGerarTabSheet').prop('disabled', false);
 
             // Mostra loading
             $('#placeholderPanel').hide();
@@ -1929,47 +2000,54 @@
             }
             $('#listagemColunasBody').html(listagemHtml);
 
-            // Colunas de Formulário
-            let formularioHtml = '';
-            order = 0;
-            for (const col of tabela.colunas) {
-                if (col.isPrimaryKey || col.isComputed) continue;
+        // Colunas de Formulário
+        let formularioHtml = '';
+        order = 0;
+        for (const col of tabela.colunas) {
+            // CORREÇÃO: PKs de texto (código manual) DEVEM aparecer no formulário
+            // Pular apenas se: PK+Identity, PK+Guid, ou Computed
+            const isPkAutoGerada = col.isPrimaryKey && (col.isIdentity || col.isGuid);
+            if (isPkAutoGerada || col.isComputed) continue;
 
-                const inputType = getDefaultInputType(col);
-                const colSize = getDefaultColSize(col);
-                const required = !col.isNullable ? 'checked' : '';
+            const inputType = getDefaultInputType(col);
+            const colSize = getDefaultColSize(col);
+            const required = (!col.isNullable || col.isPrimaryKey) ? 'checked' : '';
 
-                formularioHtml += `<tr>
-                    <td><input type="checkbox" class="form-check-input formulario-check" data-col="${col.nome}" checked /></td>
-                    <td><code>${col.nome}</code></td>
-                    <td><input type="text" class="form-control form-control-sm formulario-label" data-col="${col.nome}"
-                               value="${formatDisplayName(col.nomePascalCase)}" /></td>
-                    <td>
-                        <select class="form-select form-select-sm formulario-type" data-col="${col.nome}">
-                            <option value="text" ${inputType === 'text' ? 'selected' : ''}>Texto</option>
-                            <option value="number" ${inputType === 'number' ? 'selected' : ''}>Número</option>
-                            <option value="date" ${inputType === 'date' ? 'selected' : ''}>Data</option>
-                            <option value="datetime-local" ${inputType === 'datetime-local' ? 'selected' : ''}>Data/Hora</option>
-                            <option value="checkbox" ${inputType === 'checkbox' ? 'selected' : ''}>Checkbox</option>
-                            <option value="select" ${inputType === 'select' ? 'selected' : ''}>Select</option>
-                            <option value="textarea" ${inputType === 'textarea' ? 'selected' : ''}>Textarea</option>
-                        </select>
-                    </td>
-                    <td>
-                        <select class="form-select form-select-sm formulario-colsize" data-col="${col.nome}">
-                            <option value="2" ${colSize === 2 ? 'selected' : ''}>2</option>
-                            <option value="3" ${colSize === 3 ? 'selected' : ''}>3</option>
-                            <option value="4" ${colSize === 4 ? 'selected' : ''}>4</option>
-                            <option value="6" ${colSize === 6 ? 'selected' : ''}>6</option>
-                            <option value="8" ${colSize === 8 ? 'selected' : ''}>8</option>
-                            <option value="12" ${colSize === 12 ? 'selected' : ''}>12</option>
-                        </select>
-                    </td>
-                    <td class="text-center"><input type="checkbox" class="form-check-input formulario-required" data-col="${col.nome}" ${required} /></td>
-                    <td class="text-center"><input type="checkbox" class="form-check-input formulario-disabled" data-col="${col.nome}" /></td>
-                </tr>`;
-            }
-            $('#formularioColunasBody').html(formularioHtml);
+            // Badge visual para PKs de texto
+            const isPkTexto = col.isPrimaryKey && !col.isIdentity && !col.isGuid;
+            const pkBadge = isPkTexto ? ' <span class="badge badge-pk" title="Chave Primária - Editável apenas na criação">PK</span>' : '';
+
+            formularioHtml += `<tr>
+                <td><input type="checkbox" class="form-check-input formulario-check" data-col="${col.nome}" checked /></td>
+                <td><code>${col.nome}</code>${pkBadge}</td>
+                <td><input type="text" class="form-control form-control-sm formulario-label" data-col="${col.nome}"
+                           value="${formatDisplayName(col.nomePascalCase)}" /></td>
+                <td>
+                    <select class="form-select form-select-sm formulario-type" data-col="${col.nome}">
+                        <option value="text" ${inputType === 'text' ? 'selected' : ''}>Texto</option>
+                        <option value="number" ${inputType === 'number' ? 'selected' : ''}>Número</option>
+                        <option value="date" ${inputType === 'date' ? 'selected' : ''}>Data</option>
+                        <option value="datetime-local" ${inputType === 'datetime-local' ? 'selected' : ''}>Data/Hora</option>
+                        <option value="checkbox" ${inputType === 'checkbox' ? 'selected' : ''}>Checkbox</option>
+                        <option value="select" ${inputType === 'select' ? 'selected' : ''}>Select</option>
+                        <option value="textarea" ${inputType === 'textarea' ? 'selected' : ''}>Textarea</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm formulario-colsize" data-col="${col.nome}">
+                        <option value="2" ${colSize === 2 ? 'selected' : ''}>2</option>
+                        <option value="3" ${colSize === 3 ? 'selected' : ''}>3</option>
+                        <option value="4" ${colSize === 4 ? 'selected' : ''}>4</option>
+                        <option value="6" ${colSize === 6 ? 'selected' : ''}>6</option>
+                        <option value="8" ${colSize === 8 ? 'selected' : ''}>8</option>
+                        <option value="12" ${colSize === 12 ? 'selected' : ''}>12</option>
+                    </select>
+                </td>
+                <td class="text-center"><input type="checkbox" class="form-check-input formulario-required" data-col="${col.nome}" ${required} /></td>
+                <td class="text-center"><input type="checkbox" class="form-check-input formulario-disabled" data-col="${col.nome}" /></td>
+            </tr>`;
+        }
+        $('#formularioColunasBody').html(formularioHtml);
 
             // FKs
             let fksHtml = '';

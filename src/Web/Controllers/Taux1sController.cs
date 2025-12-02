@@ -1,7 +1,7 @@
 ﻿// =============================================================================
 // ARQUIVO GERADO POR GeradorFullStack v3.0
 // Entity: Taux1
-// Data: 2025-12-01 01:19:10
+// Data: 2025-12-01 23:06:17
 // =============================================================================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

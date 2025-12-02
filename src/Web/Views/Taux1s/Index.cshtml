@@ -31,6 +31,13 @@
 @section ModalContent {
     <input type="hidden" id="Id" name="Id" />
     <div class="row">
+        <div class="col-md-3 mb-3">
+            <label for="CdTptabela" class="form-label">
+                Código Tptabela <span class="text-danger">*</span> <span class="badge bg-warning text-dark" title="Chave primária - editável apenas na criação">PK</span>
+            </label>
+            <input type="text" class="form-control" id="CdTptabela" name="CdTptabela" 
+                   placeholder="Digite código tptabela..." required  maxlength="2" data-pk-text="true" />
+        </div>
         <div class="col-md-6 mb-3">
             <label for="Dctabela" class="form-label">
                 Dctabela <span class="text-danger">*</span>

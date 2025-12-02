@@ -1,7 +1,7 @@
 // =============================================================================
-// GERADOR FULL-STACK v3.0 - VIEW TEMPLATE
+// GERADOR FULL-STACK v3.1 - VIEW TEMPLATE
 // Baseado em RhSensoERP.CrudTool v2.5
-// CORREÇÕES: _CrudLayout, _CrudTable, sections, crudPermissions
+// CORREÇÃO v3.1: PKs de texto (código manual) aparecem no formulário
 // =============================================================================
 
 using GeradorEntidades.Models;
@@ -12,12 +12,12 @@ namespace GeradorEntidades.Templates;
 /// <summary>
 /// Gera View Razor compatível com CrudBase.js e BaseListViewModel.
 /// 
-/// CORREÇÕES v2.5:
-/// - Layout = "_CrudLayout" (não "_Layout")
+/// CORREÇÕES v3.1:
+/// - PKs de texto aparecem no formulário (readonly na edição, editável na criação)
+/// - PKs Identity/Guid continuam ocultas (auto-geradas)
+/// - Layout = "_CrudLayout"
 /// - Usa @await Html.PartialAsync("_CrudTable", Model)
 /// - window.crudPermissions (não pagePermissions)
-/// - Campos do modal em @section ModalContent
-/// - Script em @section PageScripts
 /// </summary>
 public static class ViewTemplate
 {
@@ -92,13 +92,29 @@ public static class ViewTemplate
 
     /// <summary>
     /// Gera os campos do formulário para o modal.
+    /// CORREÇÃO v3.1: PKs de texto (código manual) aparecem no formulário.
     /// </summary>
     private static string GenerateFormFields(EntityConfig entity)
     {
         var sb = new StringBuilder();
 
+        // =========================================================================
+        // CORREÇÃO v3.1: Lógica para incluir PKs de texto no formulário
+        // =========================================================================
+        // PKs auto-geradas (Identity ou Guid) são puladas
+        // PKs de texto (código manual) DEVEM aparecer no formulário
         var formProps = entity.Properties
-            .Where(p => p.Form?.Show == true && !p.IsPrimaryKey)
+            .Where(p =>
+            {
+                // Se não deve mostrar no form, pula
+                if (p.Form?.Show != true) return false;
+
+                // Se é PK auto-gerada (Identity ou Guid), pula
+                if (p.IsPrimaryKey && (p.IsIdentity || p.IsGuid)) return false;
+
+                // Caso contrário, inclui (inclusive PKs de texto)
+                return true;
+            })
             .OrderBy(p => p.Form!.Order)
             .ToList();
 
@@ -109,13 +125,35 @@ public static class ViewTemplate
             var inputType = config.InputType;
             var placeholder = config.Placeholder ?? $"Digite {prop.DisplayName.ToLower()}...";
             var required = prop.Required ? "required" : "";
-            var disabled = config.Disabled ? "disabled" : "";
             var maxLength = prop.MaxLength.HasValue ? $@" maxlength=""{prop.MaxLength.Value}""" : "";
             var step = prop.IsDecimal ? @" step=""0.01""" : "";
+
+            // =========================================================================
+            // CORREÇÃO v3.1: PKs de texto são obrigatórias e readonly na edição
+            // =========================================================================
+            var isPkTexto = prop.IsPrimaryKey && !prop.IsIdentity && !prop.IsGuid;
+
+            // PKs de texto são sempre obrigatórias
+            if (isPkTexto)
+            {
+                required = "required";
+            }
+
+            // Disabled: do config OU PK de texto (readonly na edição, habilitado na criação)
+            // O JavaScript controla isso: desabilita na edição, habilita na criação
+            var disabled = config.Disabled ? "disabled" : "";
+
+            // Para PKs de texto, adiciona atributo data-pk-text para controle via JS
+            var pkTextAttr = isPkTexto ? @" data-pk-text=""true""" : "";
 
             var helpText = !string.IsNullOrEmpty(config.HelpText)
                 ? $@"
             <small class=""form-text text-muted"">{config.HelpText}</small>"
+                : "";
+
+            // Badge para PK de texto
+            var pkBadge = isPkTexto
+                ? @" <span class=""badge bg-warning text-dark"" title=""Chave primária - editável apenas na criação"">PK</span>"
                 : "";
 
             string inputHtml;
@@ -123,11 +161,11 @@ public static class ViewTemplate
             if (inputType == "textarea")
             {
                 inputHtml = $@"<textarea class=""form-control"" id=""{prop.Name}"" name=""{prop.Name}"" 
-                       rows=""{config.Rows}"" placeholder=""{placeholder}"" {required} {disabled}{maxLength}></textarea>";
+                       rows=""{config.Rows}"" placeholder=""{placeholder}"" {required} {disabled}{maxLength}{pkTextAttr}></textarea>";
             }
             else if (inputType == "select")
             {
-                inputHtml = $@"<select class=""form-select"" id=""{prop.Name}"" name=""{prop.Name}"" {required} {disabled}>
+                inputHtml = $@"<select class=""form-select"" id=""{prop.Name}"" name=""{prop.Name}"" {required} {disabled}{pkTextAttr}>
                 <option value="""">Selecione...</option>
                 <!-- Preencher via JavaScript -->
             </select>";
@@ -136,8 +174,8 @@ public static class ViewTemplate
             {
                 sb.AppendLine($@"        <div class=""col-md-{colSize} mb-3"">
             <div class=""form-check"">
-                <input type=""checkbox"" class=""form-check-input"" id=""{prop.Name}"" name=""{prop.Name}"" {disabled} />
-                <label class=""form-check-label"" for=""{prop.Name}"">{prop.DisplayName}</label>
+                <input type=""checkbox"" class=""form-check-input"" id=""{prop.Name}"" name=""{prop.Name}"" {disabled}{pkTextAttr} />
+                <label class=""form-check-label"" for=""{prop.Name}"">{prop.DisplayName}{pkBadge}</label>
             </div>{helpText}
         </div>");
                 continue;
@@ -145,14 +183,14 @@ public static class ViewTemplate
             else
             {
                 inputHtml = $@"<input type=""{inputType}"" class=""form-control"" id=""{prop.Name}"" name=""{prop.Name}"" 
-                   placeholder=""{placeholder}"" {required} {disabled}{maxLength}{step} />";
+                   placeholder=""{placeholder}"" {required} {disabled}{maxLength}{step}{pkTextAttr} />";
             }
 
-            var requiredStar = prop.Required ? @" <span class=""text-danger"">*</span>" : "";
+            var requiredStar = prop.Required || isPkTexto ? @" <span class=""text-danger"">*</span>" : "";
 
             sb.AppendLine($@"        <div class=""col-md-{colSize} mb-3"">
             <label for=""{prop.Name}"" class=""form-label"">
-                {prop.DisplayName}{requiredStar}
+                {prop.DisplayName}{requiredStar}{pkBadge}
             </label>
             {inputHtml}{helpText}
         </div>");

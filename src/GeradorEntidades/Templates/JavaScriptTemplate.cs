@@ -1,7 +1,7 @@
 // =============================================================================
-// GERADOR FULL-STACK v3.0 - JAVASCRIPT TEMPLATE
+// GERADOR FULL-STACK v3.1 - JAVASCRIPT TEMPLATE
 // Baseado em RhSensoERP.CrudTool v2.5
-// CORREÇÕES: Classe estende CrudBase, vírgula, crudPermissions
+// CORREÇÃO v3.1: PKs de texto (código manual) com controle de readonly na edição
 // =============================================================================
 
 using GeradorEntidades.Models;
@@ -12,13 +12,12 @@ namespace GeradorEntidades.Templates;
 /// <summary>
 /// Gera JavaScript que estende a classe CrudBase existente.
 /// 
-/// CORREÇÕES v2.5:
+/// CORREÇÕES v3.1:
+/// - PKs de texto aparecem no formulário
+/// - PKs de texto são readonly na edição, editáveis na criação
+/// - Método enablePrimaryKeyFields() controla o estado
 /// - Gera classe que extends CrudBase (padrão sistemas.js)
 /// - Usa window.crudPermissions (não pagePermissions)
-/// - Vírgula garantida antes da coluna de ações
-/// - Função getCleanId() para extrair ID com segurança
-/// - Controle de botões da toolbar por permissão
-/// - Checkbox com data-id
 /// </summary>
 public static class JavaScriptTemplate
 {
@@ -32,13 +31,17 @@ public static class JavaScriptTemplate
         var idField = entity.PrimaryKey?.Name ?? "Id";
         var idFieldLower = char.ToLower(idField[0]) + idField.Substring(1);
 
+        // Verifica se a PK é de texto (não Identity e não Guid)
+        var isPkTexto = entity.PrimaryKey != null && !entity.PrimaryKey.IsIdentity && !entity.PrimaryKey.IsGuid;
+        var pkFieldId = entity.PrimaryKey?.Name ?? "Id";
+
         var content = $@"/**
  * ============================================================================
  * {entity.DisplayName.ToUpper()} - JavaScript com Controle de Permissões
  * ============================================================================
  * Arquivo: wwwroot/js/{entity.PluralNameLower}/{entity.NameLower}.js
- * Versão: 2.5 (Seguindo padrão de sistemas.js)
- * Gerado por: GeradorFullStack v3.0
+ * Versão: 3.1 (Suporte a PKs de texto)
+ * Gerado por: GeradorFullStack v3.1
  * Data: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
  * 
  * Implementação específica do CRUD de {entity.DisplayName}.
@@ -49,20 +52,61 @@ public static class JavaScriptTemplate
 class {entity.Name}Crud extends CrudBase {{
     constructor(config) {{
         super(config);
+        
+        // =====================================================================
+        // CORREÇÃO v3.1: Identifica campos de PK de texto
+        // =====================================================================
+        this.pkTextoField = {(isPkTexto ? $"'{pkFieldId}'" : "null")};
+        this.isPkTexto = {(isPkTexto ? "true" : "false")};
     }}
 
     /**
      * Habilita/desabilita campos de chave primária.
-     * Sobrescreve método da classe base.
+     * CORREÇÃO v3.1: PKs de texto são editáveis apenas na criação.
      */
     enablePrimaryKeyFields(enable) {{
-        // {entity.PrimaryKey?.Name ?? "Id"} é {(entity.PkTypeSimple == "Guid" ? "Guid gerado automaticamente" : "chave primária")}, geralmente não editável
-        $('#{entity.PrimaryKey?.Name ?? "Id"}').prop('readonly', !enable);
+        if (!this.isPkTexto) return;
         
-        if (!enable) {{
-            $('#{entity.PrimaryKey?.Name ?? "Id"}').addClass('bg-light');
+        const $pkField = $('#' + this.pkTextoField);
+        if ($pkField.length === 0) return;
+        
+        if (enable) {{
+            // Criação: campo editável
+            $pkField.prop('readonly', false)
+                    .prop('disabled', false)
+                    .removeClass('bg-light');
+            console.log('✏️ [{entity.Name}] Campo PK habilitado para edição (criação)');
         }} else {{
-            $('#{entity.PrimaryKey?.Name ?? "Id"}').removeClass('bg-light');
+            // Edição: campo readonly
+            $pkField.prop('readonly', true)
+                    .addClass('bg-light');
+            console.log('🔒 [{entity.Name}] Campo PK desabilitado (edição)');
+        }}
+    }}
+
+    /**
+     * Override: Abre modal para NOVO registro.
+     * CORREÇÃO v3.1: Habilita PK de texto na criação.
+     */
+    openCreateModal() {{
+        super.openCreateModal();
+        
+        // Habilita PK de texto para digitação
+        if (this.isPkTexto) {{
+            this.enablePrimaryKeyFields(true);
+        }}
+    }}
+
+    /**
+     * Override: Abre modal para EDIÇÃO.
+     * CORREÇÃO v3.1: Desabilita PK de texto na edição.
+     */
+    async openEditModal(id) {{
+        await super.openEditModal(id);
+        
+        // Desabilita PK de texto (não pode alterar chave)
+        if (this.isPkTexto) {{
+            this.enablePrimaryKeyFields(false);
         }}
     }}
 
@@ -214,41 +258,26 @@ $(document).ready(function () {{
     window.{entity.NameLower}Crud = new {entity.Name}Crud({{
         controllerName: '{entity.PluralName}',
         entityName: '{entity.DisplayName}',
-        entityNamePlural: '{entity.DisplayName}',
         idField: '{idFieldLower}',
-        tableSelector: '#tableCrud',
         columns: columns,
-
-        // Permissões vindas do backend
-        permissions: {{
-            canCreate: window.crudPermissions.canCreate,
-            canEdit: window.crudPermissions.canEdit,
-            canDelete: window.crudPermissions.canDelete,
-            canView: window.crudPermissions.canView
-        }},
-
-        exportConfig: {{
-            enabled: true,
-            excel: true,
-            pdf: true,
-            csv: true,
-            print: true,
-            filename: '{entity.PluralName}'
+        permissions: window.crudPermissions,
+        dataTableOptions: {{
+            order: [[1, 'asc']]
         }}
     }});
 
     // =========================================================================
-    // CONTROLE DE BOTÕES DA TOOLBAR
+    // CONTROLE DE TOOLBAR BASEADO EM PERMISSÕES
     // =========================================================================
 
     // Desabilita botão ""Novo"" se não pode criar
     if (!window.crudPermissions.canCreate) {{
-        $('#btnCreate, #btnNew').prop('disabled', true)
+        $('#btnNew').prop('disabled', true)
             .addClass('disabled')
             .attr('title', 'Você não tem permissão para criar registros')
             .css('cursor', 'not-allowed');
 
-        console.log('🔒 [{entity.Name}] Botão ""Novo"" desabilitado (sem permissão de inclusão)');
+        console.log('🔒 [{entity.Name}] Botão ""Novo"" desabilitado (sem permissão de criação)');
     }}
 
     // Desabilita botão ""Excluir Selecionados"" se não pode excluir
@@ -265,11 +294,12 @@ $(document).ready(function () {{
     // LOG DE INICIALIZAÇÃO
     // =========================================================================
 
-    console.log('✅ CRUD de {entity.Name} v2.5 inicializado com permissões:', {{
+    console.log('✅ CRUD de {entity.Name} v3.1 inicializado com permissões:', {{
         criar: window.crudPermissions.canCreate,
         editar: window.crudPermissions.canEdit,
         excluir: window.crudPermissions.canDelete,
-        visualizar: window.crudPermissions.canView
+        visualizar: window.crudPermissions.canView,
+        pkTexto: {(isPkTexto ? "true" : "false")}
     }});
 }});
 ";
@@ -362,14 +392,20 @@ $(document).ready(function () {{
 
     /// <summary>
     /// Gera lógica do beforeSubmit para tratamento de dados.
+    /// CORREÇÃO v3.1: Inclui PKs de texto no tratamento.
     /// </summary>
     private static string GenerateBeforeSubmitLogic(EntityConfig entity)
     {
         var sb = new StringBuilder();
 
-        // Campos inteiros
+        // =========================================================================
+        // CORREÇÃO v3.1: PKs de texto que são inteiros devem ser tratadas
+        // =========================================================================
+
+        // Campos inteiros (inclui PKs de texto que são int)
         var intProps = entity.Properties
-            .Where(p => (p.IsInt || p.IsLong) && p.Form?.Show == true && !p.IsPrimaryKey)
+            .Where(p => (p.IsInt || p.IsLong) && p.Form?.Show == true)
+            .Where(p => !p.IsPrimaryKey || (!p.IsIdentity && !p.IsGuid)) // Inclui PKs de texto
             .ToList();
 
         if (intProps.Any())
@@ -424,7 +460,7 @@ $(document).ready(function () {{
 ");
         }
 
-        // Campos Guid nullable
+        // Campos Guid nullable (não PK)
         var guidProps = entity.Properties
             .Where(p => p.IsGuid && p.Form?.Show == true && !p.IsPrimaryKey && p.IsNullable)
             .ToList();
@@ -456,6 +492,23 @@ $(document).ready(function () {{
                 formData[field] = null;
             }}
         }});
+");
+        }
+
+        // =========================================================================
+        // CORREÇÃO v3.1: Garante que PK de texto seja incluída no formData
+        // =========================================================================
+        var pkTexto = entity.PrimaryKey != null && !entity.PrimaryKey.IsIdentity && !entity.PrimaryKey.IsGuid
+            ? entity.PrimaryKey
+            : null;
+
+        if (pkTexto != null && pkTexto.IsString)
+        {
+            var pkNameLower = char.ToLower(pkTexto.Name[0]) + pkTexto.Name.Substring(1);
+            sb.AppendLine($@"        // Garante que PK de texto seja string trimada
+        if (formData.{pkNameLower}) {{
+            formData.{pkNameLower} = String(formData.{pkNameLower}).trim();
+        }}
 ");
         }
 

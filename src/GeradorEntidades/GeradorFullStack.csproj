@@ -11,4 +11,12 @@
     <PackageReference Include="Microsoft.Data.SqlClient" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="TabSheet\Templates\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot\js\tabsheet\tabsheet-config.js" />
+  </ItemGroup>
+
 </Project>
