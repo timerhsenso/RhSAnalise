@@ -1,6 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
+	  <Compile Remove="Application\Requests\**" />
+	  <EmbeddedResource Remove="Application\Requests\**" />
+	  <None Remove="Application\Requests\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\Shared\Application\RhSensoERP.Shared.Application.csproj" />
 		<ProjectReference Include="..\Shared\Contracts\RhSensoERP.Shared.Contracts.csproj" />
 		<ProjectReference Include="..\Shared\Core\RhSensoERP.Shared.Core.csproj" />
@@ -28,7 +34,6 @@
 	
 	<ItemGroup>
 	  <Folder Include="Application\DTOs\Common\" />
-	  <Folder Include="Application\Requests\" />
 	</ItemGroup>
 
 	<PropertyGroup>
