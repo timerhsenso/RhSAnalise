@@ -14,10 +14,6 @@ namespace RhSensoERP.Modules.SaudeOcupacional.Infrastructure.Persistence.Context
         // ===== ENTIDADES JÁ EXISTENTES =====
         //public DbSet<Funcionario> Funcionarios { get; set; }
         //public DbSet<Empresa> Empresas { get; set; }
-        //public DbSet<Filial> Filiais { get; set; }
-        //public DbSet<Cargo> Cargos { get; set; }
-        //public DbSet<CentroCusto> CentrosCusto { get; set; }
-
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
