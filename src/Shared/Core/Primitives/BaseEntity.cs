@@ -35,6 +35,6 @@ public abstract class BaseEntity
     /// </summary>
     protected BaseEntity()
     {
-        CreatedAt = DateTime.UtcNow;
+       CreatedAt = DateTime.UtcNow;
     }
 }

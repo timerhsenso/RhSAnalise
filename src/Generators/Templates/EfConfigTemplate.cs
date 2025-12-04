@@ -1,5 +1,8 @@
 // =============================================================================
-// RHSENSOERP GENERATOR v3.0 - EF CONFIG TEMPLATE
+// RHSENSOERP GENERATOR v3.3 - EF CONFIG TEMPLATE
+// =============================================================================
+// Arquivo: src/Generators/Templates/EfConfigTemplate.cs
+// Versão: 3.3 - Suporte a navegações/relacionamentos
 // =============================================================================
 using RhSensoERP.Generators.Models;
 
@@ -17,16 +20,19 @@ public static class EfConfigTemplate
     {
         var entityNs = info.Namespace;
         var propertyConfigs = GeneratePropertyConfigurations(info);
+        var relationshipConfigs = GenerateRelationshipConfigurations(info);
+        var additionalUsings = GenerateAdditionalUsings(info);
 
         return $$"""
 // =============================================================================
 // ARQUIVO GERADO AUTOMATICAMENTE - NÃO EDITAR MANUALMENTE
-// Generator: RhSensoERP.Generators v3.0
+// Generator: RhSensoERP.Generators v3.3
 // Entity: {{info.EntityName}}
 // =============================================================================
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using {{entityNs}};
+{{additionalUsings}}
 
 namespace {{info.EfConfigNamespace}};
 
@@ -37,13 +43,25 @@ public sealed class {{info.EntityName}}Configuration : IEntityTypeConfiguration<
 {
     public void Configure(EntityTypeBuilder<{{info.EntityName}}> builder)
     {
+        // =====================================================================
         // Tabela
+        // =====================================================================
         builder.ToTable("{{info.TableName}}", "{{info.Schema}}");
 
+        // =====================================================================
         // Chave primária
+        // =====================================================================
         builder.HasKey(e => e.{{info.PrimaryKeyProperty}});
 
+        // =====================================================================
+        // Propriedades
+        // =====================================================================
 {{propertyConfigs}}
+
+        // =====================================================================
+        // Relacionamentos
+        // =====================================================================
+{{relationshipConfigs}}
     }
 }
 """;
@@ -90,5 +108,99 @@ public sealed class {{info.EntityName}}Configuration : IEntityTypeConfiguration<
         return configs.Count > 0
             ? string.Join("\n\n", configs)
             : "        // Configurações de propriedades usam convenções padrão";
+    }
+
+    /// <summary>
+    /// Gera as configurações de relacionamentos.
+    /// </summary>
+    private static string GenerateRelationshipConfigurations(EntityInfo info)
+    {
+        if (!info.HasNavigations)
+        {
+            return "        // Sem relacionamentos configurados";
+        }
+
+        var configs = new List<string>();
+
+        // =====================================================================
+        // ManyToOne (HasOne) - Ex: Agencia -> Banco
+        // =====================================================================
+        foreach (var nav in info.ManyToOneNavigations)
+        {
+            var deleteBehavior = nav.OnDelete switch
+            {
+                NavigationDeleteBehavior.Cascade => "DeleteBehavior.Cascade",
+                NavigationDeleteBehavior.SetNull => "DeleteBehavior.SetNull",
+                NavigationDeleteBehavior.NoAction => "DeleteBehavior.NoAction",
+                _ => "DeleteBehavior.Restrict"
+            };
+
+            // Se tem propriedade inversa, usa WithMany(e => e.Propriedade)
+            // Senão, usa WithMany() sem parâmetros
+            var withMany = string.IsNullOrEmpty(nav.InverseProperty)
+                ? ".WithMany()"
+                : $".WithMany(e => e.{nav.InverseProperty})";
+
+            var config = $"""
+        // Relacionamento: {info.EntityName} -> {nav.TargetEntity}
+        builder.HasOne(e => e.{nav.Name})
+            {withMany}
+            .HasForeignKey(e => e.{nav.ForeignKeyProperty})
+            .OnDelete({deleteBehavior});
+""";
+            configs.Add(config);
+        }
+
+        // =====================================================================
+        // OneToMany / Navegações sem FK - Gera Ignore para evitar ambiguidade
+        // =====================================================================
+        foreach (var nav in info.OneToManyNavigations)
+        {
+            var config = $"""
+        // Ignorar navegação sem FK configurada: {nav.Name}
+        builder.Ignore(e => e.{nav.Name});
+""";
+            configs.Add(config);
+        }
+
+        return configs.Count > 0
+            ? string.Join("\n\n", configs)
+            : "        // Relacionamentos configurados via convenção";
+    }
+
+    /// <summary>
+    /// Gera usings adicionais para entidades relacionadas.
+    /// </summary>
+    private static string GenerateAdditionalUsings(EntityInfo info)
+    {
+        if (!info.HasNavigations)
+            return "";
+
+        var namespaces = new HashSet<string>();
+
+        foreach (var nav in info.Navigations)
+        {
+            if (string.IsNullOrEmpty(nav.TargetEntityFullName))
+                continue;
+
+            var lastDot = nav.TargetEntityFullName.LastIndexOf('.');
+            if (lastDot > 0)
+            {
+                var ns = nav.TargetEntityFullName.Substring(0, lastDot);
+                if (!string.IsNullOrEmpty(ns) && ns != info.Namespace)
+                {
+                    namespaces.Add(ns);
+                }
+            }
+        }
+
+        if (namespaces.Count == 0)
+            return "";
+
+        var usings = namespaces
+            .OrderBy(ns => ns)
+            .Select(ns => $"using {ns};");
+
+        return string.Join("\n", usings);
     }
 }

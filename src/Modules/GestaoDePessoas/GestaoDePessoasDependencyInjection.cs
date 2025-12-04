@@ -1,42 +1,43 @@
 ﻿// =============================================================================
-// RhSensoERP - Módulo Esocial - Dependency Injection
+// RhSensoERP - Módulo GestaoDePessoas - Dependency Injection
 // =============================================================================
-// Arquivo: src/Modules/Esocial/DependencyInjection.cs
+// Arquivo: src/Modules/GestaoDePessoas/DependencyInjection.cs
 // Registra DbContext, AutoMapper, Repositórios e MediatR handlers
 // =============================================================================
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using RhSensoERP.Modules.Esocial.Core.Entities;
-using RhSensoERP.Modules.Esocial.Infrastructure.Persistence.Contexts;
+using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence;
+using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Contexts;
+using System.Reflection;
 
-namespace RhSensoERP.Modules.Esocial;
+namespace RhSensoERP.Modules.GestaoDePessoas;
 
 /// <summary>
-/// Extensões de DI para o módulo Esocial.
+/// Extensões de DI para o módulo GestaoDePessoas.
 /// </summary>
-public static class DependencyInjection
+public static class GestaoDePessoasDependencyInjection
 {
     /// <summary>
-    /// Adiciona os serviços do módulo Esocial ao container de DI.
+    /// Adiciona os serviços do módulo GestaoDePessoas ao container de DI.
     /// </summary>
-    public static IServiceCollection AddEsocialModule(
+    public static IServiceCollection AddGestaoDePessoasModule(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Obter assembly onde entidades e arquivos gerados estão
-        var moduleAssembly = typeof(Tab10Esocial).Assembly;
+        // Assembly onde entidades e arquivos gerados estão
+        var moduleAssembly = typeof(GestaoDePessoasDependencyInjection).Assembly;
 
         // =====================================================================
         // 1. DbContext
         // =====================================================================
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        services.AddDbContext<EsocialDbContext>((sp, options) =>
+        services.AddDbContext<GestaoDePessoasDbContext>((sp, options) =>
         {
             options.UseSqlServer(connectionString, sqlOptions =>
             {
-                sqlOptions.MigrationsAssembly(typeof(EsocialDbContext).Assembly.FullName);
+                sqlOptions.MigrationsAssembly(typeof(GestaoDePessoasDbContext).Assembly.FullName);
                 sqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 3,
                     maxRetryDelay: TimeSpan.FromSeconds(5),
@@ -44,6 +45,7 @@ public static class DependencyInjection
                 sqlOptions.CommandTimeout(60);
             });
 
+            // Logging em desenvolvimento
             var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
             if (env == "Development")
             {
@@ -55,14 +57,14 @@ public static class DependencyInjection
         // =====================================================================
         // 2. AutoMapper - Escaneia Profiles GERADOS pelo Source Generator
         // =====================================================================
-        // O Source Generator cria arquivos como Tab10EsocialProfile.g.cs automaticamente
+        // O Source Generator cria arquivos como BancoProfile.g.cs automaticamente
         // Basta escanear o assembly para encontrá-los
         services.AddAutoMapper(moduleAssembly);
 
         // =====================================================================
         // 3. Repositórios Gerados Automaticamente
         // =====================================================================
-        services.AddEsocialRepositories();
+        services.AddGestaoDePessoasRepositories();
 
         // =====================================================================
         // 4. MediatR - Handlers do módulo (Commands, Queries)
@@ -78,11 +80,12 @@ public static class DependencyInjection
     /// <summary>
     /// Registra automaticamente todos os repositórios gerados pelo Source Generator.
     /// </summary>
-    public static IServiceCollection AddEsocialRepositories(this IServiceCollection services)
+    public static IServiceCollection AddGestaoDePessoasRepositories(this IServiceCollection services)
     {
-        var assembly = typeof(Tab10Esocial).Assembly;
+        var assembly = typeof(GestaoDePessoasDependencyInjection).Assembly;
         var types = assembly.GetTypes();
 
+        // Busca interfaces de repositório
         var repoInterfaces = types
             .Where(t => t.IsInterface
                      && t.Name.StartsWith("I")

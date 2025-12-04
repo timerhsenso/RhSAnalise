@@ -1,10 +1,11 @@
 // =============================================================================
-// RHSENSOERP GENERATOR v3.2 - ENTITY INFO EXTRACTOR
+// RHSENSOERP GENERATOR v3.3 - ENTITY INFO EXTRACTOR
 // =============================================================================
 // Arquivo: src/Generators/Extractors/EntityInfoExtractor.cs
-// Versão: 3.2 - CORREÇÃO: Detecta PKs Identity/Guid vs PKs de texto
+// Versão: 3.3 - Suporte a navegações/relacionamentos
 // =============================================================================
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RhSensoERP.Generators.Models;
 
@@ -50,6 +51,11 @@ public static class EntityInfoExtractor
         // Extrai propriedades da classe
         ExtractProperties(typeSymbol, info);
 
+        // =====================================================================
+        // NOVO v3.3: Extrai navegações (relacionamentos)
+        // =====================================================================
+        ExtractNavigations(classDeclaration, context.SemanticModel, info);
+
         // Determina a chave primária
         DeterminePrimaryKey(info);
 
@@ -61,10 +67,6 @@ public static class EntityInfoExtractor
 
     /// <summary>
     /// Extrai informações do módulo baseado no namespace.
-    /// Exemplos de namespaces:
-    /// - RhSensoERP.Identity.Domain.Entities
-    /// - RhSensoERP.Modules.GestaoDePessoas.Core.Entities.Tabelas.Pessoal
-    /// - RhSensoERP.Modules.ControleDePonto.Core.Entities
     /// </summary>
     private static void ExtractModuleInfo(EntityInfo info)
     {
@@ -72,26 +74,21 @@ public static class EntityInfoExtractor
 
         if (parts.Length < 2 || parts[0] != "RhSensoERP")
         {
-            // Fallback para namespaces não esperados
             info.ModuleName = parts.Length > 1 ? parts[1] : "Core";
             info.ModuleNamespace = string.Join(".", parts.Take(2));
             info.IsModulesStructure = false;
             return;
         }
 
-        // Verifica se é estrutura de Modules (RhSensoERP.Modules.{Nome})
         if (parts.Length >= 3 && parts[1] == "Modules")
         {
-            // Exemplo: RhSensoERP.Modules.GestaoDePessoas.Core.Entities...
-            info.ModuleName = parts[2]; // GestaoDePessoas, ControleDePonto, etc.
+            info.ModuleName = parts[2];
             info.ModuleNamespace = $"RhSensoERP.Modules.{parts[2]}";
             info.IsModulesStructure = true;
         }
         else
         {
-            // Módulos raiz: Identity, Shared, etc.
-            // Exemplo: RhSensoERP.Identity.Domain.Entities
-            info.ModuleName = parts[1]; // Identity, Shared, etc.
+            info.ModuleName = parts[1];
             info.ModuleNamespace = $"RhSensoERP.{parts[1]}";
             info.IsModulesStructure = false;
         }
@@ -109,7 +106,6 @@ public static class EntityInfoExtractor
 
             switch (namedArg.Key)
             {
-                // Configurações básicas
                 case "TableName":
                     info.TableName = value.ToString()!;
                     break;
@@ -119,24 +115,18 @@ public static class EntityInfoExtractor
                 case "DisplayName":
                     info.DisplayName = value.ToString()!;
                     break;
-
-                // Módulo e permissões
                 case "CdSistema":
                     info.CdSistema = value.ToString()!;
                     break;
                 case "CdFuncao":
                     info.CdFuncao = value.ToString()!;
                     break;
-
-                // Rotas e API
                 case "ApiRoute":
                     info.ApiRoute = value.ToString()!;
                     break;
                 case "ApiGroup":
                     info.ApiGroup = value.ToString()!;
                     break;
-
-                // Flags de geração - Backend
                 case "GenerateDto":
                     info.GenerateDto = (bool)value;
                     break;
@@ -161,13 +151,9 @@ public static class EntityInfoExtractor
                 case "GenerateEfConfig":
                     info.GenerateEfConfig = (bool)value;
                     break;
-
-                // Flag de geração - Metadata (NOVO v3.1)
                 case "GenerateMetadata":
                     info.GenerateMetadata = (bool)value;
                     break;
-
-                // Flags de geração - API e Web
                 case "GenerateApiController":
                     info.GenerateApiController = (bool)value;
                     break;
@@ -183,8 +169,6 @@ public static class EntityInfoExtractor
                 case "ApiRequiresAuth":
                     info.ApiRequiresAuth = (bool)value;
                     break;
-
-                // Funcionalidades
                 case "SupportsBatchDelete":
                     info.SupportsBatchDelete = (bool)value;
                     break;
@@ -206,13 +190,11 @@ public static class EntityInfoExtractor
     /// </summary>
     private static void ExtractProperties(INamedTypeSymbol typeSymbol, EntityInfo info)
     {
-        // Pega propriedades da classe atual
+        // Pega propriedades da classe atual (exclui navegações)
         var properties = typeSymbol.GetMembers()
             .OfType<IPropertySymbol>()
             .Where(p => p.DeclaredAccessibility == Accessibility.Public)
-            .Where(p => !p.IsStatic)
-            .Where(p => p.GetMethod != null && p.SetMethod != null)
-            .Where(p => !IsNavigationProperty(p)); // Exclui propriedades de navegação
+            .Where(p => !IsNavigationProperty(p));
 
         foreach (var prop in properties)
         {
@@ -227,81 +209,60 @@ public static class EntityInfoExtractor
             // Extrai atributos da propriedade
             foreach (var attr in prop.GetAttributes())
             {
-                var attrName = attr.AttributeClass?.Name;
+                var attrName = attr.AttributeClass?.Name ?? "";
 
                 switch (attrName)
                 {
-                    case "KeyAttribute" or "Key":
+                    case "KeyAttribute":
+                    case "Key":
                         propInfo.IsPrimaryKey = true;
-                        break;
-
-                    case "RequiredAttribute" or "Required":
-                        propInfo.IsRequired = true;
-                        break;
-
-                    case "ColumnAttribute" or "Column":
-                        var columnName = attr.ConstructorArguments.FirstOrDefault().Value?.ToString();
-                        if (!string.IsNullOrEmpty(columnName))
-                            propInfo.ColumnName = columnName;
-                        break;
-
-                    case "StringLengthAttribute" or "StringLength":
-                        if (attr.ConstructorArguments.Length > 0)
-                            propInfo.MaxLength = (int)attr.ConstructorArguments[0].Value!;
-                        // Verifica MinimumLength como named argument
-                        var minLengthArg = attr.NamedArguments
-                            .FirstOrDefault(a => a.Key == "MinimumLength");
-                        if (minLengthArg.Value.Value != null)
-                            propInfo.MinLength = (int)minLengthArg.Value.Value;
-                        break;
-
-                    case "MaxLengthAttribute" or "MaxLength":
-                        if (attr.ConstructorArguments.Length > 0)
-                            propInfo.MaxLength = (int)attr.ConstructorArguments[0].Value!;
-                        break;
-
-                    case "MinLengthAttribute" or "MinLength":
-                        if (attr.ConstructorArguments.Length > 0)
-                            propInfo.MinLength = (int)attr.ConstructorArguments[0].Value!;
-                        break;
-
-                    case "FieldDisplayNameAttribute" or "FieldDisplayName":
-                        var displayName = attr.ConstructorArguments.FirstOrDefault().Value?.ToString();
-                        if (!string.IsNullOrEmpty(displayName))
-                            propInfo.DisplayName = displayName;
-                        break;
-
-                    case "ExcludeFromDtoAttribute" or "ExcludeFromDto":
-                        propInfo.ExcludeFromDto = true;
-                        break;
-
-                    case "ReadOnlyFieldAttribute" or "ReadOnlyField":
                         propInfo.IsReadOnly = true;
                         break;
 
-                    case "RequiredOnCreateAttribute" or "RequiredOnCreate":
-                        propInfo.RequiredOnCreate = true;
+                    case "ColumnAttribute":
+                    case "Column":
+                        if (attr.ConstructorArguments.Length > 0)
+                            propInfo.ColumnName = attr.ConstructorArguments[0].Value?.ToString() ?? "";
                         break;
 
-                    // =========================================================
-                    // CORREÇÃO v3.2: Detecta Identity para diferenciar PKs
-                    // =========================================================
-                    case "DatabaseGeneratedAttribute" or "DatabaseGenerated":
-                        var option = attr.ConstructorArguments.FirstOrDefault().Value;
-                        if (option != null)
+                    case "RequiredAttribute":
+                    case "Required":
+                        propInfo.IsRequired = true;
+                        break;
+
+                    case "StringLengthAttribute":
+                    case "StringLength":
+                        if (attr.ConstructorArguments.Length > 0 && 
+                            attr.ConstructorArguments[0].Value is int maxLen)
+                            propInfo.MaxLength = maxLen;
+                        break;
+
+                    case "MaxLengthAttribute":
+                    case "MaxLength":
+                        if (attr.ConstructorArguments.Length > 0 && 
+                            attr.ConstructorArguments[0].Value is int max)
+                            propInfo.MaxLength = max;
+                        break;
+
+                    case "DatabaseGeneratedAttribute":
+                    case "DatabaseGenerated":
+                        // Verifica se é Identity
+                        if (attr.ConstructorArguments.Length > 0)
                         {
-                            var optionValue = (int)option;
-                            // DatabaseGeneratedOption: None = 0, Identity = 1, Computed = 2
-                            if (optionValue == 1) // Identity
+                            var genOption = attr.ConstructorArguments[0].Value;
+                            // DatabaseGeneratedOption.Identity = 1
+                            if (genOption is int optionValue && optionValue == 1)
                             {
                                 propInfo.IsIdentity = true;
                                 propInfo.IsReadOnly = true;
                             }
-                            else if (optionValue == 2) // Computed
-                            {
-                                propInfo.IsReadOnly = true;
-                            }
                         }
+                        break;
+
+                    case "NotMappedAttribute":
+                    case "NotMapped":
+                        propInfo.ExcludeFromDto = true;
+                        propInfo.IsReadOnly = true;
                         break;
                 }
             }
@@ -310,28 +271,372 @@ public static class EntityInfoExtractor
             if (string.IsNullOrEmpty(propInfo.ColumnName))
                 propInfo.ColumnName = prop.Name.ToLowerInvariant();
 
-            // Se não tem DisplayName, usa o nome da propriedade
-            if (string.IsNullOrEmpty(propInfo.DisplayName))
-                propInfo.DisplayName = prop.Name;
-
             info.Properties.Add(propInfo);
         }
 
-        // Se herda de BaseEntity, adiciona propriedades de auditoria (a menos que seja legado)
+        // Adiciona propriedades base se não for tabela legada
         if (!info.IsLegacyTable)
         {
-            var baseType = typeSymbol.BaseType;
-            while (baseType != null && baseType.Name != "Object")
+            AddBaseEntityPropertiesIfMissing(info);
+        }
+    }
+
+    // =========================================================================
+    // NOVO v3.3: EXTRAÇÃO DE NAVEGAÇÕES
+    // =========================================================================
+
+    /// <summary>
+    /// Extrai informações de navegações (propriedades virtual que são outras entities).
+    /// CORREÇÃO v3.3.3: 
+    /// - Só adiciona navegação ManyToOne se encontrar a FK REAL
+    /// - Cada FK só pode ser usada por UMA navegação (evita duplicatas)
+    /// - Coleções são extraídas para gerar Ignore() no EF Config
+    /// </summary>
+    private static void ExtractNavigations(
+        ClassDeclarationSyntax classDeclaration,
+        SemanticModel semanticModel,
+        EntityInfo info)
+    {
+        // Controle de FKs já usadas (cada FK só pode ter UMA navegação)
+        var usedForeignKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        
+        // Lista temporária de candidatas a navegação ManyToOne
+        var navigationCandidates = new List<(PropertyDeclarationSyntax Property, string Name, string TargetEntity, string FkProperty, bool IsNullable, ITypeSymbol TypeSymbol)>();
+
+        foreach (var member in classDeclaration.Members)
+        {
+            if (member is not PropertyDeclarationSyntax property)
+                continue;
+
+            // Verifica se é virtual
+            var isVirtual = property.Modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword));
+            if (!isVirtual)
+                continue;
+
+            var propertyName = property.Identifier.Text;
+            var propertyType = property.Type;
+
+            // Ignora propriedades com [NotMapped]
+            var hasNotMapped = property.AttributeLists
+                .SelectMany(al => al.Attributes)
+                .Any(a => a.Name.ToString().Contains("NotMapped"));
+            if (hasNotMapped)
+                continue;
+
+            // Obtém informações do tipo
+            var typeInfo = semanticModel.GetTypeInfo(propertyType);
+            var typeSymbol = typeInfo.Type;
+
+            if (typeSymbol == null)
+                continue;
+
+            // Verifica se é uma coleção (ICollection<T>, IList<T>, List<T>)
+            if (IsCollectionType(typeSymbol, out var elementType))
             {
-                if (baseType.Name == "BaseEntity")
+                // OneToMany - Coleção 
+                // Extraímos para gerar Ignore() - evita erro de ambiguidade
+                if (elementType != null && IsEntityTypeSymbol(elementType))
                 {
-                    // Adiciona propriedades de BaseEntity se não existirem
-                    AddBaseEntityPropertiesIfMissing(info);
-                    break;
+                    info.Navigations.Add(new NavigationInfo
+                    {
+                        Name = propertyName,
+                        TargetEntity = elementType.Name,
+                        TargetEntityFullName = elementType.ToDisplayString(),
+                        RelationshipType = NavigationRelationshipType.OneToMany,
+                        IsNullable = true
+                    });
                 }
-                baseType = baseType.BaseType;
+            }
+            else if (IsEntityTypeSymbol(typeSymbol))
+            {
+                // ManyToOne - Referência simples
+                var targetEntity = typeSymbol.Name;
+                var fkProperty = FindForeignKeyProperty(classDeclaration, property, targetEntity, info);
+                
+                // Verifica se a FK encontrada REALMENTE EXISTE nas propriedades
+                var fkExists = info.Properties.Any(p => 
+                    p.Name.Equals(fkProperty, StringComparison.OrdinalIgnoreCase));
+                
+                if (fkExists)
+                {
+                    // Adiciona à lista de candidatas
+                    navigationCandidates.Add((
+                        property, 
+                        propertyName, 
+                        targetEntity, 
+                        fkProperty, 
+                        IsNullableTypeSyntax(propertyType),
+                        typeSymbol
+                    ));
+                }
+                else
+                {
+                    // FK não existe - marca como OneToMany para gerar Ignore
+                    info.Navigations.Add(new NavigationInfo
+                    {
+                        Name = propertyName,
+                        TargetEntity = targetEntity,
+                        TargetEntityFullName = typeSymbol.ToDisplayString(),
+                        RelationshipType = NavigationRelationshipType.OneToMany, // Marca para Ignore
+                        IsNullable = true
+                    });
+                }
             }
         }
+        
+        // ================================================================
+        // CORREÇÃO v3.3.2: Processa candidatas, priorizando melhor match
+        // ================================================================
+        
+        // Agrupa por FK
+        var groupedByFk = navigationCandidates
+            .GroupBy(c => c.FkProperty, StringComparer.OrdinalIgnoreCase);
+        
+        foreach (var fkGroup in groupedByFk)
+        {
+            var candidates = fkGroup.ToList();
+            
+            if (candidates.Count == 1)
+            {
+                // Só uma navegação usa esta FK - adiciona
+                var nav = candidates[0];
+                AddNavigationFromCandidate(nav, info);
+            }
+            else
+            {
+                // Múltiplas navegações tentam usar a mesma FK
+                // Prioriza: navegação cujo nome é mais próximo da FK
+                // Ex: FK "Idcargo" -> prioriza "Cargo" sobre "Cargo1", "Cargo2"
+                
+                var fkName = fkGroup.Key;
+                
+                // Tenta encontrar match exato (sem sufixo numérico)
+                var bestMatch = candidates.FirstOrDefault(c => 
+                    fkName.Equals($"Id{c.Name}", StringComparison.OrdinalIgnoreCase) ||
+                    fkName.Equals($"{c.Name}Id", StringComparison.OrdinalIgnoreCase) ||
+                    fkName.Equals($"id{c.Name.ToLower()}", StringComparison.OrdinalIgnoreCase));
+                
+                if (bestMatch.Property != null)
+                {
+                    AddNavigationFromCandidate(bestMatch, info);
+                    
+                    // Outras navegações da mesma FK viram Ignore
+                    foreach (var other in candidates.Where(c => c.Name != bestMatch.Name))
+                    {
+                        info.Navigations.Add(new NavigationInfo
+                        {
+                            Name = other.Name,
+                            TargetEntity = other.TargetEntity,
+                            TargetEntityFullName = other.TypeSymbol.ToDisplayString(),
+                            RelationshipType = NavigationRelationshipType.OneToMany, // Marca para Ignore
+                            IsNullable = true
+                        });
+                    }
+                }
+                else
+                {
+                    // Usa a primeira (geralmente a que não tem sufixo numérico)
+                    var first = candidates.OrderBy(c => c.Name.Length).First();
+                    AddNavigationFromCandidate(first, info);
+                    
+                    // Outras navegações da mesma FK viram Ignore
+                    foreach (var other in candidates.Where(c => c.Name != first.Name))
+                    {
+                        info.Navigations.Add(new NavigationInfo
+                        {
+                            Name = other.Name,
+                            TargetEntity = other.TargetEntity,
+                            TargetEntityFullName = other.TypeSymbol.ToDisplayString(),
+                            RelationshipType = NavigationRelationshipType.OneToMany, // Marca para Ignore
+                            IsNullable = true
+                        });
+                    }
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Adiciona uma navegação a partir de um candidato validado.
+    /// </summary>
+    private static void AddNavigationFromCandidate(
+        (PropertyDeclarationSyntax Property, string Name, string TargetEntity, string FkProperty, bool IsNullable, ITypeSymbol TypeSymbol) candidate,
+        EntityInfo info)
+    {
+        // Pega o nome REAL da FK (com o case correto)
+        var realFkName = info.Properties
+            .First(p => p.Name.Equals(candidate.FkProperty, StringComparison.OrdinalIgnoreCase))
+            .Name;
+
+        info.Navigations.Add(new NavigationInfo
+        {
+            Name = candidate.Name,
+            TargetEntity = candidate.TargetEntity,
+            TargetEntityFullName = candidate.TypeSymbol.ToDisplayString(),
+            ForeignKeyProperty = realFkName,
+            RelationshipType = NavigationRelationshipType.ManyToOne,
+            IsNullable = candidate.IsNullable,
+            OnDelete = NavigationDeleteBehavior.Restrict
+        });
+    }
+
+    /// <summary>
+    /// Verifica se o tipo é uma coleção e extrai o tipo do elemento.
+    /// </summary>
+    private static bool IsCollectionType(ITypeSymbol typeSymbol, out ITypeSymbol? elementType)
+    {
+        elementType = null;
+
+        if (typeSymbol is INamedTypeSymbol namedType && namedType.IsGenericType)
+        {
+            var typeName = namedType.OriginalDefinition.ToDisplayString();
+
+            if (typeName.StartsWith("System.Collections.Generic.ICollection") ||
+                typeName.StartsWith("System.Collections.Generic.IList") ||
+                typeName.StartsWith("System.Collections.Generic.List") ||
+                typeName.StartsWith("System.Collections.Generic.IEnumerable") ||
+                typeName.StartsWith("System.Collections.Generic.HashSet"))
+            {
+                elementType = namedType.TypeArguments.FirstOrDefault();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Verifica se o tipo é uma Entity (não é primitivo, não é System.*).
+    /// </summary>
+    private static bool IsEntityTypeSymbol(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol == null)
+            return false;
+
+        var fullName = typeSymbol.ToDisplayString();
+
+        // Ignora tipos primitivos e do sistema
+        if (fullName.StartsWith("System.") ||
+            fullName.StartsWith("Microsoft.") ||
+            typeSymbol.SpecialType != SpecialType.None)
+        {
+            return false;
+        }
+
+        // Verifica se é uma classe
+        return typeSymbol.TypeKind == TypeKind.Class;
+    }
+
+    /// <summary>
+    /// Verifica se o tipo é nullable (T?).
+    /// </summary>
+    private static bool IsNullableTypeSyntax(TypeSyntax typeSyntax)
+    {
+        return typeSyntax is NullableTypeSyntax;
+    }
+
+    /// <summary>
+    /// Encontra a propriedade FK correspondente a uma navegação.
+    /// </summary>
+    private static string FindForeignKeyProperty(
+        ClassDeclarationSyntax classDeclaration,
+        PropertyDeclarationSyntax navigationProperty,
+        string targetEntityName,
+        EntityInfo info)
+    {
+        var navName = navigationProperty.Identifier.Text;
+
+        // 1. Verifica se tem atributo [ForeignKey("...")] ou [ForeignKey(nameof(...))] NA NAVEGAÇÃO
+        foreach (var attrList in navigationProperty.AttributeLists)
+        {
+            foreach (var attr in attrList.Attributes)
+            {
+                var attrName = attr.Name.ToString();
+                if (attrName.Contains("ForeignKey"))
+                {
+                    var arg = attr.ArgumentList?.Arguments.FirstOrDefault();
+                    if (arg != null)
+                    {
+                        var value = arg.Expression.ToString();
+                        
+                        // Remove aspas se for string literal: "IdMotivoPai" -> IdMotivoPai
+                        value = value.Trim('"');
+                        
+                        // Resolve nameof(): nameof(IdMotivoPai) -> IdMotivoPai
+                        if (value.StartsWith("nameof(") && value.EndsWith(")"))
+                        {
+                            value = value.Substring(7, value.Length - 8); // Remove "nameof(" e ")"
+                        }
+                        
+                        return value;
+                    }
+                }
+            }
+        }
+
+        // 2. Procura propriedades com [ForeignKey] apontando para esta navegação
+        foreach (var member in classDeclaration.Members)
+        {
+            if (member is not PropertyDeclarationSyntax prop)
+                continue;
+
+            var propName = prop.Identifier.Text;
+
+            foreach (var attrList in prop.AttributeLists)
+            {
+                foreach (var attr in attrList.Attributes)
+                {
+                    var attrName = attr.Name.ToString();
+                    if (attrName.Contains("ForeignKey"))
+                    {
+                        var arg = attr.ArgumentList?.Arguments.FirstOrDefault();
+                        if (arg != null)
+                        {
+                            var value = arg.Expression.ToString();
+                            
+                            // Remove aspas se for string literal
+                            value = value.Trim('"');
+                            
+                            // Resolve nameof(): nameof(Banco) -> Banco
+                            if (value.StartsWith("nameof(") && value.EndsWith(")"))
+                            {
+                                value = value.Substring(7, value.Length - 8);
+                            }
+                            
+                            if (value.Equals(navName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                return propName;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Convenções de nome para FK
+        var possibleNames = new[]
+        {
+            $"Id{navName}",               // IdBanco
+            $"{navName}Id",               // BancoId
+            $"id{navName.ToLower()}",     // idbanco (exato, não substring)
+            $"{navName.ToLower()}id",     // bancoid
+            $"Id{targetEntityName}",      // IdBanco (pelo nome da entity)
+            $"{targetEntityName}Id",      // BancoId
+            $"Fk{navName}",               // FkBanco
+            $"{navName}Fk",               // BancoFk
+        };
+
+        // Procura nas propriedades já extraídas
+        foreach (var propInfo in info.Properties)
+        {
+            if (possibleNames.Any(pn => pn.Equals(propInfo.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                return propInfo.Name;
+            }
+        }
+
+        // 4. Fallback: tenta Id + nome da navegação
+        return $"Id{navName}";
     }
 
     /// <summary>
@@ -347,7 +652,7 @@ public static class EntityInfoExtractor
                 Type = "Guid",
                 IsPrimaryKey = true,
                 IsReadOnly = true,
-                IsIdentity = false, // Guid não é Identity, mas é auto-gerado (via IsGuid)
+                IsIdentity = false,
                 ColumnName = "id"
             },
             new Models.PropertyInfo { Name = "CreatedAt", Type = "DateTime", IsReadOnly = true, ColumnName = "createdat" },
@@ -367,14 +672,11 @@ public static class EntityInfoExtractor
 
     /// <summary>
     /// Determina qual propriedade é a chave primária.
-    /// CORREÇÃO v3.2: Define PrimaryKeyIsGenerated baseado em IsIdentity ou IsGuid.
     /// </summary>
     private static void DeterminePrimaryKey(EntityInfo info)
     {
-        // Primeiro tenta encontrar uma propriedade marcada com [Key]
         var keyProp = info.Properties.FirstOrDefault(p => p.IsPrimaryKey);
 
-        // Se não encontrou, procura por "Id" ou "{EntityName}Id"
         if (keyProp == null)
         {
             keyProp = info.Properties.FirstOrDefault(p =>
@@ -390,13 +692,6 @@ public static class EntityInfoExtractor
             info.PrimaryKeyProperty = keyProp.Name;
             info.PrimaryKeyColumn = keyProp.ColumnName;
             info.PrimaryKeyType = keyProp.BaseType;
-
-            // =========================================================
-            // CORREÇÃO v3.2: Define se a PK é auto-gerada
-            // =========================================================
-            // PKs são auto-geradas se:
-            // - São Identity (auto-incremento no banco)
-            // - São Guid (gerado automaticamente pela aplicação/banco)
             info.PrimaryKeyIsGenerated = keyProp.IsIdentity || keyProp.IsGuid;
         }
     }
@@ -406,33 +701,26 @@ public static class EntityInfoExtractor
     /// </summary>
     private static void ApplyDefaults(EntityInfo info)
     {
-        // DisplayName padrão = EntityName
         if (string.IsNullOrEmpty(info.DisplayName))
             info.DisplayName = info.EntityName;
 
-        // PluralName padrão
         if (string.IsNullOrEmpty(info.PluralName))
             info.PluralName = Pluralize(info.EntityName);
 
-        // TableName padrão = EntityName em lowercase
         if (string.IsNullOrEmpty(info.TableName))
             info.TableName = info.EntityName.ToLowerInvariant();
 
-        // ApiRoute padrão = module/entities
         if (string.IsNullOrEmpty(info.ApiRoute))
             info.ApiRoute = $"{info.ModuleName.ToLowerInvariant()}/{info.PluralName.ToLowerInvariant()}";
 
-        // ApiGroup padrão = ModuleName
         if (string.IsNullOrEmpty(info.ApiGroup))
             info.ApiGroup = !string.IsNullOrEmpty(info.CdSistema)
                 ? MapCdSistemaToApiGroup(info.CdSistema)
                 : info.ModuleName;
 
-        // CdSistema padrão baseado no módulo
         if (string.IsNullOrEmpty(info.CdSistema))
             info.CdSistema = MapModuleToCdSistema(info.ModuleName);
 
-        // CdFuncao padrão = {CdSistema}_FM_T{ENTITYNAME}
         if (string.IsNullOrEmpty(info.CdFuncao))
             info.CdFuncao = $"{info.CdSistema}_FM_T{info.EntityName.ToUpperInvariant()}";
     }
@@ -444,18 +732,17 @@ public static class EntityInfoExtractor
     {
         if (string.IsNullOrEmpty(name)) return name;
 
-        // Regras simples de pluralização para português/inglês
         if (name.EndsWith("ao", StringComparison.OrdinalIgnoreCase))
-            return name.Substring(0, name.Length - 2) + "oes"; // funcao -> funcoes
+            return name.Substring(0, name.Length - 2) + "oes";
 
         if (name.EndsWith("al", StringComparison.OrdinalIgnoreCase))
-            return name.Substring(0, name.Length - 2) + "ais"; // animal -> animais
+            return name.Substring(0, name.Length - 2) + "ais";
 
         if (name.EndsWith("el", StringComparison.OrdinalIgnoreCase))
-            return name.Substring(0, name.Length - 2) + "eis"; // papel -> papeis
+            return name.Substring(0, name.Length - 2) + "eis";
 
         if (name.EndsWith("y", StringComparison.OrdinalIgnoreCase))
-            return name.Substring(0, name.Length - 1) + "ies"; // category -> categories
+            return name.Substring(0, name.Length - 1) + "ies";
 
         if (name.EndsWith("s", StringComparison.OrdinalIgnoreCase) ||
             name.EndsWith("x", StringComparison.OrdinalIgnoreCase) ||
@@ -467,9 +754,6 @@ public static class EntityInfoExtractor
         return name + "s";
     }
 
-    /// <summary>
-    /// Mapeia nome do módulo para código do sistema.
-    /// </summary>
     private static string MapModuleToCdSistema(string moduleName)
     {
         return moduleName.ToUpperInvariant() switch
@@ -486,9 +770,6 @@ public static class EntityInfoExtractor
         };
     }
 
-    /// <summary>
-    /// Mapeia código do sistema para nome do grupo da API.
-    /// </summary>
     private static string MapCdSistemaToApiGroup(string cdSistema)
     {
         return cdSistema.ToUpperInvariant() switch
@@ -507,13 +788,12 @@ public static class EntityInfoExtractor
 
     /// <summary>
     /// Verifica se a propriedade é uma propriedade de navegação (relacionamento).
-    /// Propriedades de navegação são ICollection, IEnumerable, List, HashSet, etc.
     /// </summary>
     private static bool IsNavigationProperty(IPropertySymbol property)
     {
         var typeName = property.Type.ToDisplayString();
 
-        // Verifica se é uma coleção genérica (ICollection<T>, IEnumerable<T>, List<T>, etc.)
+        // Verifica se é uma coleção genérica
         if (typeName.Contains("System.Collections.Generic.ICollection<") ||
             typeName.Contains("System.Collections.Generic.IEnumerable<") ||
             typeName.Contains("System.Collections.Generic.IList<") ||
@@ -523,18 +803,15 @@ public static class EntityInfoExtractor
             return true;
         }
 
-        // Verifica se o tipo é uma entidade (classe de outro namespace que não seja primitivo)
+        // Verifica se o tipo é uma entidade
         var typeSymbol = property.Type as INamedTypeSymbol;
         if (typeSymbol != null)
         {
-            // Se for uma classe (não primitivo) e não for string/DateTime/etc
             if (typeSymbol.TypeKind == TypeKind.Class &&
                 !typeSymbol.SpecialType.ToString().StartsWith("System_") &&
                 typeSymbol.SpecialType == SpecialType.None)
             {
                 var ns = typeSymbol.ContainingNamespace?.ToDisplayString() ?? "";
-
-                // Se estiver em namespace de Entities, é navegação
                 if (ns.Contains(".Entities") || ns.Contains(".Domain"))
                 {
                     return true;

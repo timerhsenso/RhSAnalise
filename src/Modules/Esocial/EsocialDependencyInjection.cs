@@ -1,43 +1,43 @@
-Ôªø// =============================================================================
-// RhSensoERP - M√≥dulo GestaoDePessoas - Dependency Injection
 // =============================================================================
-// Arquivo: src/Modules/GestaoDePessoas/DependencyInjection.cs
-// Registra DbContext, AutoMapper, Reposit√≥rios e MediatR handlers
+// RhSensoERP - MÛdulo Esocial - Dependency Injection
+// =============================================================================
+// Arquivo: src/Modules/Esocial/EsocialDependencyInjection.cs
+// Registra DbContext, AutoMapper, RepositÛrios e MediatR handlers
 // =============================================================================
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence;
-using RhSensoERP.Modules.GestaoDePessoas.Infrastructure.Persistence.Contexts;
-using System.Reflection;
+using RhSensoERP.Modules.Esocial.Infrastructure.Persistence.Contexts;
+using RhSensoERP.Modules.Esocial.Infrastructure.Services;
+using RhSensoERP.Shared.Contracts.Esocial.Interfaces;
 
-namespace RhSensoERP.Modules.GestaoDePessoas;
+namespace RhSensoERP.Modules.Esocial;
 
 /// <summary>
-/// Extens√µes de DI para o m√≥dulo GestaoDePessoas.
+/// Extensıes de DI para o mÛdulo Esocial.
 /// </summary>
-public static class DependencyInjection
+public static class EsocialDependencyInjection
 {
     /// <summary>
-    /// Adiciona os servi√ßos do m√≥dulo GestaoDePessoas ao container de DI.
+    /// Adiciona os serviÁos do mÛdulo Esocial ao container de DI.
     /// </summary>
-    public static IServiceCollection AddGestaoDePessoasModule(
+    public static IServiceCollection AddEsocialModule(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Assembly onde entidades e arquivos gerados est√£o
-        var moduleAssembly = typeof(DependencyInjection).Assembly;
+        // Assembly onde entidades e arquivos gerados est„o
+        var moduleAssembly = typeof(EsocialDependencyInjection).Assembly;
 
         // =====================================================================
         // 1. DbContext
         // =====================================================================
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        services.AddDbContext<GestaoDePessoasDbContext>((sp, options) =>
+        services.AddDbContext<EsocialDbContext>((sp, options) =>
         {
             options.UseSqlServer(connectionString, sqlOptions =>
             {
-                sqlOptions.MigrationsAssembly(typeof(GestaoDePessoasDbContext).Assembly.FullName);
+                sqlOptions.MigrationsAssembly(typeof(EsocialDbContext).Assembly.FullName);
                 sqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 3,
                     maxRetryDelay: TimeSpan.FromSeconds(5),
@@ -57,35 +57,38 @@ public static class DependencyInjection
         // =====================================================================
         // 2. AutoMapper - Escaneia Profiles GERADOS pelo Source Generator
         // =====================================================================
-        // O Source Generator cria arquivos como BancoProfile.g.cs automaticamente
-        // Basta escanear o assembly para encontr√°-los
         services.AddAutoMapper(moduleAssembly);
 
         // =====================================================================
-        // 3. Reposit√≥rios Gerados Automaticamente
+        // 3. RepositÛrios Gerados Automaticamente
         // =====================================================================
-        services.AddGestaoDePessoasRepositories();
+        services.AddEsocialRepositories();
 
         // =====================================================================
-        // 4. MediatR - Handlers do m√≥dulo (Commands, Queries)
+        // 4. MediatR - Handlers do mÛdulo (Commands, Queries)
         // =====================================================================
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(moduleAssembly);
         });
 
+        // =====================================================================
+        // 5. ServiÁos Compartilhados (Lookup Service)
+        // =====================================================================
+        services.AddScoped<IEsocialLookupService, EsocialLookupService>();
+
         return services;
     }
 
     /// <summary>
-    /// Registra automaticamente todos os reposit√≥rios gerados pelo Source Generator.
+    /// Registra automaticamente todos os repositÛrios gerados pelo Source Generator.
     /// </summary>
-    public static IServiceCollection AddGestaoDePessoasRepositories(this IServiceCollection services)
+    public static IServiceCollection AddEsocialRepositories(this IServiceCollection services)
     {
-        var assembly = typeof(DependencyInjection).Assembly;
+        var assembly = typeof(EsocialDependencyInjection).Assembly;
         var types = assembly.GetTypes();
 
-        // Busca interfaces de reposit√≥rio
+        // Busca interfaces de repositÛrio
         var repoInterfaces = types
             .Where(t => t.IsInterface
                      && t.Name.StartsWith("I")
