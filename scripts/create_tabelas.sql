@@ -1,4 +1,5 @@
-﻿USE [bd_rhu_copenor];
+﻿
+,USE [bd_rhu_copenor];
 GO
 
 /* =============================================================================
@@ -1861,5 +1862,17 @@ PRINT '=========================================================================
 GO
 
 
+
+--tabela de usuario
+select id  from tuse1  guid  ex: B4E0D1F0-5B4C-EB11-9402-005056BD6616
+
+--tabela de empresa
+select id from temp1  guid  ex: B4E0D1F0-5B4C-EB11-9402-005056BD6616 
+
+--tabela de filial
+select id from test1  int
+
+--tabela de empregado
+select id from func1 guid
 
 
